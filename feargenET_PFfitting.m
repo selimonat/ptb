@@ -51,7 +51,7 @@ while RF{1}.stop ~= 1 && RF{2}.stop ~= 1 && RF{3}.stop ~= 1 && RF{4}.stop ~= 1
     test      = RF{current_chain}.xCurrent * direction + RF{current_chain}.reference_face + csp_degree + RF{current_chain}.reference_circle;
     ref       = RF{current_chain}.reference_face + csp_degree + RF{current_chain}.reference_circle;
     %
-            message = 'War der Reiz schmerzhaft oder nicht?\nBewege den "Zeiger" mit der rechten und linken Pfeiltaste\n und bestätige deine Einschätzung mit der mit der oberen Pfeiltaste.';
+    message = 'War der Reiz schmerzhaft oder nicht?\nBewege den "Zeiger" mit der rechten und linken Pfeiltaste\n und bestätige deine Einschätzung mit der mit der oberen Pfeiltaste.';
 
     [response]      = RatingSlider(p.ptb.rect,2,Shuffle(1:2,1),p.keys.increase,p.keys.decrease,p.keys.confirm,{ 'erstes\nPaar' 'zweites\nPaar'},message,0);
 
