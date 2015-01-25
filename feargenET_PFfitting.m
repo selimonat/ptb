@@ -50,23 +50,37 @@ while RF{1}.stop ~= 1 && RF{2}.stop ~= 1 && RF{3}.stop ~= 1 && RF{4}.stop ~= 1
     direction = randsample([-1 1],1);
     test      = RF{current_chain}.xCurrent * direction + RF{current_chain}.reference_face + csp_degree + RF{current_chain}.reference_circle;
     ref       = RF{current_chain}.reference_face + csp_degree + RF{current_chain}.reference_circle;
-    %
-    message = 'War der Reiz schmerzhaft oder nicht?\nBewege den "Zeiger" mit der rechten und linken Pfeiltaste\n und bestätige deine Einschätzung mit der mit der oberen Pfeiltaste.';
-
-    [response]      = RatingSlider(p.ptb.rect,2,Shuffle(1:2,1),p.keys.increase,p.keys.decrease,p.keys.confirm,{ 'erstes\nPaar' 'zweites\nPaar'},message,0);
-
+ % start Trial
     Trial_2IFC(ref,test);
     fprintf('Trial Finished...\n')
+    %Rating Slider
+       %
+    message = 'In welchem Paar waren die Gesichter unterschiedlich?\nBewege den "Zeiger" mit der rechten und linken Pfeiltaste\n und bestätige deine Einschätzung mit der mit der oberen Pfeiltaste.';
 
-    response = rand(1) < PFsimul(trueParams,amplitude);    
+    [response_subj]      = RatingSlider(p.ptb.rect,2,Shuffle(1:2,1),p.keys.increase,p.keys.decrease,p.keys.confirm,{ 'erstes\nPaar' 'zweites\nPaar'},message,0);
+
+    %see if subject found the different pair of faces...
+    % buttonpress left (first pair) is response_subj=2, right alternative (second pair) outputs a 1.
+    if response_subj == 2 && target == 1
+        response=1
+    else 
+        response=0
+    end
+    %     response = rand(1) < PFsimul(trueParams,amplitude);    
     RF = PAL_AMRF_updateRF(RF{current_chain}, test, response); %updating RF
     end
 end
 
 
 
-    function Trial_2IFC(ref_stim,test_stim)
+function  [trial, target] = Trial_2IFC(ref_stim,test_stim)
         trial      = Shuffle([ref_stim ref_stim ref_stim test_stim ])
+        target     = [];
+        if trial(1)==trial(2)
+            target = [2]
+        else
+            target = [1]
+        end
         onsets     = p.trial.onsets + GetSecs;
         sprite_index = round([100 trial(1)/p.stim.delta+1 100 trial(2)/p.stim.delta+1 NaN 100 trial(3)/p.stim.delta+1 100 trial(4)/p.stim.delta+1 NaN ]);
         for i = 1:length(sprite_index) 
