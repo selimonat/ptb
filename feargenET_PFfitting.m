@@ -51,7 +51,7 @@ while RF{1}.stop ~= 1 && RF{2}.stop ~= 1 && RF{3}.stop ~= 1 && RF{4}.stop ~= 1
     test      = RF{current_chain}.xCurrent * direction + RF{current_chain}.reference_face + csp_degree + RF{current_chain}.reference_circle;
     ref       = RF{current_chain}.reference_face + csp_degree + RF{current_chain}.reference_circle;
  % start Trial
-    Trial_2IFC(ref,test);
+   [trial, target] = Trial_2IFC(ref,test);
     fprintf('Trial Finished...\n')
     %Rating Slider
        %
@@ -63,7 +63,7 @@ while RF{1}.stop ~= 1 && RF{2}.stop ~= 1 && RF{3}.stop ~= 1 && RF{4}.stop ~= 1
     % buttonpress left (first pair) is response_subj=2, right alternative (second pair) outputs a 1.
     if response_subj == 2 && target == 1
         response=1
-    else 
+    else
         response=0
     end
     %     response = rand(1) < PFsimul(trueParams,amplitude);    
@@ -91,7 +91,7 @@ function  [trial, target] = Trial_2IFC(ref_stim,test_stim)
                 p.ptb.stim_sprites(100) = Screen('MakeTexture', p.ptb.w, pink_noise );
             end
             % write the image to the buffer if not gray
-            if i ~= 5
+            if i ~= 5 && i ~= 10
                 Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(sprite_index(i)));
             end
             %show image.
@@ -109,11 +109,11 @@ function  [trial, target] = Trial_2IFC(ref_stim,test_stim)
         %show PN
         
         
+%   what is that?      
+%         Screen('DrawTexture', p.ptb.w, p.ptb.stim.sprites(stim_id));
+%         Screen('Flip',p.ptb.w,TimeStimOnset,0);
         
-        Screen('DrawTexture', p.ptb.w, p.ptb.stim.sprites(stim_id));
-        Screen('Flip',p.ptb.w,TimeStimOnset,0);
-        
-        
+             fprintf('Target: %03d...\n',target)    
     end
 
 function SetPTB
