@@ -1,8 +1,9 @@
-function feargenET_PFfitting(subject,   csp_degree)
+function [p]=feargenET_PFfitting(subject,   csp_degree)
 
 p = [];
 SetParams;
 SetPTB;
+% p_out_log                 = p.out.log;
 %Simulated observer's characteristics
 PFsimul = @PAL_Gumbel;
 trueParams = [0 2 0.5 0.01];
@@ -10,12 +11,12 @@ trueParams = [0 2 0.5 0.01];
 %Set up running fit procedure:
 
 %% Define prior
-alphas = linspace(0,90,400);
+alphas = linspace(0,180,400);
 prior  = PAL_pdfNormal(alphas,0,400); %Gaussian
 %%
 %Termination rule
 stopcriterion = 'trials';
-stoprule      = 10;
+stoprule      = 2;
 
 %Function to be fitted during procedure
 PFfit    = @PAL_Gumbel;    %Shape to be assumed
@@ -35,56 +36,90 @@ RF{nc} = PAL_AMRF_setupRF('priorAlphaRange', alphas, 'prior', prior,...
     RF{nc}.reference_circle = circle_shift(nc);
 end
 %need 4 PF, 1) cs+ local, 2)cs- local, 3) cs+ foreign, 4) cs-foreign
-% random sequence of chains
-chain_sequence = rand
-
 
 %Trial loop
-while RF{1,}.stop ~= 1 && RF{1,2}.stop ~= 1 && RF{1,3}.stop ~= 1 && RF{1,4}.stop ~= 1
-    
+while (RF{1}.stop ~= 1) || (RF{2}.stop ~= 1) || (RF{3}.stop ~= 1) || (RF{4}.stop ~= 1)
     current_chain = randsample(1:4,1);
-    if RF{1,current_chain}.stop ~= 1
+    if RF{current_chain}.stop ~= 1
     %Present trial here at stimulus intensity UD.xCurrent and collect
-    %response
-    %Here we simulate a response instead (0: incorrect, 1: correct)  
+    %response 
     direction = randsample([-1 1],1);
-    test      = RF{1,current_chain}.xCurrent * direction + RF{1,current_chain}.reference_face + csp_degree + RF{1,current_chain}.reference_circle;
-    ref       = RF{1,current_chain}.reference_face + csp_degree + RF{1,current_chain}.reference_circle;
+    test      = RF{current_chain}.xCurrent * direction + RF{current_chain}.reference_face + csp_degree + RF{current_chain}.reference_circle;
+    % the computed degree has to stay in the same circle:
+    % whenever it goes left from the 00 degrees (360 at foreign), 
+    % there's a problem
+    % for chain 1 and 2, values below 0  have to be shifted 360 degrees, 
+    % for chain 3 and 4, values below 360 have to be shifted 360 degrees
+    % e.g., -45 has to be 315 in chain 1; 315 has to be 675 in chain 3
+    % was done using mod... adding (0 0 360 360) (this is the last part)
+    test      = mod(test-RF{current_chain}.reference_circle,360) + RF{current_chain}.reference_circle;
+    % the reference is one of the four faces 
+    %(cs+ local, cs- local, cs+ foreign, cs- forein)
+    ref       = RF{current_chain}.reference_face + csp_degree + RF{current_chain}.reference_circle;
  % start Trial
-   [trial, target] = Trial_2IFC(ref,test);
-    fprintf('Trial Finished...\n')
+ fprintf('Starting Trial.\n')
+ 
+ [trial, target] = Trial_2IFC(ref,test);
+ 
+  fprintf('Trial Finished.\n')
     %Rating Slider
        %
-    message = 'In welchem Paar waren die Gesichter unterschiedlich?\nBewege den "Zeiger" mit der rechten und linken Pfeiltaste\n und bestätige deine Einschätzung mit der mit der oberen Pfeiltaste.';
+    message1 = 'In welchem Paar waren die Gesichter unterschiedlich?\n';
+    message2 = 'Bewege den "Zeiger" mit der rechten und linken Pfeiltaste\n und bestätige deine Einschätzung mit der mit der oberen Pfeiltaste.';
 
-    [response_subj]      = RatingSlider(p.ptb.rect,2,Shuffle(1:2,1),p.keys.increase,p.keys.decrease,p.keys.confirm,{ 'erstes\nPaar' 'zweites\nPaar'},message,0);
+    [response_subj]      = RatingSlider(p.ptb.rect,2,Shuffle(1:2,1),p.keys.increase,p.keys.decrease,p.keys.confirm,{ 'erstes\nPaar' 'zweites\nPaar'},message1,message2,0);
 
     %see if subject found the different pair of faces...
     % buttonpress left (first pair) is response_subj=2, right alternative (second pair) outputs a 1.
-    if response_subj == 2 && target == 1
-        response=1
+    if (response_subj == 2 && target == 1) || (response_subj == 1 && target==2)
+        response=1;
+        fprintf('...Subject chose the RIGHT pair.')
+    elseif (response_subj==1 && target == 1) || (response_subj==2 && target==2)
+        response=0;
+         fprintf('...Subject chose the WRONG pair.')
     else
-        response=0
+        fprintf('error in the answer algorithm!')
     end
-    %     response = rand(1) < PFsimul(trueParams,amplitude);    
-    RF = PAL_AMRF_updateRF(RF{1,current_chain}, test, response); %updating RF
+%     fprintf('Response: %0d\n',response)
+    %     response = rand(1) < PFsimul(trueParams,amplitude);
+    %updating RF
+    RF{current_chain} = PAL_AMRF_updateRF(RF{current_chain}, test, response);
     end
+    %save RF here
+    save(p.path.path_param,'RF');
+    % plot the psychmetric functions in 4 different subplots.
+%     plot_PF
+     
+  
 end
 
+%clear the screen
+%close everything down
+cleanup;
+%move the folder to appropriate location
+movefile(p.path.subject,p.path.finalsubject);
 
-
-function  [trial, target] = Trial_2IFC(ref_stim,test_stim)
-        trial      = Shuffle([ref_stim ref_stim ref_stim test_stim ])
+  function  [trial, target] = Trial_2IFC(ref_stim,test_stim)
+        trial      = Shuffle([ref_stim, ref_stim, ref_stim, test_stim ]);
         target     = [];
         if trial(1)==trial(2)
-            target = [2]
+            target = [2];
         else
-            target = [1]
+            target = [1];
         end
-        onsets     = p.trial.onsets + GetSecs;
+         %transform degrees to sprite indices:
         sprite_index = round([100 trial(1)/p.stim.delta+1 100 trial(2)/p.stim.delta+1 NaN 100 trial(3)/p.stim.delta+1 100 trial(4)/p.stim.delta+1 NaN ]);
+        faces_trial = sprite_index(1,[2,4,7,9]);
+        
+          fprintf('...Chain: %02d \n',current_chain)
+            fprintf('...xDelta: %4.2f Degrees.\n',RF{current_chain}.xCurrent)
+            fprintf('...Faces Trial: '),fprintf('%02d ',faces_trial)
+            fprintf('\n...Target Pair: Pair No %g.\n',target)
+        onsets     = p.trial.onsets + GetSecs;
+
         for i = 1:length(sprite_index) 
-             fprintf('Trial: %03d...\n',sprite_index(i))
+%           fprintf('Trial: %03d...\n',sprite_index(i))
+             
             %create the pink noise sprite
             if sprite_index(i) == 100
                 pink_noise              = repmat(Image2PinkNoise(p.stim.stim(:,:,1)),[1 1 3]);%correct this
@@ -97,26 +132,13 @@ function  [trial, target] = Trial_2IFC(ref_stim,test_stim)
             %show image.
             Screen('Flip',p.ptb.w,onsets(i),0);
         end
-        %show PN
-        %show 1-1 csp 
-        %show PN
-        %show 1-2 csp + delta
-        %show BG
-        %show PN
-        %show 2-1 csp 
-        %show PN
-        %show 2-2 csp
-        %show PN
-        
+     
         
 %   what is that?      
 %         Screen('DrawTexture', p.ptb.w, p.ptb.stim.sprites(stim_id));
-%         Screen('Flip',p.ptb.w,TimeStimOnset,0);
-        
-             fprintf('Target: %03d...\n',target)    
-    end
-
-function SetPTB
+%         Screen('Flip',p.ptb.w,TimeStimOnset,0)
+end
+  function SetPTB
     debug =1;
         %Open a graphics window using PTB
         screens       =  Screen('Screens');
@@ -185,7 +207,7 @@ function SetPTB
         mkdir(p.path.subject);
         mkdir([p.path.subject 'stimulation']);
         mkdir([p.path.subject 'pmf']);
-        p.path.path_param             = sprintf([regexprep(p.path.subject,'\\','\\\') 'stimulation\\param_pmf']);
+        p.path.path_param             = sprintf([regexprep(p.path.subject,'\\','\\\') 'stimulation\\RF']);
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
         %get stim files
@@ -269,13 +291,15 @@ function SetPTB
         event_onsets = [event_onsets event_onsets(end)+p.duration.stim];
 
         p.trial.onsets = event_onsets;
+%         p.out.rating                  = [];
+%         p.out.log                     = zeros(stoprule*4,4).*NaN;
 
         %Save the stuff
         save(p.path.path_param,'p');
         %
 
   end
-    function [rating]=RatingSlider(rect,tSection,position,up,down,confirm,labels,message,numbersOn)
+  function [rating]=RatingSlider(rect,tSection,position,up,down,confirm,labels,message1,message2,numbersOn)
         %
         %Detect the bounding boxes of the labels.
         for nlab = 1:2
@@ -330,20 +354,62 @@ function SetPTB
             slider = [ tick_x(position)+tick_size*0.1 rect(2) tick_x(position)+tick_size*0.9 rect(2)+rect(4)];
             %draw the slider
             Screen('FillRect',p.ptb.w, p.stim.white, round(slider));
+            Screen('TextSize', p.ptb.w,p.text.fontsize);
+            DrawFormattedText(p.ptb.w,message1, 'center', p.ptb.midpoint(2)*0.2,  p.stim.white,[],[],[],2);
             Screen('TextSize', p.ptb.w,p.text.fontsize./2);
-            DrawFormattedText(p.ptb.w,message, 'center', p.ptb.midpoint(2)*0.2,  p.stim.white,[],[],[],2);
+             DrawFormattedText(p.ptb.w,message2, 'center', p.ptb.midpoint(2)*0.4,  p.stim.white,[],[],[],2);
             Screen('TextSize', p.ptb.w,p.text.fontsize);
             Screen('Flip',p.ptb.w);
         end
-    end
+  end
 
-function shuffled = Shuffle(vector,N)
+  function shuffled = Shuffle(vector,N)
         %takes first N from the SHUFFLED before outputting. This function
         %could be used as a replacement for randsample
         if nargin < 2;N = length(vector);end
         [dummy, idx]    = sort(rand([1 length(vector)]));
         shuffled        = vector(idx(1:N));
         shuffled        = shuffled(:);
-    end
+  end
+  function plot_PF
+      
+%Create plot:
+figure('name','Running Fit Adaptive Procedure');
+for chain=1:4
+t = 1:length(RF{chain}.x);
+subplot(2,2,chain)
+hold on
+plot(t,RF{chain}.x,'k');
 
+plot(t(RF{chain}.response == 1),RF{chain}.x(RF{chain}.response == 1),'ko', ...
+    'MarkerFaceColor','k');
+plot(t(RF{chain}.response == 0),RF{chain}.x(RF{chain}.response == 0),'ko', ...
+    'MarkerFaceColor','w');
+set(gca,'FontSize',16);
+axis([0 max(t)+1 min(RF{chain}.x)-(max(RF{chain}.x)-min(RF{chain}.x))/10 ...
+    max(RF{chain}.x)+(max(RF{chain}.x)-min(RF{chain}.x))/10]);
+% line([1 length(RF{chain}.x)], [trueParams(1) trueParams(1)],'linewidth', 2, ...
+%     'linestyle', '--', 'color','k');
+title(['Chain ',num2str(chain)]);
+xlabel('Trial');
+ylabel('Stimulus Intensity');
+end
+  end
+  function cleanup
+        
+        % Close window:
+        sca;
+        %set back the old resolution
+        if strcmp(p.hostname,'triostim1')
+            Screen('Resolution',p.ptb.screenNumber, p.ptb.oldres.width, p.ptb.oldres.height );
+            %show the cursor
+            ShowCursor(p.ptb.screenNumber);
+        end
+        %
+%         %IOPort('ConfigureSerialPort', p.com.serial,' StopBackgroundRead');
+%         %IOPort('Close',p.com.serial);
+%         commandwindow;
+%         ListenChar(0);
+%         KbQueueRelease(p_ptb_device);
+    end
 end
