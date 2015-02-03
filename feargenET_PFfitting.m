@@ -28,6 +28,7 @@ meanmode = 'mean';      %Use mean of posterior as placement rule
 RF = [];
 face_shift  = [0 180 0 180];
 circle_shift = [0 0 360 360];
+
 for nc = 1:4
 RF{nc} = PAL_AMRF_setupRF('priorAlphaRange', alphas, 'prior', prior,...
     'stopcriterion',stopcriterion,'stoprule',stoprule,'beta',beta,...
@@ -38,13 +39,23 @@ end
 %need 4 PF, 1) cs+ local, 2)cs- local, 3) cs+ foreign, 4) cs-foreign
 
 %Trial loop
+figure('name','Running Fit Adaptive Procedure and Thresholds');
+for sub=1:4
+subplot(2,4,sub)
+title(['Procedure chain ',num2str(sub)])
+subplot(2,4,sub+4)
+title(['Treshold Estimate chain ',num2str(sub)])
+end
 while (RF{1}.stop ~= 1) || (RF{2}.stop ~= 1) || (RF{3}.stop ~= 1) || (RF{4}.stop ~= 1)
+    
     current_chain = randsample(1:4,1);
+   
     if RF{current_chain}.stop ~= 1
     %Present trial here at stimulus intensity UD.xCurrent and collect
     %response 
     direction = randsample([-1 1],1);
     test      = RF{current_chain}.xCurrent * direction + RF{current_chain}.reference_face + csp_degree + RF{current_chain}.reference_circle;
+    dummy = test;
     % the computed degree has to stay in the same circle:
     % whenever it goes left from the 00 degrees (360 at foreign), 
     % there's a problem
@@ -52,15 +63,17 @@ while (RF{1}.stop ~= 1) || (RF{2}.stop ~= 1) || (RF{3}.stop ~= 1) || (RF{4}.stop
     % for chain 3 and 4, values below 360 have to be shifted 360 degrees
     % e.g., -45 has to be 315 in chain 1; 315 has to be 675 in chain 3
     % was done using mod... adding (0 0 360 360) (this is the last part)
-    test      = mod(test-RF{current_chain}.reference_circle,360) + RF{current_chain}.reference_circle;
+    test      = mod(test,360)+ RF{current_chain}.reference_circle;
     % the reference is one of the four faces 
     %(cs+ local, cs- local, cs+ foreign, cs- forein)
     ref       = RF{current_chain}.reference_face + csp_degree + RF{current_chain}.reference_circle;
+    ref      = mod(ref,360)+ RF{current_chain}.reference_circle;
+
+    fprintf('Chain: %03d\nxCurrent: %6.2f\nDirection:%6.2f\n %6.2f -> %6.2f vs. %6.2f\n',current_chain,RF{current_chain}.xCurrent,direction,dummy,test,ref);
  % start Trial
  fprintf('Starting Trial.\n')
  
  [trial, target] = Trial_2IFC(ref,test);
- 
   fprintf('Trial Finished.\n')
     %Rating Slider
        %
@@ -73,23 +86,25 @@ while (RF{1}.stop ~= 1) || (RF{2}.stop ~= 1) || (RF{3}.stop ~= 1) || (RF{4}.stop
     % buttonpress left (first pair) is response_subj=2, right alternative (second pair) outputs a 1.
     if (response_subj == 2 && target == 1) || (response_subj == 1 && target==2)
         response=1;
-        fprintf('...Subject chose the RIGHT pair.')
+        fprintf('...Subject chose the RIGHT pair. \n')
     elseif (response_subj==1 && target == 1) || (response_subj==2 && target==2)
         response=0;
-         fprintf('...Subject chose the WRONG pair.')
+         fprintf('...Subject chose the WRONG pair. \n')
     else
-        fprintf('error in the answer algorithm!')
+        fprintf('error in the answer algorithm! \n')
     end
 %     fprintf('Response: %0d\n',response)
     %     response = rand(1) < PFsimul(trueParams,amplitude);
     %updating RF
-    RF{current_chain} = PAL_AMRF_updateRF(RF{current_chain}, test, response);
+    RF{current_chain} = PAL_AMRF_updateRF(RF{current_chain}, RF{current_chain}.xCurrent, response);
     end
     %save RF here
     save(p.path.path_param,'RF');
-    % plot the psychmetric functions in 4 different subplots.
-%     plot_PF
-     
+    
+    % plot the Adaptive Procedure in different subplots.
+    plot_proc;
+    % plot the Threshold Estimates in 4 subplots
+%     plot_thresholds;
   
 end
 
@@ -117,9 +132,7 @@ movefile(p.path.subject,p.path.finalsubject);
             fprintf('\n...Target Pair: Pair No %g.\n',target)
         onsets     = p.trial.onsets + GetSecs;
 
-        for i = 1:length(sprite_index) 
-%           fprintf('Trial: %03d...\n',sprite_index(i))
-             
+        for i = 1:length(sprite_index)            
             %create the pink noise sprite
             if sprite_index(i) == 100
                 pink_noise              = repmat(Image2PinkNoise(p.stim.stim(:,:,1)),[1 1 3]);%correct this
@@ -148,7 +161,7 @@ end
             commandwindow;
             PsychDebugWindowConfiguration;
         end
-        Screen('Preference', 'SkipSyncTests', 1);
+        Screen('Preference', 'SkipSyncTests', 0);
         Screen('Preference', 'DefaultFontSize', p.text.fontsize);
         Screen('Preference', 'DefaultFontName', p.text.fontname);
         %
@@ -371,30 +384,38 @@ end
         shuffled        = vector(idx(1:N));
         shuffled        = shuffled(:);
   end
-  function plot_PF
+  function plot_proc
       
-%Create plot:
-figure('name','Running Fit Adaptive Procedure');
-for chain=1:4
-t = 1:length(RF{chain}.x);
-subplot(2,2,chain)
-hold on
-plot(t,RF{chain}.x,'k');
-
-plot(t(RF{chain}.response == 1),RF{chain}.x(RF{chain}.response == 1),'ko', ...
-    'MarkerFaceColor','k');
-plot(t(RF{chain}.response == 0),RF{chain}.x(RF{chain}.response == 0),'ko', ...
-    'MarkerFaceColor','w');
-set(gca,'FontSize',12);
-axis([0 max(t)+1 min(RF{chain}.x)-(max(RF{chain}.x)-min(RF{chain}.x))/10 ...
-    max(RF{chain}.x)+(max(RF{chain}.x)-min(RF{chain}.x))/10]);
-% line([1 length(RF{chain}.x)], [trueParams(1) trueParams(1)],'linewidth', 2, ...
-%     'linestyle', '--', 'color','k');
-title(['Chain ',num2str(chain)]);
-xlabel('Trial');
-ylabel('Stimulus Intensity');
-end
+  %Filling the plot:
+ 
+    t = 1:length(RF{current_chain}.x);
+    subplot(2,4,current_chain); hold on; 
+    plot(t,RF{current_chain}.x,'k');
+    plot(t(RF{current_chain}.response == 1),RF{current_chain}.x(RF{current_chain}.response == 1),'ko', ...
+        'MarkerFaceColor','k');
+    plot(t(RF{current_chain}.response == 0),RF{current_chain}.x(RF{current_chain}.response == 0),'ko', ...
+        'MarkerFaceColor','w');
+    set(gca,'FontSize',12);
+    axis([0 stoprule+1 0 max(RF{current_chain}.x)]) 
+    xlabel('Trial');
+    ylabel('Stimulus Intensity');
+    subplot(2,4,4+current_chain);
+    plot(RF{current_chain}.priorAlphaRange,RF{current_chain}.pdf,'r')
+    drawnow;
+    xlabel('Distance');
   end
+%   function plot_thresholds
+%     figure2('name','Threshold Estimates');
+%     for chain=1:4
+%     t = 1:length(RF{chain}.x);
+%     subplot(2,2,chain)
+%     hold on
+%     plot(RF{chain}.priorAlphaRange,RF{chain}.pdf,'r')
+%     drawnow;
+%     title(['Chain ',num2str(chain)]);
+%     xlabel('Distance');
+%     end
+%   end
   function cleanup
         
         % Close window:
