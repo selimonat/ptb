@@ -3,45 +3,38 @@ function [p]=feargenET_PFfitting(subject,   csp_degree)
 p = [];
 SetParams;
 SetPTB;
+% p_out_log                 = p.out.log;
+%Simulated observer's characteristics
+PFsimul = @PAL_Gumbel;
+trueParams = [0 2 0.5 0.01];
 
 %Set up running fit procedure:
 
 %% Define prior
-priorAlphaRange = linspace(0,180,100); %values of alpha to include in prior
-priorBetaRange = -1:.02:1;  %values of log_10(beta) to include in prior
-
-%Stimulus values to select from (need not be equally spaced)
-stimRange = linspace(0,180,40); 
-
-%2-D Gaussian prior
-prior = repmat(PAL_pdfNormal(priorAlphaRange,60,22),[length(priorBetaRange) 1]).* repmat(PAL_pdfNormal(priorBetaRange',0,1),[1 length(priorAlphaRange)]);
-
-prior = prior./sum(sum(prior)); %prior should sum to 1
-
-
+alphas = linspace(0,180,400);
+prior  = PAL_pdfNormal(alphas,0,400); %Gaussian
+%%
 %Termination rule
 stopcriterion = 'trials';
 stoprule      = 10;
 
 %Function to be fitted during procedure
-PFfit = @PAL_CumulativeNormal;    %Shape to be assumed
-gamma = 0.5;            %Guess rate to be assumed
-lambda = .01;           %Lapse Rate to be assumed
+PFfit    = @PAL_Gumbel;    %Shape to be assumed
+beta     = 2;               %Slope to be assumed
+lambda   = 0.01;         %Lapse rate to be assumed
+meanmode = 'mean';      %Use mean of posterior as placement rule
 
 %set up procedure
-PM = [];
-face_shift   = [0 180 0 180];
+RF = [];
+face_shift  = [0 180 0 180];
 circle_shift = [0 0 360 360];
-circle_id    = [1 1 2 2]*p.stim.tFace/2;
-tchain = 1;
-for nc = 1:tchain
-%set up procedure
-PM{nc} = PAL_AMPM_setupPM('priorAlphaRange',priorAlphaRange,...
-    'priorBetaRange',priorBetaRange, 'numtrials',10, 'PF' , PFfit,...
-    'prior',prior,'stimRange',stimRange,'gamma',gamma,'lambda',lambda);
-% 
-PM{nc}.reference_face   = face_shift(nc);
-PM{nc}.reference_circle = circle_shift(nc);
+
+for nc = 1:4
+RF{nc} = PAL_AMRF_setupRF('priorAlphaRange', alphas, 'prior', prior,...
+    'stopcriterion',stopcriterion,'stoprule',stoprule,'beta',beta,...
+    'lambda',lambda,'PF',PFfit,'meanmode',meanmode);
+    RF{nc}.reference_face   = face_shift(nc);
+    RF{nc}.reference_circle = circle_shift(nc);
 end
 %need 4 PF, 1) cs+ local, 2)cs- local, 3) cs+ foreign, 4) cs-foreign
 
@@ -53,15 +46,15 @@ title(['Procedure chain ',num2str(sub)])
 subplot(2,4,sub+4)
 title(['Treshold Estimate chain ',num2str(sub)])
 end
-while (PM{1}.stop ~= 1) || (PM{2}.stop ~= 1) || (PM{3}.stop ~= 1) || (PM{4}.stop ~= 1)
+while (RF{1}.stop ~= 1) || (RF{2}.stop ~= 1) || (RF{3}.stop ~= 1) || (RF{4}.stop ~= 1)
     
-    current_chain = randsample(1:tchain,1);
+    current_chain = randsample(1:4,1);
    
-    if PM{current_chain}.stop ~= 1
+    if RF{current_chain}.stop ~= 1
     %Present trial here at stimulus intensity UD.xCurrent and collect
     %response 
     direction = randsample([-1 1],1);
-    test      = PM{current_chain}.xCurrent * direction + PM{current_chain}.reference_face + csp_degree + PM{current_chain}.reference_circle;
+    test      = RF{current_chain}.xCurrent * direction + RF{current_chain}.reference_face + csp_degree + RF{current_chain}.reference_circle;
     dummy = test;
     % the computed degree has to stay in the same circle:
     % whenever it goes left from the 00 degrees (360 at foreign), 
@@ -70,17 +63,17 @@ while (PM{1}.stop ~= 1) || (PM{2}.stop ~= 1) || (PM{3}.stop ~= 1) || (PM{4}.stop
     % for chain 3 and 4, values below 360 have to be shifted 360 degrees
     % e.g., -45 has to be 315 in chain 1; 315 has to be 675 in chain 3
     % was done using mod... adding (0 0 360 360) (this is the last part)
-    test      = mod(test,360)+ PM{current_chain}.reference_circle;
+    test      = mod(test,360)+ RF{current_chain}.reference_circle;
     % the reference is one of the four faces 
     %(cs+ local, cs- local, cs+ foreign, cs- forein)
-    ref       = PM{current_chain}.reference_face + csp_degree + PM{current_chain}.reference_circle;
-    ref      = mod(ref,360)+ PM{current_chain}.reference_circle;
+    ref       = RF{current_chain}.reference_face + csp_degree + RF{current_chain}.reference_circle;
+    ref      = mod(ref,360)+ RF{current_chain}.reference_circle;
 
-    fprintf('Chain: %03d\nxCurrent: %6.2f\nDirection:%6.2f\n %6.2f -> %6.2f vs. %6.2f\n',current_chain,PM{current_chain}.xCurrent,direction,dummy,test,ref);
+    fprintf('Chain: %03d\nxCurrent: %6.2f\nDirection:%6.2f\n %6.2f -> %6.2f vs. %6.2f\n',current_chain,RF{current_chain}.xCurrent,direction,dummy,test,ref);
  % start Trial
  fprintf('Starting Trial.\n')
  
- [trial, target] = Trial_2IFC(ref,test,circle_id(current_chain));
+ [trial, target] = Trial_2IFC(ref,test);
   fprintf('Trial Finished.\n')
     %Rating Slider
        %
@@ -100,12 +93,13 @@ while (PM{1}.stop ~= 1) || (PM{2}.stop ~= 1) || (PM{3}.stop ~= 1) || (PM{4}.stop
     else
         fprintf('error in the answer algorithm! \n')
     end
-    
-    %updating PM
-        PM{current_chain} = PAL_AMPM_updatePM(PM{current_chain},response)
+%     fprintf('Response: %0d\n',response)
+    %     response = rand(1) < PFsimul(trueParams,amplitude);
+    %updating RF
+    RF{current_chain} = PAL_AMRF_updateRF(RF{current_chain}, RF{current_chain}.xCurrent, response);
     end
-    %save PM here
-    save(p.path.path_param,'PM');
+    %save RF here
+    save(p.path.path_param,'RF');
     
     % plot the Adaptive Procedure in different subplots.
     plot_proc;
@@ -114,21 +108,14 @@ while (PM{1}.stop ~= 1) || (PM{2}.stop ~= 1) || (PM{3}.stop ~= 1) || (PM{4}.stop
   
 end
 
-%Print summary of results to screen
-for chain=1:tchain
-fprintf('Chain %g: Estimated Threshold (alpha): %4.2f \n',chain,PM{chain}.threshold(length(PM{chain}.threshold)))
-fprintf('Chain %g: Estimated Slope (beta): %4.2f \n',chain,PM{chain}.slope(length(PM{chain}.slope)));
-end
 %clear the screen
 %close everything down
 cleanup;
 %move the folder to appropriate location
 movefile(p.path.subject,p.path.finalsubject);
 
-  function  [trial, target] = Trial_2IFC(ref_stim,test_stim,last_face_of_circle)
-      
-        trial      = Shuffle([ref_stim, ref_stim, ref_stim, test_stim ]/p.stim.delta);
-        trial      = mod(trial,last_face_of_circle)+1;
+  function  [trial, target] = Trial_2IFC(ref_stim,test_stim)
+        trial      = Shuffle([ref_stim, ref_stim, ref_stim, test_stim ]);
         target     = [];
         if trial(1)==trial(2)
             target = [2];
@@ -136,11 +123,11 @@ movefile(p.path.subject,p.path.finalsubject);
             target = [1];
         end
          %transform degrees to sprite indices:
-        sprite_index = round([100 trial(1) 100 trial(2) NaN 100 trial(3) 100 trial(4) NaN ]);
+        sprite_index = round([100 trial(1)/p.stim.delta+1 100 trial(2)/p.stim.delta+1 NaN 100 trial(3)/p.stim.delta+1 100 trial(4)/p.stim.delta+1 NaN ]);
         faces_trial = sprite_index(1,[2,4,7,9]);
         
           fprintf('...Chain: %02d \n',current_chain)
-            fprintf('...xDelta: %4.2f Degrees.\n',PM{current_chain}.xCurrent)
+            fprintf('...xDelta: %4.2f Degrees.\n',RF{current_chain}.xCurrent)
             fprintf('...Faces Trial: '),fprintf('%02d ',faces_trial)
             fprintf('\n...Target Pair: Pair No %g.\n',target)
         onsets     = p.trial.onsets + GetSecs;
@@ -233,7 +220,7 @@ end
         mkdir(p.path.subject);
         mkdir([p.path.subject 'stimulation']);
         mkdir([p.path.subject 'pmf']);
-        p.path.path_param             = sprintf([regexprep(p.path.subject,'\\','\\\') 'stimulation\\PM']);
+        p.path.path_param             = sprintf([regexprep(p.path.subject,'\\','\\\') 'stimulation\\RF']);
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
         %get stim files
@@ -401,33 +388,29 @@ end
       
   %Filling the plot:
  
-    t = 1:length(PM{current_chain}.x);
+    t = 1:length(RF{current_chain}.x);
     subplot(2,4,current_chain); hold on; 
-    plot(t,PM{current_chain}.x,'k');
-    plot(t(PM{current_chain}.response == 1),PM{current_chain}.x(PM{current_chain}.response == 1),'ko', ...
+    plot(t,RF{current_chain}.x,'k');
+    plot(t(RF{current_chain}.response == 1),RF{current_chain}.x(RF{current_chain}.response == 1),'ko', ...
         'MarkerFaceColor','k');
-    plot(t(PM{current_chain}.response == 0),PM{current_chain}.x(PM{current_chain}.response == 0),'ko', ...
+    plot(t(RF{current_chain}.response == 0),RF{current_chain}.x(RF{current_chain}.response == 0),'ko', ...
         'MarkerFaceColor','w');
     set(gca,'FontSize',12);
-    axis([0 stoprule+1 0 max(PM{current_chain}.x)]) 
+    axis([0 stoprule+1 0 max(RF{current_chain}.x)]) 
     xlabel('Trial');
     ylabel('Stimulus Intensity');
     subplot(2,4,4+current_chain);
-    plot(PM{current_chain}.priorAlphaRange,PM{current_chain}.pdf,'r')
+    plot(RF{current_chain}.priorAlphaRange,RF{current_chain}.pdf,'r')
     drawnow;
     xlabel('Distance');
-    
-%     plot(0:.001:180,PAL_CumulativeNormal([50 exp(-.4) 0.5
-%     0.01],0:.001:180)); % plot the PF (Psychometric Function, inputs
-%     alpha, beta, gamma, lapse).
   end
 %   function plot_thresholds
 %     figure2('name','Threshold Estimates');
 %     for chain=1:4
-%     t = 1:length(PM{chain}.x);
+%     t = 1:length(RF{chain}.x);
 %     subplot(2,2,chain)
 %     hold on
-%     plot(PM{chain}.priorAlphaRange,PM{chain}.pdf,'r')
+%     plot(RF{chain}.priorAlphaRange,RF{chain}.pdf,'r')
 %     drawnow;
 %     title(['Chain ',num2str(chain)]);
 %     xlabel('Distance');
