@@ -1,5 +1,5 @@
 function [p]=feargenET_PFfitting(subject,   csp_degree)
-
+simulation_mode = 1;
 p = [];
 SetParams;
 SetPTB;
@@ -8,20 +8,20 @@ SetPTB;
 
 %% Define prior
 priorAlphaRange = linspace(0,180,100); %values of alpha to include in prior
-priorBetaRange = -1:.02:1;  %values of log_10(beta) to include in prior
+priorBetaRange = linspace(-5,5,100);  %values of log_10(beta) to include in prior
 
 %Stimulus values to select from (need not be equally spaced)
-stimRange = linspace(0,180,40); 
+stimRange = [0:22.5:180]; 
 
 %2-D Gaussian prior
-prior = repmat(PAL_pdfNormal(priorAlphaRange,60,22),[length(priorBetaRange) 1]).* repmat(PAL_pdfNormal(priorBetaRange',0,1),[1 length(priorAlphaRange)]);
+prior = repmat(PAL_pdfNormal(priorAlphaRange,60,60),[length(priorBetaRange) 1]).* repmat(PAL_pdfNormal(priorBetaRange',0,4),[1 length(priorAlphaRange)]);
 
 prior = prior./sum(sum(prior)); %prior should sum to 1
 
 
 %Termination rule
 stopcriterion = 'trials';
-stoprule      = 10;
+stoprule      = 50;
 
 %Function to be fitted during procedure
 PFfit = @PAL_CumulativeNormal;    %Shape to be assumed
@@ -33,25 +33,28 @@ PM = [];
 face_shift   = [0 180 0 180];
 circle_shift = [0 0 360 360];
 circle_id    = [1 1 2 2]*p.stim.tFace/2;
-tchain = 1;
+tchain = 4;
 for nc = 1:tchain
 %set up procedure
 PM{nc} = PAL_AMPM_setupPM('priorAlphaRange',priorAlphaRange,...
-    'priorBetaRange',priorBetaRange, 'numtrials',10, 'PF' , PFfit,...
+    'priorBetaRange',priorBetaRange, 'numtrials',stoprule, 'PF' , PFfit,...
     'prior',prior,'stimRange',stimRange,'gamma',gamma,'lambda',lambda);
 % 
 PM{nc}.reference_face   = face_shift(nc);
 PM{nc}.reference_circle = circle_shift(nc);
+PM{nc}.xrounded         = nan(p.stim.tFace,stoprule);
+PM{nc}.trial_counter  = zeros(1,p.stim.tFace/2);
+
 end
 %need 4 PF, 1) cs+ local, 2)cs- local, 3) cs+ foreign, 4) cs-foreign
 
 %Trial loop
-figure('name','Running Fit Adaptive Procedure and Thresholds');
+figure('name','Running Fit Adaptive Procedure and Parameters');
 for sub=1:4
 subplot(2,4,sub)
 title(['Procedure chain ',num2str(sub)])
 subplot(2,4,sub+4)
-title(['Treshold Estimate chain ',num2str(sub)])
+title(['alpha/beta chain ',num2str(sub)])
 end
 while (PM{1}.stop ~= 1) || (PM{2}.stop ~= 1) || (PM{3}.stop ~= 1) || (PM{4}.stop ~= 1)
     
@@ -71,6 +74,7 @@ while (PM{1}.stop ~= 1) || (PM{2}.stop ~= 1) || (PM{3}.stop ~= 1) || (PM{4}.stop
     % e.g., -45 has to be 315 in chain 1; 315 has to be 675 in chain 3
     % was done using mod... adding (0 0 360 360) (this is the last part)
     test      = mod(test,360)+ PM{current_chain}.reference_circle;
+   
     % the reference is one of the four faces 
     %(cs+ local, cs- local, cs+ foreign, cs- forein)
     ref       = PM{current_chain}.reference_face + csp_degree + PM{current_chain}.reference_circle;
@@ -84,25 +88,38 @@ while (PM{1}.stop ~= 1) || (PM{2}.stop ~= 1) || (PM{3}.stop ~= 1) || (PM{4}.stop
   fprintf('Trial Finished.\n')
     %Rating Slider
        %
-    message1 = 'In welchem Paar waren die Gesichter unterschiedlich?\n';
-    message2 = 'Bewege den "Zeiger" mit der rechten und linken Pfeiltaste\n und bestätige deine Einschätzung mit der mit der oberen Pfeiltaste.';
+       message1 = 'In welchem Paar waren die Gesichter unterschiedlich?\n';
+       message2 = 'Bewege den "Zeiger" mit der rechten und linken Pfeiltaste\n und bestätige deine Einschätzung mit der mit der oberen Pfeiltaste.';
+       if ~simulation_mode
+           [response_subj]      = RatingSlider(p.ptb.rect,2,Shuffle(1:2,1),p.keys.increase,p.keys.decrease,p.keys.confirm,{ 'erstes\nPaar' 'zweites\nPaar'},message1,message2,0);
+           
+           %see if subject found the different pair of faces...
+           % buttonpress left (first pair) is response_subj=2, right alternative (second pair) outputs a 1.
+           if (response_subj == 2 && target == 1) || (response_subj == 1 && target==2)
+               response=1;
+               fprintf('...Subject chose the RIGHT pair. \n')
+           elseif (response_subj==1 && target == 1) || (response_subj==2 && target==2)
+               response=0;
+               fprintf('...Subject chose the WRONG pair. \n')
+           else
+               fprintf('error in the answer algorithm! \n')
+           end
+           
+       else
+           TrueThreshold   = 33;
+           Noise           = 5;
+           if PM{current_chain}.xCurrent > (TrueThreshold+randn(1)*Noise);
+               response = 1;
+           else
+               response = 0;
+           end
+       end
 
-    [response_subj]      = RatingSlider(p.ptb.rect,2,Shuffle(1:2,1),p.keys.increase,p.keys.decrease,p.keys.confirm,{ 'erstes\nPaar' 'zweites\nPaar'},message1,message2,0);
-
-    %see if subject found the different pair of faces...
-    % buttonpress left (first pair) is response_subj=2, right alternative (second pair) outputs a 1.
-    if (response_subj == 2 && target == 1) || (response_subj == 1 && target==2)
-        response=1;
-        fprintf('...Subject chose the RIGHT pair. \n')
-    elseif (response_subj==1 && target == 1) || (response_subj==2 && target==2)
-        response=0;
-         fprintf('...Subject chose the WRONG pair. \n')
-    else
-        fprintf('error in the answer algorithm! \n')
-    end
-    
+    row                                    = round(PM{current_chain}.xCurrent/(720/p.stim.tFace)+1);
+    PM{current_chain}.trial_counter(row)                                 = PM{current_chain}.trial_counter(row) + 1;
+    PM{current_chain}.xrounded(row,PM{current_chain}.trial_counter(row)) = response;
     %updating PM
-        PM{current_chain} = PAL_AMPM_updatePM(PM{current_chain},response)
+        PM{current_chain} = PAL_AMPM_updatePM(PM{current_chain},response);
     end
     %save PM here
     save(p.path.path_param,'PM');
@@ -128,7 +145,7 @@ movefile(p.path.subject,p.path.finalsubject);
   function  [trial, target] = Trial_2IFC(ref_stim,test_stim,last_face_of_circle)
       
         trial      = Shuffle([ref_stim, ref_stim, ref_stim, test_stim ]/p.stim.delta);
-        trial      = mod(trial,last_face_of_circle)+1;
+        trial      = round(mod(trial,last_face_of_circle)+1);
         target     = [];
         if trial(1)==trial(2)
             target = [2];
@@ -136,7 +153,7 @@ movefile(p.path.subject,p.path.finalsubject);
             target = [1];
         end
          %transform degrees to sprite indices:
-        sprite_index = round([100 trial(1) 100 trial(2) NaN 100 trial(3) 100 trial(4) NaN ]);
+        sprite_index = [100 trial(1) 100 trial(2) NaN 100 trial(3) 100 trial(4) NaN ];
         faces_trial = sprite_index(1,[2,4,7,9]);
         
           fprintf('...Chain: %02d \n',current_chain)
@@ -222,7 +239,7 @@ end
         end
         
         p.path.experiment             = [p.path.baselocation 'FearGeneralization_Ethnic\'];
-        p.path.stimfolder             = 'ethno_pilote';
+        p.path.stimfolder             = 'ethno_pilote\32faces';
         p.path.stim                   = [p.path.baselocation 'Stimuli\Gradients\' p.path.stimfolder '\'];
         %
         p.subID                       = sprintf('sub%02d',subject);
@@ -298,6 +315,11 @@ end
         p.duration.stim                = 1.5;%s     
         p.duration.pink                = .5;
         p.duration.gray                = 2;
+        if simulation_mode
+            p.duration.stim                = .01;%s
+            p.duration.pink                = .01;
+            p.duration.gray                = .01;
+        end
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
         %create the randomized design
@@ -411,11 +433,15 @@ end
     set(gca,'FontSize',12);
     axis([0 stoprule+1 0 max(PM{current_chain}.x)]) 
     xlabel('Trial');
-    ylabel('Stimulus Intensity');
+    ylabel('xCurrent (Deg)');
     subplot(2,4,4+current_chain);
-    plot(PM{current_chain}.priorAlphaRange,PM{current_chain}.pdf,'r')
+    imagesc(PM{current_chain}.pdf);
+    axis image
+    plot(0:.001:180,PAL_CumulativeNormal...
+        ([PM{current_chain}.threshold(length(PM{current_chain}.threshold)) exp(PM{current_chain}.slope(length(PM{current_chain}.slope))) 0.5 0.01],0:.001:180));
     drawnow;
-    xlabel('Distance');
+    xlabel('Distance (Deg)');
+    ylabel('pcorrect');
     
 %     plot(0:.001:180,PAL_CumulativeNormal([50 exp(-.4) 0.5
 %     0.01],0:.001:180)); % plot the PF (Psychometric Function, inputs
