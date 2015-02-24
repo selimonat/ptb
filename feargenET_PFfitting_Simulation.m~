@@ -16,8 +16,8 @@ for simulation_repeat = 4;%how many simulation runs
                 %% run the simulation
                 [difference]=feargenET_PFfitting_SimulationCore(tt, aa, ss);
                 %% store the differences
-                d.alpha(run,aa_c,ss_c,tt_c) = difference(1);
-                d.sd(run,aa_c,ss_c,tt_c)    = difference(2);
+                d.alpha(run,aa_c,ss_c,tt_c) = difference(1) - aa;
+                d.SD(run,aa_c,ss_c,tt_c)    = difference(2) - ss;
                 
             end
         end
@@ -31,7 +31,6 @@ end
         
         %% conversion of parameter
         beta = log10(1./ss);
-%            beta = (1./ss);
         %% Define prior
         prioraaRange    = linspace(0,180,100); %values of aa to include in prior
         priorBetaRange  = linspace(-5,5,100);  %values of log_10(beta) to include in prior
@@ -67,7 +66,7 @@ end
         end
         
         %% compute the difference
-        difference = [PM.threshold(end) - aa 1./(10^(PM.slope(end))) - ss];%in SD units
+        difference = [PM.threshold(end) - aa 1./10^(PM.slope(end)) - ss];%in SD units
         
     end
 end
