@@ -1,7 +1,10 @@
 % find images
-p2s   = '/Users/onat/Documents/EthoFaces/'
+p2s   = '/Users/onat/Documents/EthoFaces_GrayScale/'
 files = ListFiles(p2s);
 cd(p2s)
+
+
+
 %% load the images as a matrix [pixels x images]
 stim = [];
 v1   = [];
@@ -37,5 +40,15 @@ imwrite(imrotate(reshape((mean(abs(diff(v1(:,[17:32 17]),1,2)),2)),256,256),-90)
 imwrite(imrotate( reshape((mean( abs(v1(:,1:16) - v1(:,17:32)),2)),256,256),-90),sprintf([p2w '%s.bmp'],'mean_diff_between'),'bmp')
 
 
-
+%%
+[a,b,c,d] = GWTWgrid_Simple(pic2,0,2,4.2);
+[vec,freq]=ReduceFFT2(d);
+figure(1);
+hold on;
+plot(freq*36,vec,'k');
+set(gca,'yscale','log','xscale','log','xtick',[.5 1 2 4 8 16]);xlim([0.5 16]);
+figure(2);
+imagesc(rot90(reshape(mean(a,2),256,256),-1));
+colormap gray;
+axis image;
 

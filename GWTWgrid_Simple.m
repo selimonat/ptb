@@ -1,4 +1,4 @@
-function [JetsMagnitude, JetsPhase, GridPosition] = GWTWgrid_Simple(Im,ComplexOrSimple,GridSize,Sigma)
+function [JetsMagnitude, JetsPhase, GridPosition, Spectrum] = GWTWgrid_Simple(Im,ComplexOrSimple,GridSize,Sigma)
 
 %
 % The goal of this function is to transform a image with gabor wavelet
@@ -24,6 +24,7 @@ function [JetsMagnitude, JetsPhase, GridPosition] = GWTWgrid_Simple(Im,ComplexOr
 %   JetsMagnitude       -- Gabor wavelet transform magnitude
 %   JetsPhase           -- Gabor wavelet transform phase
 %   GridPosition        -- postions sampled
+%   Spectrum            -- sums of all passed frequency information
 %
 % Created by Xiaomin Yue at 7/25/2004
 %
@@ -82,6 +83,11 @@ elseif SizeX==128
     [xx,yy] = meshgrid(RangeXY,RangeXY);
     Grid = xx + yy*i;
     Grid = Grid(:);
+elseif SizeX == 400
+    RangeXY = 1:400;
+    [xx,yy] = meshgrid(RangeXY,RangeXY);
+    Grid    = xx + yy*i;
+    Grid    = Grid(:);
 else
     disp('The image has to be 256*256 or 128*128. Please try again');
     return;
@@ -89,9 +95,11 @@ end
 GridPosition = [imag(Grid) real(Grid)];
 
 %% setup the paramers
-nScale = 5;%5; %15
+nScale       = 5; %15
 nOrientation = 16;%8
-xyResL = SizeX; xHalfResL = SizeX/2; yHalfResL = SizeY/2;
+xyResL       = SizeX; 
+xHalfResL = SizeX/2; 
+yHalfResL = SizeY/2;
 kxFactor = 2*pi/xyResL;
 kyFactor = 2*pi/xyResL;
 
@@ -108,9 +116,9 @@ else
     JetsMagnitude  = zeros(length(Grid),2*nScale*nOrientation);
     JetsPhase      = zeros(length(Grid),nScale*nOrientation);
 end
-
-for LevelL = 0:nScale-1
-    k0 = (pi/2)*(1/sqrt(2))^LevelL;
+Spectrum = zeros(SizeX);
+for LevelL = 1:nScale-1
+    k0 = (pi/2)*(1/sqrt(2)).^LevelL;
     for DirecL = 0:nOrientation-1
         kA = pi*DirecL/nOrientation;
         k0X = k0*cos(kA);
@@ -119,12 +127,12 @@ for LevelL = 0:nScale-1
         FreqKernel = 2*pi*(exp(-(Sigma/k0)^2/2*((k0X-tx).^2+(k0Y-ty).^2))-exp(-(Sigma/k0)^2/2*(k0^2+tx.^2+ty.^2)));
         %% use fftshift to change DC to the corners
         FreqKernel = fftshift(FreqKernel);
-        
+        Spectrum   = Spectrum + fftshift(FreqKernel);        
         %% convolute the image with a kernel specified scale and orientation
         TmpFilterImage = ImFreq.*FreqKernel;
         %% calculate magnitude and phase
         if ComplexOrSimple == 0
-            TmpGWTMag = abs(ifft2(TmpFilterImage));
+            TmpGWTMag   = abs(ifft2(TmpFilterImage));
             TmpGWTPhase = angle(ifft2(TmpFilterImage));
             %% get magnitude and phase at specific positions
             tmpMag = TmpGWTMag(RangeXY,RangeXY);
