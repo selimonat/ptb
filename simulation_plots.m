@@ -64,3 +64,5 @@ hold on;plot(d.sd(:,1,2,3),'ro')
 hold on;plot(d.sd(:,1,2,4),'yo')
 title('d.SD for increasing nTrials')
 
+
+

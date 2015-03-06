@@ -1,5 +1,5 @@
-function [ed]=CalibrateFace_V1Model(path2stim)
-%[ed]=CalibrateFaces_V1EuclidianDistance(path2stim)
+function [ed,imfolder_target]=CalibrateFace_V1Model(path2stim)
+%[ed,imfolder]=CalibrateFaces_V1EuclidianDistance(path2stim)
 %
 %   Computes a similarity metric using V1 simple cell model used in Yue et
 %   al, Vision Research 2012. So basically it is a wrapper around Yue's
@@ -8,55 +8,56 @@ function [ed]=CalibrateFace_V1Model(path2stim)
 %   case PATH2STIM must be a string representing the path to the folder
 %   containing the faces.
 %
-%   Example usage: 
+%   Example usage:
 %
 %Selim Onat, 19-Mar-2013 15:40:48
 
-%% Get all the stimuli (by default it loads the stimuli used in the experiment). 
+%% Get all the stimuli
 
-if nargin == 0%default location for the files
-    path2folder = ['C:\Users\onat' filesep 'Documents' filesep 'Experiments' filesep 'Stimuli' filesep 'Gradients'];
-    folder      = 'Circle11_08Face_Frontal_SkinModerated_Transparent_Normalized';%'Radius_clean_Normalized';
-    path2stim   = sprintf('%s%s%s%s',path2folder,filesep,folder,filesep);
-    f           = dir([path2stim '*.bmp']);
-    f           = [f(1:8)];%discard the shock symbol
-else
-    path2folder = [];
-    folder      = [];    
-    f           = dir([path2stim '/*.bmp']);
-end
-%read and store the images    
+f           = dir([path2stim '/*.bmp']);
+
+%read and store the images
 im = [];
 tStim = length(f);
 for nf = 1:tStim
-    im(:,:,:,nf) = imresize(imread(sprintf('%s%s',path2stim,f(nf).name)),[128 128],'bilinear','antialiasing',1);
+    im(:,:,nf) = imread(sprintf('%s%s',path2stim,f(nf).name));
 end
 
+% save the output
+imfolder_target = sprintf('%sV1responses\\',path2stim);
+if exist(imfolder_target) == 0
+    mkdir(imfolder_target);
+end
 
 %% run the V1 model
 JetsMagnitude = [];
 JetsPhase     = [];
 GridPosition  = [];
-for nf = 1:size(im,4)
-    for nchannel = 1:3
-        fprintf('Processing face %d, channel %d\n',nf,nchannel);
-        %(image,simpleORComplex[0 1],GridSize[0 1 2],sigma)
-        [JetsMagnitude(:,:,nchannel,nf), JetsPhase(:,:,nchannel,nf), GridPosition(:,:,nchannel,nf)] = GWTWgrid_Simple(im(:,:,nchannel,nf),1,0);
-    end
+for nf = 1:size(im,3)
+    fprintf('Processing face %d\n',nf);
+    %(image,simpleORComplex[0 1],GridSize[0 1 2],sigma)
+    [v1] = GWTWgrid_Simple(im(:,:,nf),0,2,4.2);
+    % average across filters
+    v1 = mean(v1,2);
+    v1 = imrotate(reshape(v1(:),400,400),-90);
+    save(sprintf('%sV1_%02d.mat',imfolder_target,nf),'v1');
+    % save also as pic to see 
+    imwrite(Scale(v1),sprintf('%s%02d_V1.bmp',imfolder_target,nf),'bmp');
 end
 
-
 %% compute a difference metric
-for nchannel = 1:3;
-    r = [];
-    for nf1 = 1:size(im,4)                
-        for nf2 = 1:size(im,4)
-            fprintf('Processing face %d-%d, channel %d\n',nf1,nf2,nchannel);
-            %uncorrected
-            data1 = Vectorize(JetsMagnitude(:,:,nchannel,nf1));
-            data2 = Vectorize(JetsMagnitude(:,:,nchannel,nf2));
-            %            
-            ed(nf1,nf2,nchannel)          = norm(data1(:)-data2(:));
+ed = zeros(size(im,3));
+r = [];
+for nf1 = 1:size(im,3)
+    for nf2 = 1:size(im,3)
+        if nf2<nf1
+            fprintf('Processing face %d-%d\n',nf1,nf2);
+            a = load(sprintf('%sV1_%02d.mat',imfolder_target,nf1));
+            b = load(sprintf('%sV1_%02d.mat',imfolder_target,nf2));
+            %
+            ed(nf1,nf2) = norm(a.v1(:)-b.v1(:));
+            ed(nf2,nf1) = ed(nf1,nf2);
         end
     end
 end
+

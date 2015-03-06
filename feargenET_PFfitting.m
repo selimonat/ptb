@@ -1,5 +1,5 @@
 function [p]=feargenET_PFfitting(subject,   csp_degree)
-simulation_mode = 1;
+simulation_mode = 0;
 p = [];
 SetParams;
 SetPTB;
@@ -11,7 +11,7 @@ priorAlphaRange = linspace(0,180,100); %values of alpha to include in prior
 priorBetaRange = linspace(-5,5,100);  %values of log_10(beta) to include in prior
 
 %Stimulus values to select from (need not be equally spaced)
-stimRange = [0:22.5:180]; 
+stimRange = [0:10:180]; 
 
 %2-D Gaussian prior
 prior = repmat(PAL_pdfNormal(priorAlphaRange,60,60),[length(priorBetaRange) 1]).* repmat(PAL_pdfNormal(priorBetaRange',0,4),[1 length(priorAlphaRange)]);
@@ -182,7 +182,7 @@ movefile(p.path.subject,p.path.finalsubject);
 %         Screen('Flip',p.ptb.w,TimeStimOnset,0)
 end
   function SetPTB
-    debug =1;
+    debug =0;
         %Open a graphics window using PTB
         screens       =  Screen('Screens');
         screenNumber  =  max(screens);
@@ -191,7 +191,7 @@ end
             commandwindow;
             PsychDebugWindowConfiguration;
         end
-        Screen('Preference', 'SkipSyncTests', 0);
+        Screen('Preference', 'SkipSyncTests', 1);
         Screen('Preference', 'DefaultFontSize', p.text.fontsize);
         Screen('Preference', 'DefaultFontName', p.text.fontname);
         %
@@ -215,7 +215,12 @@ end
         for nStim = 1:p.stim.tFile
                 filename       = p.stim.files(nStim,:);
                 [im , ~, ~]    = imread(filename);
-                p.stim.stim(:,:,nStim)    = rgb2gray(im);
+                %what is this good for?
+                if ndims(im) == 3
+                    p.stim.stim(:,:,nStim)    = rgb2gray(im);
+                else
+                    p.stim.stim(:,:,nStim)    = im
+                end
                 p.ptb.stim_sprites(nStim)     = Screen('MakeTexture', p.ptb.w, im );
         end
         p.stim.delta = 720/p.stim.tFile;
@@ -239,7 +244,7 @@ end
         end
         
         p.path.experiment             = [p.path.baselocation 'FearGeneralization_Ethnic\'];
-        p.path.stimfolder             = 'ethno_pilote\32faces';
+        p.path.stimfolder             = 'ethno_pilote\grayfaces';
         p.path.stim                   = [p.path.baselocation 'Stimuli\Gradients\' p.path.stimfolder '\'];
         %
         p.subID                       = sprintf('sub%02d',subject);
@@ -312,9 +317,9 @@ end
         %these are the intervals of importance
         %time2fixationcross->cross2onset->onset2shock->shock2offset
         %these (duration.BLA) are average duration values:
-        p.duration.stim                = 1.5;%s     
-        p.duration.pink                = .5;
-        p.duration.gray                = 2;
+        p.duration.stim                = 1;%s     
+        p.duration.pink                = .2;
+        p.duration.gray                = 1;
         if simulation_mode
             p.duration.stim                = .01;%s
             p.duration.pink                = .01;

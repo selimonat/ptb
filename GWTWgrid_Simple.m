@@ -96,7 +96,7 @@ GridPosition = [imag(Grid) real(Grid)];
 
 %% setup the paramers
 nScale       = 5; %15
-nOrientation = 16;%8
+nOrientation = 8;
 xyResL       = SizeX; 
 xHalfResL = SizeX/2; 
 yHalfResL = SizeY/2;
