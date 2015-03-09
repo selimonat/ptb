@@ -1,3 +1,11 @@
+%input for simulation ending march03, called d.mat
+alphas  = [11.25 33.75 56.25 78.75]
+sd      = [8 16 24 32]
+ntrials = [20 40 80 100 160 500]
+
+for i=1:length(alphas)
+bias(i,:,:)    = squeeze(mean(log10(alphas(i)/abs(d.alpha(:,i,:,:))),1))*20
+end
 %plots d.alpha in two subplots (one increasing alpha, one increasing
 %SD)
 
