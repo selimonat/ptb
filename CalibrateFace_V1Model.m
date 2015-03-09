@@ -14,7 +14,7 @@ function [ed,imfolder_target]=CalibrateFace_V1Model(path2stim)
 
 %% Get all the stimuli
 
-f           = dir([path2stim '/*.bmp']);
+f           = dir([path2stim '*.bmp']);
 
 %read and store the images
 im = [];
@@ -24,7 +24,7 @@ for nf = 1:tStim
 end
 
 % save the output
-imfolder_target = sprintf('%sV1responses\\',path2stim);
+imfolder_target = sprintf('%sV1responses%s',path2stim,filesep);
 if exist(imfolder_target) == 0
     mkdir(imfolder_target);
 end
@@ -36,7 +36,8 @@ GridPosition  = [];
 for nf = 1:size(im,3)
     fprintf('Processing face %d\n',nf);
     %(image,simpleORComplex[0 1],GridSize[0 1 2],sigma)
-    [v1] = GWTWgrid_Simple(im(:,:,nf),0,2,4.2);
+%     [v1] = GWTWgrid_Simple(im(:,:,nf),0,2,4.2);
+    [v1] = GWTWgrid_Simple(im(:,:,nf),0,2);
     % average across filters
     v1 = mean(v1,2);
     v1 = imrotate(reshape(v1(:),400,400),-90);

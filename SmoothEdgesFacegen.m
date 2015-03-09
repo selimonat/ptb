@@ -1,11 +1,11 @@
 function [imfolder_target]=SmoothEdgesFacegen(imfolder, fwhm )
 
-imfolder_target = sprintf('%ssmoothededges_%03d\\',imfolder,fwhm);
+imfolder_target = sprintf('%ssmoothededges_%03d%s',imfolder,fwhm,filesep);
 if exist(imfolder_target) == 0
     mkdir(imfolder_target);
 end
 %
-for imname = ListFiles([imfolder '\*.bmp'])'
+for imname = ListFiles([imfolder '*.bmp'])'
     fprintf('Processing image: %s\n',imname{1})
     %read all the image
     i_rgb = imread(sprintf('%s%s',imfolder,imname{1}));
@@ -17,7 +17,7 @@ for imname = ListFiles([imfolder '\*.bmp'])'
     % nan the image background
     i(~b) = NaN;
     %smooth it a gaussian kernel of fullwidthhalfmaximum (input)
-    g = make_gaussian(40,40,fwhm,fwhm,20,20);
+    g = make_gaussian2D(40,40,fwhm,fwhm,20,20);
     bg = conv2(double(b),g,'same');
     %take the derivatives, take their absolute values, inverse it
     

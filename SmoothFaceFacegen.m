@@ -1,14 +1,14 @@
 function [imfolder_target]=SmoothFaceFacegen(imfolder, kernelsize,fwhm )
 
 
-imfolder_target = sprintf('%ssmoothed_%03d_%03d\\',imfolder,kernelsize,fwhm);
+imfolder_target = sprintf('%ssmoothed_%03d_%03.2g%s',imfolder,kernelsize,fwhm,filesep);
 if exist(imfolder_target) == 0
     mkdir(imfolder_target);
 end
 % create Gaussian Kernel
- g = make_gaussian(kernelsize,kernelsize,fwhm,fwhm,round(kernelsize/2),round(kernelsize/2));
+ g = make_gaussian2D(kernelsize,kernelsize,fwhm,fwhm,round(kernelsize/2),round(kernelsize/2));
  g = g/sum(g(:));
-for imname = ListFiles(imfolder)'
+for imname = ListFiles([imfolder '*.bmp'])'
     fprintf('Processing image: %s\n',imname{1})
     %read all the image
     i = double(imread(sprintf('%s%s',imfolder,imname{1})));

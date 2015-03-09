@@ -1,6 +1,9 @@
 function ProcessingStack(imfolder)
 
-
+%check if there is slash at the end. Filesep knows if it is windoz or unix
+if strcmp(imfolder(end),filesep) == 0;
+    imfolder(end+1) = filesep;
+end
 
 %Smooth Edges of the Faces and rgb2gray them
 [f]        = SmoothEdgesFacegen(imfolder,8);
@@ -21,4 +24,3 @@ ComputeV1BandPassProperties(f)
 [D,Z,T] = V12FaceGen_Procrustes(v1_space,f);
 % % % % %plot its results
 % % % % V12FaceGen_Procrustes_plot(v1_space);
-keyboard;
