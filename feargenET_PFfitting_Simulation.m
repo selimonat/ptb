@@ -1,7 +1,7 @@
 function [d]=feargenET_PFfitting_Simulation(alphas,SDs,total_trials)
-%% explain here what is happening.
+%
 % This function simulates the PF Fitting Process PAL_AMPM for different
-% slphas (i.e. thresholds), betas (in SD units) and trials per fitting process (total_trials).
+% alphas (i.e. thresholds), betas (in SD units) and trials per fitting process (total_trials).
 % Output is the difference of the estimated parameter alpha/beta from the
 % 'true' parameter given as input above.
 
@@ -24,11 +24,16 @@ for simulation_repeat = 1:100;%how many simulation runs
                 %% store the differences
                 d.alpha(run,aa_c,ss_c,tt_c) = difference(1);
                 d.sd(run,aa_c,ss_c,tt_c)    = difference(2);
+               
             end
         end
     end
-    save_path='C:\Users\onat\Documents\GitHub\ExperimentalCode\simdata\';
-    save(sprintf('%sd%s.mat',savepath,datestr(now,'yyyymmdd_HHMM')),'d');
+    d.param.alpha    = alphas;
+    d.param.sd       = SDs;
+    d.param.ttrials  = total_trials;
+    d.param.tsim     = run;
+    save_path ='C:\Users\onat\Documents\GitHub\ExperimentalCode\simdata\';
+    save(sprintf('%sd_%s.mat',save_path,datestr(now,'yyyymmdd_HHMM')),'d');
 end
 %%
     function [difference]=feargenET_PFfitting_SimulationCore(tt, aa, ss)
@@ -45,7 +50,7 @@ end
         priorBetaRange  = linspace(-5,5,100);  %values of log_10(beta) to include in prior
         
         %Stimulus values to select from (need not be equally spaced)
-        stimRange = [0:11.25:180];
+        stimRange = [0:22.5:180];
         
         %2-D Gaussian prior
         prior = repmat(PAL_pdfNormal(prioraaRange,60,60),[length(priorBetaRange) 1]).* repmat(PAL_pdfNormal(priorBetaRange',0,4),[1 length(prioraaRange)]);
