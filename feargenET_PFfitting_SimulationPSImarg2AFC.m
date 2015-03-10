@@ -1,11 +1,13 @@
-function [d]=feargenET_PFfitting_Simulation(alphas,SDs,total_trials)
+function [d]=feargenET_PFfitting_SimulationPSImarg2AFC(alphas,SDs,total_trials)
 %
 % This function simulates the PF Fitting Process PAL_AMPM for different
 % alphas (i.e. thresholds), betas (in SD units) and trials per fitting process (total_trials).
 % Output is the difference of the estimated parameter alpha/beta from the
 % 'true' parameter given as input above.
 %
-% This tries to recover subject parameters using the basic Psi method.
+% This tries to recover subject parameters using the PSI marginal
+% method, and a 2AFC Experiment 
+% (so gamma =.5, lambda not fixed but marginalized).
 
 
 tSimulation     = 2000;
@@ -13,6 +15,9 @@ tSimulation     = 2000;
 prioraaRange    = linspace(0,180,50); %values of aa to include in prior
 %IS THIS RANGE OF BETA VALUES REASONABLE?
 priorBetaRange  = linspace(-2,0,50);  %values of log_10(beta) to include in prior
+%Range of lapse rates for the marginalized estimation of lambda
+%Prins(2013) uses 0:0.01:0.1;
+priorLambdaRange = 0:0.01:0.1;
 % Stimulus values to select from (need not be equally spaced)
 stimRange       = 0:22.5:180;
 % conversion of parameter: SD to precision
@@ -24,7 +29,6 @@ beta            = 1./SDs;
 PFfit           = @PAL_CumulativeNormal;    %Shape to be assumed
 %model parameters
 gamma           = 0.5;                      %Guess rate constant in 2AFC
-lambda          = 0.025;                        %Lapse Rate to be assumed
 %% generator parameters
 Lambdas         = [0 .025 .05 .1];
 %% init the output variable
@@ -40,8 +44,9 @@ for tt = total_trials(:)';%how many trials for the "subject"
     %the same procedure can be used again without recreating it as it only
     %depends on tt.
     dummy = PAL_AMPM_setupPM('prioraaRange',prioraaRange,...
-        'priorBetaRange',priorBetaRange, 'numtrials',tt, 'PF' , PFfit,...
-        'stimRange',stimRange,'gamma',gamma,'lambda',lambda);
+        'priorBetaRange',priorBetaRange,'priorLambdaRange', priorLambdaRange,...
+        'numtrials',tt, 'PF' , PFfit, 'stimRange',stimRange,...
+        'gamma', gamma, 'marginalize','lapse');
     for aa = alphas(:)';%subjects with different alpha and beta values
         c(2) = c(2) +1;
         c(3) = 0;
@@ -60,7 +65,7 @@ for tt = total_trials(:)';%how many trials for the "subject"
                 %% simulation proper
                 while ~PM.stop            
                     %subject's response
-                    if PFfit([aa beta gamma lambda],PM.xCurrent) >= rand(1);
+                    if PFfit([aa beta gamma Lambda],PM.xCurrent) >= rand(1);
                         response = 1;
                     else
                         response = 0;
@@ -74,21 +79,29 @@ for tt = total_trials(:)';%how many trials for the "subject"
                 %% store the differences
                 aaa(simulation_repeat) = PM.threshold(end);
                 sss(simulation_repeat) = 1./(10^(PM.slope(end)));
-            end            
+                lll(simulation_repeat) = PM.lapse(end);
+                ll(simulation_repeat)  = Lambda;
+            end    
+            %store the estimated parameters
             d.alpha(:,c(2),c(3),c(1))          = aaa;
             d.sd(:,c(2),c(3),c(1))             = sss;
+            d.lapse(:,c(2),c(3),c(1))          = lll;
+            %store the real used parameters
             d.param.alpha(:,c(2),c(3),c(1))    = aa;
             d.param.sd(:,c(2),c(3),c(1))       = ss;
             d.param.ttrials(:,c(2),c(3),c(1))  = tt;
             d.param.guess(:,c(2),c(3),c(1))    = gamma;
-            d.param.lapse(:,c(2),c(3),c(1))    = lambda;
+            d.param.lapse(:,c(2),c(3),c(1))    = ll;
+       
+            
+            
         end
     end
 end
 %%
 try
     save_path        ='C:\Users\onat\Documents\GitHub\ExperimentalCode\simdata\';
-    save(sprintf('%sd_PSI_%s.mat',save_path,datestr(now,'yyyymmdd_HHMM')),'d');
+    save(sprintf('%sd_PSImarg2AFC_%s.mat',save_path,datestr(now,'yyyymmdd_HHMM')),'d');
 catch
     fprintf('Cannot save here...\n');
 end
