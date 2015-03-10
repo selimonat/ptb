@@ -92,19 +92,20 @@ for tt = total_trials(:)';%how many trials for the "subject"
             d.param.ttrials(:,c(2),c(3),c(1))  = tt;
             d.param.guess(:,c(2),c(3),c(1))    = gamma;
             d.param.lapse(:,c(2),c(3),c(1))    = ll;
-       
+            %%save that stuff
+            try
+                save_path        ='C:\Users\onat\Documents\GitHub\ExperimentalCode\simdata\';
+                save(sprintf('%sd_PSImarg2AFC_%s.mat',save_path,datestr(now,'yyyymmdd_HHMM')),'d');
+            catch
+                fprintf('Cannot save here...\n');
+            end
+            
             
             
         end
     end
 end
-%%
-try
-    save_path        ='C:\Users\onat\Documents\GitHub\ExperimentalCode\simdata\';
-    save(sprintf('%sd_PSImarg2AFC_%s.mat',save_path,datestr(now,'yyyymmdd_HHMM')),'d');
-catch
-    fprintf('Cannot save here...\n');
-end
+
     function Init_var        
         d.alpha          = NaN(tSimulation,talpha,tSDs,length(total_trials));
         d.sd             = NaN(tSimulation,talpha,tSDs,length(total_trials));
