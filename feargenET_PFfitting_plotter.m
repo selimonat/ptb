@@ -13,10 +13,9 @@ for i_a = 1:length(alphas)
    for i_s = 1:length(sds)       
        %select a color for each a, and change its brightness for different
        %s values.
-       color = [cmap(i_a,1:2) i_s./length(Ss)];
-       m     = squeeze(mean(d.alpha(:,i_a,i_s,:)));%average estimation
-       
-       plot(trials, m , 'o-' , 'color' , hsv2rgb(color) );
+       color = [cmap(i_a,1) (i_s)./length(Ss) (i_s)./length(Ss)];
+       m     = squeeze(mean(d.alpha(:,i_a,i_s,:)));%average estimation       
+       plot(trials, m , 'o-' , 'color' , hsv2rgb(color),'linewidth',4);
    end
 end
 hold off
