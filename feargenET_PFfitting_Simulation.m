@@ -49,7 +49,7 @@ for tt = total_trials(:)';%how many trials for the "subject"
             c(3) = c(3) +1;
             c(4) = 0;            
             %verbose            
-            fprintf('TotalTrial: %3.3g (%3d/%3d); Alpha: %3.3g (%3d/%3d); SD: %3.3g (%3d/%3d); %s; \n',tt,c(1),ttotal_trials,aa,c(2),talpha,ss,c(3),tSDs,datestr(now,'HH:MM:SS'))
+            fprintf('TotalTrial: %5.3g (%3d of %3d); Alpha: %3.3g (%3d of %3d); SD: %3.3g (%3d of %3d); %s; \n',tt,c(1),ttotal_trials,aa,c(2),talpha,ss,c(3),tSDs,datestr(now,'HH:MM:SS'))
             aaa = NaN(1,tSimulation);
             sss = aaa;                        
             parfor simulation_repeat = 1:tSimulation;%how many simulation runs                
@@ -74,6 +74,10 @@ for tt = total_trials(:)';%how many trials for the "subject"
                 %% store the differences
                 aaa(simulation_repeat) = PM.threshold(end);
                 sss(simulation_repeat) = 1./(10^(PM.slope(end)));
+                %% print progress
+                if mod(simulation_repeat,100) == 0
+                    fprintf('Current Simulation: %d of %d, %s\n',simulation_repeat,tSimulation,datestr(now,'HH:MM:SS'))
+                end
             end            
             d.alpha(:,c(2),c(3),c(1))          = aaa;
             d.sd(:,c(2),c(3),c(1))             = sss;
