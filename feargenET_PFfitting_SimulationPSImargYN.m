@@ -100,12 +100,16 @@ for tt = total_trials(:)';%how many trials for the "subject"
             d.param.ttrials(:,c(2),c(3),c(1))  = tt;
             %%save the stuff
             try
-                save_path        ='C:\Users\onat\Documents\GitHub\ExperimentalCode\simdata\';
-                save(sprintf('%sd_PSImargYN_%s.mat',save_path,datestr(now,'yyyymmdd_HHMM')),'d');
+                if ispc
+                    save_path        ='C:\Users\onat\Documents\GitHub\ExperimentalCode\simdata\';
+                    
+                elseif isunix
+                    save_path        ='/home/kampermann/Documents/simdata/';
+                end
+                save(sprintf('%sd_PSImarg2AFC_%s.mat',save_path,datestr(now,'yyyymmdd_HHMM')),'d');
             catch
                 fprintf('Cannot save here...\n');
             end
-            
             
            
         end
