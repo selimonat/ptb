@@ -21,7 +21,7 @@ priorLambdaRange = 0:0.01:0.1;
 % Stimulus values to select from (need not be equally spaced)
 stimRange       = 0:22.5:180;
 % conversion of parameter: SD to precision
-beta            = 1./SDs;
+% beta            = 1./SDs;
 % % 2-D Gaussian prior
 % prior           = repmat(PAL_pdfNormal(prioraaRange,60,1000),[length(priorBetaRange) 1]).* repmat(PAL_pdfNormal(priorBetaRange',0,4),[1 length(prioraaRange)]);
 % prior           = prior./sum(prior(:)); %prior should sum to 1
@@ -63,17 +63,10 @@ for tt = total_trials(:)';%how many trials for the "subject"
                 %%
                 PM = dummy;%reuse 
                 %% simulation proper
-                while ~PM.stop            
+                while ~PM.stop
                     %subject's response
-                    if PFfit([aa beta gamma Lambda],PM.xCurrent) >= rand(1);
-                        response = 1;
-                    else
-                        response = 0;
-                    end
-                    %% lapse moment
-                    if rand(1) <= Lambda
-                       response = randsample([0 1],1);
-                    end
+                    response = ObserverResponseFunction(PFfit,aa,1/ss,gamma,Lambda,PM.xCurrent);
+                    % update the PM
                     PM = PAL_AMPM_updatePM(PM,response);
                 end
                 %% store the differences

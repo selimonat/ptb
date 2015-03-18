@@ -22,8 +22,8 @@ priorLambdaRange = 0:0.01:0.1;
 priorGammaRange = 0:0.03:0.3;
 % Stimulus values to select from (need not be equally spaced)
 stimRange       = 0:22.5:180;
-% conversion of parameter: SD to precision
-beta            = 1./SDs;
+% % conversion of parameter: SD to precision
+% beta            = 1./SDs;
 % % 2-D Gaussian prior
 % prior           = repmat(PAL_pdfNormal(prioraaRange,60,1000),[length(priorBetaRange) 1]).* repmat(PAL_pdfNormal(priorBetaRange',0,4),[1 length(prioraaRange)]);
 % prior           = prior./sum(prior(:)); %prior should sum to 1
@@ -68,15 +68,8 @@ for tt = total_trials(:)';%how many trials for the "subject"
                 %% simulation proper
                 while ~PM.stop            
                     %subject's response
-                    if PFfit([aa beta Gamma Lambda],PM.xCurrent) >= rand(1);
-                        response = 1;
-                    else
-                        response = 0;
-                    end
-                    %% lapse moment
-                    if rand(1) <= Lambda
-                       response = randsample([0 1],1);
-                    end
+                    response = ObserverResponseFunction(PFfit,aa,1/ss,Gamma,Lambda,PM.xCurrent);
+                    % update the PM
                     PM = PAL_AMPM_updatePM(PM,response);
                 end
                 %% store the differences
@@ -106,7 +99,7 @@ for tt = total_trials(:)';%how many trials for the "subject"
                 elseif isunix
                     save_path        ='/home/kampermann/Documents/simdata/';
                 end
-                save(sprintf('%sd_PSImarg2AFC_%s.mat',save_path,datestr(now,'yyyymmdd_HHMM')),'d');
+                save(sprintf('%sd_PSImargYN_%s.mat',save_path,datestr(now,'yyyymmdd_HHMM')),'d');
             catch
                 fprintf('Cannot save here...\n');
             end
