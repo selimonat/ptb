@@ -30,9 +30,15 @@ hold off
 truealpha=45;
 
 %load the three guys here
+psi1=load('C:\Users\onat\Dropbox\feargen_lea\Ethno Master\simdata\diffSDs\d_PSI_3SDs_end.mat');
+psi2=load('C:\Users\onat\Dropbox\feargen_lea\Ethno Master\simdata\diffSDs\d_PSImarg2AFC_3SDs_end.mat');
+psi3=load('C:\Users\onat\Dropbox\feargen_lea\Ethno Master\simdata\diffSDs\d_PSImargYN_3SDs_sofar_1058.mat');
+
+
 psi1=load('C:\Users\onat\Dropbox\feargen_lea\Ethno Master\simdata\d_PSI.mat');
 psi2=load('C:\Users\onat\Dropbox\feargen_lea\Ethno Master\simdata\d_PSImarg2AFC.mat');
 psi3=load('C:\Users\onat\Dropbox\feargen_lea\Ethno Master\simdata\d_PSImargYN.mat');
+
 
 mean1=squeeze(nanmean(psi1.d.alpha(:,1,1,:)));%average estimation       
 mean2=squeeze(nanmean(psi2.d.alpha(:,1,1,:)));
@@ -53,12 +59,12 @@ hold on;
 errorbar(trials,mean3,E3,'ko-','linewidth',3)
 legend('true threshold \alpha=45','PSI','PSI marginal 2AFC','PSI marginal Y/N')
 title('Threshold Estimation by 3 PSI methods','FontSize',14)
-saveas(alphafig,'C:\Users\onat\Dropbox\feargen_lea\Ethno Master\simdata\plotAlpha.png')
+saveas(alphafig,'C:\Users\onat\Dropbox\feargen_lea\Ethno Master\simdata\diffSDs\plotAlpha15.png')
 
 % % % % 
 % same for the beta estimation
 
-truebeta=15
+truebeta=15;
 
 meanslope1=squeeze(nanmean(psi1.d.sd(:,1,1,:)));%average estimation       
 meanslope2=squeeze(nanmean(psi2.d.sd(:,1,1,:)));
@@ -77,4 +83,4 @@ plot(trials,meanslope3,'ko-','linewidth',3)
 legend('true slope SD=15','PSI','PSI marginal 2AFC','PSI marginal Y/N')
 title('Slope(SD) Estimation by 3 PSI methods','FontSize',14)
 gca;
-SaveAs(betafig,'C:\Users\onat\Dropbox\feargen_lea\Ethno Master\simdata\plotBeta.png')
+SaveAs(betafig,'C:\Users\onat\Dropbox\feargen_lea\Ethno Master\simdata\diffSDs\plotBeta15.png')
