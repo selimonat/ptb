@@ -10,7 +10,7 @@ function [d]=feargenET_PFfitting_SimulationPSImarg2AFC(alphas,SDs,total_trials)
 % (so gamma =.5, lambda not fixed but marginalized).
 
 
-tSimulation     = 2000;
+tSimulation     = 1000;
 %% Define prior, these are always the same so defining once is enough.
 prioraaRange    = linspace(0,180,50); %values of aa to include in prior
 %IS THIS RANGE OF BETA VALUES REASONABLE?

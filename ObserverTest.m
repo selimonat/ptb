@@ -1,11 +1,11 @@
 
 
 % set all the parameters for the Observer
-aa=90;
-sd=30;
+aa=45;
+sd=15;
 beta=1/sd;
-gamma=0.5;
-lambda=0;
+gamma=0.3;
+lambda=0.05;
 PFfit=@PAL_CumulativeNormal;
 
 x=linspace(1,180,180);

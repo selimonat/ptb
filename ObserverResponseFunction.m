@@ -11,11 +11,11 @@ if PFfit([aa beta gamma lambda],x) >= rand(1);
 else
     response = 0;
 end
-%% lapse moment happening
-if rand(1) <= lambda
-    response = randsample([0 1],1);
-    
-end
+% % lapse moment happening
+% if rand(1) <= lambda
+%     response = randsample([0 1],1);
+%     
+% end
 
 end
 

@@ -8,7 +8,7 @@ function [d]=feargenET_PFfitting_Simulation(alphas,SDs,total_trials)
 % This tries to recover subject parameters using the basic Psi method.
 
 
-tSimulation     = 2000;
+tSimulation     = 1000;
 %% Define prior, these are always the same so defining once is enough.
 prioraaRange    = linspace(0,180,50); %values of aa to include in prior
 %IS THIS RANGE OF BETA VALUES REASONABLE?

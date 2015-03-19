@@ -6,11 +6,12 @@ function [d]=feargenET_PFfitting_SimulationPSImargYN(alphas,SDs,total_trials)
 % 'true' parameter given as input above.
 %
 % This tries to recover subject parameters using the PSI marginal
-% method, and a 2AFC Experiment 
-% (so gamma =.5, lambda not fixed but marginalized).
+% method, and a YesNo Experiment. Thus Guess Rate and Lapse Rate are not
+% fixed but marginalized, and vary from one simulation run to the next
+% (capital Lambda / Gamma)
 
 
-tSimulation     = 2000;
+tSimulation     = 1000;
 %% Define prior, these are always the same so defining once is enough.
 prioraaRange    = linspace(0,180,50); %values of aa to include in prior
 %IS THIS RANGE OF BETA VALUES REASONABLE?
