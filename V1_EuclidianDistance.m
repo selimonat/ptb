@@ -26,4 +26,4 @@ for nf1 = 1:tImage
 end
 
 %%
-save(sprintf('%s%EuclidianDistances.mat',imfolder),'ed');
+save(sprintf('%sEuclidianDistances.mat',imfolder),'ed');
