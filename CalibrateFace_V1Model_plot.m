@@ -20,7 +20,7 @@ title('Norm of the Difference')
 subplot(1,3,2)
 plot(diag(ed,1),'o-')
 hold on
-plot( diag(ed,size(ed,2)/2),'ro-')
+% plot( diag(ed,size(ed,2)/2),'ro-')
 hold off
 box off
 axis square
@@ -48,4 +48,27 @@ else
     zlabel 'ethnicity'
 end
 SaveFigure([path2stim mfilename '.png']);
-% save([path2stim mfilename],'ed');
+
+figure;
+if ndims(mds) == 2
+    % % 2d plot
+    plot(mds(:,1),mds(:,2),'o-')
+    text(mds(:,1),mds(:,2),num2str([1:timage]'),'fontsize',10)
+    hold on
+    axis square
+    axis equal
+else
+     % 3d plot for 2x16 faces
+    plot3(mds(1:timage/2,1),mds(1:timage/2,2),mds(1:timage/2,3),'bo-')
+    hold on
+    plot3(mds(timage/2+1:end,1),mds(timage/2+1:end,2),mds(timage/2+1:end,3),'ro-')
+    % text(mds(:,1),mds(:,2),num2str([1:size(ed,1)]'),'fontsize',8)
+    axis square
+    axis equal
+    xlabel 'ID'
+    ylabel 'gender'
+    zlabel 'ethnicity'
+end
+
+SaveFigure([path2stim mfilename 'MDSzoom' '.png']);
+

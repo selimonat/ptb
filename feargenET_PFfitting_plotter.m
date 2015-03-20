@@ -47,6 +47,14 @@ E1=squeeze(nanstd(psi1.d.alpha(:,1,1,:)));
 E2=squeeze(nanstd(psi2.d.alpha(:,1,1,:)));
 E3=squeeze(nanstd(psi3.d.alpha(:,1,1,:)));
 
+% % these guys are for one Method but 3 parameters of SD
+% mean1=squeeze(nanmean(psi1.d.sd(:,1,1,:)));%average estimation       
+% mean2=squeeze(nanmean(psi1.d.sd(:,1,2,:)));
+% mean3=squeeze(nanmean(psi1.d.sd(:,1,3,:)));
+% E1=squeeze(nanstd(psi1.d.sd(:,1,1,:)));
+% E2=squeeze(nanstd(psi1.d.sd(:,1,2,:)));
+% E3=squeeze(nanstd(psi1.d.sd(:,1,3,:)));
+
 trials  = unique(psi1.d.param.ttrials(~isnan(psi1.d.param.ttrials)));
 
 alphafig=figure;
