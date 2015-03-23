@@ -15,8 +15,20 @@ for imname = ListFiles([imfolder '*.bmp'])'
     s     = size(i);
     
     %smooth it a gaussian kernel of fullwidthhalfmaximum (input)
+  
    
     ig = conv2(i,g,'same');
+    
+    k=round(kernelsize/2);
+    bgc=ig(k,k);
+        ig(1:k,:)=bgc;
+        ig(end-k:end,:)=bgc;
+        ig(:,1:k)=bgc;
+        ig(:,end-k:end)=bgc;
+   
    
     imwrite(ig/255,sprintf('%s%s',imfolder_target,imname{1}));
+end
+
+   
 end

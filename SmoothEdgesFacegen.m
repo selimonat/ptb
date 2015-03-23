@@ -12,7 +12,7 @@ for imname = ListFiles([imfolder '*.bmp'])'
     i     = rgb2gray(i_rgb);
     i     = double(i(:,:,1));
     s     = size(i);
-    %create a binary mask
+    %create a binary mask of the face
     b = ~magicwand(i_rgb,1,1, 0);
     % nan the image background
     i(~b) = NaN;
