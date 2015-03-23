@@ -28,7 +28,7 @@ axis square
 % plot plot the MDS results
 subplot(1,3,3)
 timage = size(ed,1);
-if ndims(mds) == 2
+if size(mds,2) == 2
     % % 2d plot
     plot(mds(:,1),mds(:,2),'o-')
     text(mds(:,1),mds(:,2),num2str([1:timage]'),'fontsize',10)
@@ -50,7 +50,7 @@ end
 SaveFigure([path2stim mfilename '.png']);
 
 figure;
-if ndims(mds) == 2
+if size(mds,2) == 2
     % % 2d plot
     plot(mds(:,1),mds(:,2),'o-')
     text(mds(:,1),mds(:,2),num2str([1:timage]'),'fontsize',10)
