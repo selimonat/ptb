@@ -1,4 +1,4 @@
-function [save_path]=NormalizeMeanStdGray(Folder)
+function [save_path]=NormalizeMeanStdGray(Folder,bgcolor)
 %this function normalizes the mean luminance and standard deviation of RGB
 %channells independently, it thereofre equalized the color. The input to
 %this script must be the .png version of the faces with transparent
@@ -50,8 +50,12 @@ for i = 1:tstim
     %find the background
     b = ~magicwand(im(:,:,[1 1 1]),1,1,0);
     im(b)=(im(b)-imm(i))./ims(i)*mims+mimm;
+    if nargin<2
     % Background is the global mean
-    im(~b) = mimm;
+        im(~b) = mimm;
+    else
+        im(~b)= bgcolor;
+    end
     imwrite(uint8(im), [ save_path f(i).name],'bmp');
 end
 
