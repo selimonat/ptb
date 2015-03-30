@@ -44,6 +44,9 @@ face_shift   = [0 180 0 180];
 circle_shift = [0 0 360 360];
 circle_id    = [1 1 2 2]*p.stim.tFace/2;
 tchain = 4;
+% counter for within chain trials (cc) and global trials (tt)
+cc=zeros(tchain,1);
+tt=0; 
 for nc = 1:tchain
 %set up procedure
 PM{nc} = PAL_AMPM_setupPM('priorAlphaRange',prioraaRange,'priorBetaRange',...
@@ -54,26 +57,20 @@ PM{nc} = PAL_AMPM_setupPM('priorAlphaRange',prioraaRange,'priorBetaRange',...
 % 
 PM{nc}.reference_face   = face_shift(nc);
 PM{nc}.reference_circle = circle_shift(nc);
-PM{nc}.xrounded         = nan(p.stim.tFace,numtrials);
-PM{nc}.trial_counter  = zeros(1,p.stim.tFace/2);
 
+% set up Log Variable
+SetupLog(nc);
 end
-%need 4 PF, 1) cs+ local, 2)cs- local, 3) cs+ foreign, 4) cs-foreign
-% 
-% %Trial loop
-% figure('name','Running Fit Adaptive Procedure and Parameters');
-% for sub=1:4
-% subplot(2,4,sub)
-% title(['Procedure chain ',num2str(sub)])
-% subplot(2,4,sub+4)
-% title(['alpha/beta chain ',num2str(sub)])
-% end
+
 while (PM{1}.stop ~= 1) || (PM{2}.stop ~= 1) || (PM{3}.stop ~= 1) || (PM{4}.stop ~= 1)
-    
+
     current_chain = randsample(1:tchain,1);
+  
    
     if PM{current_chain}.stop ~= 1
-        %Present trial here at stimulus intensity UD.xCurrent and collect
+        tt=tt+1;
+        cc(current_chain)=cc(current_chain)+1;
+        %Present trial here at stimulus intensity PM.xCurrent and collect
         %response
         direction = randsample([-1 1],1);
         test      = PM{current_chain}.xCurrent * direction + PM{current_chain}.reference_face + csp_degree + PM{current_chain}.reference_circle;
@@ -90,13 +87,13 @@ while (PM{1}.stop ~= 1) || (PM{2}.stop ~= 1) || (PM{3}.stop ~= 1) || (PM{4}.stop
         % the reference is one of the four faces
         %(cs+ local, cs- local, cs+ foreign, cs- forein)
         ref       = PM{current_chain}.reference_face + csp_degree + PM{current_chain}.reference_circle;
-        ref      = mod(ref,360)+ PM{current_chain}.reference_circle;
+        ref       = mod(ref,360)+ PM{current_chain}.reference_circle;
         
         fprintf('Chain: %03d\nxCurrent: %6.2f\nDirection:%6.2f\n %6.2f -> %6.2f vs. %6.2f\n',current_chain,PM{current_chain}.xCurrent,direction,dummy,test,ref);
         % start Trial
         fprintf('Starting Trial.\n')
         
-        [trial, target] = Trial_YN(ref,test,circle_id(current_chain));
+        [test_face, ref_face, signal] = Trial_YN(ref,test,circle_id(current_chain));
         fprintf('Trial Finished.\n')
         %Rating Slider
         %
@@ -107,16 +104,16 @@ while (PM{1}.stop ~= 1) || (PM{2}.stop ~= 1) || (PM{3}.stop ~= 1) || (PM{4}.stop
             
             %see if subject found the different pair of faces...
             % buttonpress left (Yes) is response_subj=2, right alternative (No) outputs a 1.
-            if (response_subj == 2 && target == 1)
+            if (response_subj == 2 && signal == 1)
                 response=1;
                 fprintf('...Hit. \n')
-            elseif (response_subj==1 && target == 1)
+            elseif (response_subj==1 && signal == 1)
                 response=0;
                 fprintf('...Miss. \n')
-            elseif (response_subj == 2 && target==0)
+            elseif (response_subj == 2 && signal==0)
                 response=1;
                 fprintf('...False Alarm. \n')
-            elseif (response_subj == 1 && target == 0)
+            elseif (response_subj == 1 && signal == 0)
                 response=0;
                 fprintf('...Correct Rejection. \n')
             else
@@ -133,21 +130,24 @@ while (PM{1}.stop ~= 1) || (PM{2}.stop ~= 1) || (PM{3}.stop ~= 1) || (PM{4}.stop
             end
         end
         
-        row                                    = round(PM{current_chain}.xCurrent/(720/p.stim.tFace)+1);
-        PM{current_chain}.trial_counter(row)   = PM{current_chain}.trial_counter(row) + 1;
-        PM{current_chain}.xrounded(row,PM{current_chain}.trial_counter(row)) = response;
-        %updating PM
+  
+     
+        % store everything in the Log
+        row                                     = round(PM{current_chain}.xCurrent/p.stim.delta+1);
+        Log.trial_counter(row,current_chain)   = Log.trial_counter(row,current_chain) + 1;
+        Log.xrounded(row,Log.trial_counter(row,current_chain),current_chain) = response;
         
-        PM{current_chain} = PAL_AMPM_updatePM(PM{current_chain},response);
-        
-    end
-    %save PM here
-%     tic
-%     save(p.path.path_param,'PM');
-%     toc
     
-    % plot the Adaptive Procedure in different subplots.
-%  plot_proc;
+        %updating PM
+        PM{current_chain} = PAL_AMPM_updatePM(PM{current_chain},response);
+        SetLogA;
+        SetLogB;
+    
+    end
+    %save Logfile here
+   
+    save(p.path.path_param,'Log'); 
+  
 
   
 end
@@ -157,24 +157,85 @@ for chain=1:tchain
 fprintf('Chain %g: Estimated Threshold (alpha): %4.2f \n',chain,PM{chain}.threshold(end));
 fprintf('Chain %g: Estimated Slope (beta): %4.2f \n',chain,PM{chain}.slope(end));
 end
+% PlotProcedure;
 %clear the screen
 %close everything down
 cleanup;
 %move the folder to appropriate location
 movefile(p.path.subject,p.path.finalsubject);
 
-    function  [trial, target] = Trial_YN(ref_stim,test_stim,last_face_of_circle)
+    function SetupLog(nc)
         
-        trial      = Shuffle([ref_stim, test_stim ]/p.stim.delta);
-        trial      = round(mod(trial,last_face_of_circle)+1);
-        target     = [];
+       
+        Log.globaltrial= NaN(nc,numtrials);
+        Log.signal     = NaN(nc,numtrials);
+        Log.x          = NaN(nc,numtrials);
+        Log.refface    = NaN(nc,numtrials);
+        Log.testface   = NaN(nc,numtrials);
+      
+        Log.response   = NaN(nc,numtrials);
+        Log.alpha      = NaN(nc,numtrials);
+        Log.seAlpha    = NaN(nc,numtrials);
+        Log.beta       = NaN(nc,numtrials);
+        Log.seBeta     = NaN(nc,numtrials);
+        Log.gamma      = NaN(nc,numtrials);
+        Log.seGamma    = NaN(nc,numtrials);
+        Log.lambda     = NaN(nc,numtrials);
+        Log.seLambda   = NaN(nc,numtrials);
+        Log.xrounded   = NaN(p.stim.tFace/tchain+1,numtrials,nc);
+        Log.trial_counter  = zeros(p.stim.tFace/tchain+1,nc);
+        
+    end
+
+    function SetLogA
+        
+       
+        Log.globaltrial(current_chain,cc(current_chain))= tt;
+        Log.signal(current_chain,cc(current_chain))     = signal;
+        Log.x(current_chain,cc(current_chain))          = PM{current_chain}.xCurrent*direction;
+        Log.refface(current_chain,cc(current_chain))    = ref_face;
+        Log.testface(current_chain,cc(current_chain))   = test_face;
+        Log.response(current_chain,cc(current_chain))   = response;
+        
+       
+        
+    end
+
+function SetLogB
+        
+       
+        
+        Log.alpha(current_chain,cc(current_chain))      = PM{current_chain}.threshold(end);
+        Log.seAlpha(current_chain,cc(current_chain))    = PM{current_chain}.seThreshold(end);
+        Log.beta(current_chain,cc(current_chain))       = PM{current_chain}.slope(end);
+        Log.seBeta(current_chain,cc(current_chain))     = PM{current_chain}.seSlope(end);
+        Log.gamma(current_chain,cc(current_chain))      = PM{current_chain}.guess(end);
+        Log.seGamma(current_chain,cc(current_chain))    = PM{current_chain}.seGuess(end);
+        Log.lambda(current_chain,cc(current_chain))     = PM{current_chain}.lapse(end);
+        Log.seLambda(current_chain,cc(current_chain))   = PM{current_chain}.seLapse(end);
+        
+    end
+
+    function  [test_face, ref_face, signal] = Trial_YN(ref_stim,test_stim,last_face_of_circle)
+        %         computes the trial FACES, using the test/ref information input
+        %         values (in Deg)
+        
+        trial = [ref_stim test_stim]/p.stim.delta;
+        % correct face number within circle
+        
+        %         trial      = round(mod(trial,last_face_of_circle)+1);
+        trial      = mod(round(trial),last_face_of_circle)+1;
+        ref_face   = trial(1);
+        test_face  = trial(2);
+        trial      = Shuffle(trial);
         %compute if trial had different faces or not
         %if trial(1)=trial(2), they were the same and subject has to
         %answer with 'no' (right option, is 1), else means correct hit
+        
         if trial(1)==trial(2)
-            target = 0;
+            signal = 0;
         else
-            target = 1;
+            signal = 1;
         end
         %transform degrees to sprite indices:
         sprite_index = [100 trial(1) NaN 100 trial(2) NaN];
@@ -205,6 +266,7 @@ movefile(p.path.subject,p.path.finalsubject);
         %         Screen('DrawTexture', p.ptb.w, p.ptb.stim.sprites(stim_id));
         %         Screen('Flip',p.ptb.w,TimeStimOnset,0)
     end
+
   function SetPTB
     debug =0;
         %Open a graphics window using PTB
@@ -279,7 +341,7 @@ movefile(p.path.subject,p.path.finalsubject);
         mkdir(p.path.subject);
         mkdir([p.path.subject 'stimulation']);
         mkdir([p.path.subject 'pmf']);
-        p.path.path_param             = sprintf([regexprep(p.path.subject,'\\','\\\') 'stimulation\\PM']);
+        p.path.path_param             = sprintf([regexprep(p.path.subject,'\\','\\\') 'stimulation\\']);
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
         %get stim files
@@ -343,7 +405,7 @@ movefile(p.path.subject,p.path.finalsubject);
         %these (duration.BLA) are average duration values:
         p.duration.stim                = 1.5;%s     
         p.duration.pink                = .5;
-        p.duration.gray                = 1;
+        p.duration.gray                = .5;
         if simulation_mode
             p.duration.stim                = .01;%s
             p.duration.pink                = .01;
@@ -445,46 +507,52 @@ movefile(p.path.subject,p.path.finalsubject);
         shuffled        = vector(idx(1:N));
         shuffled        = shuffled(:);
   end
-  function plot_proc
-      
-  %Filling the plot:
- 
-    t = 1:length(PM{current_chain}.x);
-    subplot(2,4,current_chain); hold on; 
-    plot(t,PM{current_chain}.x,'k');
-    plot(t(PM{current_chain}.response == 1),PM{current_chain}.x(PM{current_chain}.response == 1),'ko', ...
-        'MarkerFaceColor','k');
-    plot(t(PM{current_chain}.response == 0),PM{current_chain}.x(PM{current_chain}.response == 0),'ko', ...
-        'MarkerFaceColor','w');
-    set(gca,'FontSize',12);
-    axis([0 numtrials+1 0 max(PM{current_chain}.x)]) 
-    xlabel('Trial');
-    ylabel('xCurrent (Deg)');
-%     subplot(2,4,4+current_chain);
-%     imagesc(PM{current_chain}.pdf);
-%     axis image
-%     plot(0:.001:180,PAL_CumulativeNormal...
-%         ([PM{current_chain}.threshold(length(PM{current_chain}.threshold)) exp(PM{current_chain}.slope(length(PM{current_chain}.slope))) 0.5 0.01],0:.001:180));
-%     drawnow;
-%     xlabel('Distance (Deg)');
-%     ylabel('pcorrect');
-    
-%     plot(0:.001:180,PAL_CumulativeNormal([50 exp(-.4) 0.5
-%     0.01],0:.001:180)); % plot the PF (Psychometric Function, inputs
-%     alpha, beta, gamma, lapse).
-  end
-%   function plot_thresholds
-%     figure2('name','Threshold Estimates');
-%     for chain=1:4
-%     t = 1:length(PM{chain}.x);
-%     subplot(2,2,chain)
-%     hold on
-%     plot(PM{chain}.priorAlphaRange,PM{chain}.pdf,'r')
-%     drawnow;
-%     title(['Chain ',num2str(chain)]);
-%     xlabel('Distance');
-%     end
-%   end
+%     function PlotProcedure
+%         plotproc=figure(1);
+%         %         title(sprintf('Threshold Estimation for subject %02d',tchain),'FontSize',14)
+%         for sub=1:tchain;
+%             subplot(2,2,sub)
+%             t = 1:length(Log.x(sub));
+%             hold on;
+%             plot(t,abs(Log{sub}.x),'bo-');
+%             errorbar(t,Log.alpha(sub),Log.seAlpha(sub),'r--')
+%             plot(t(Log.response(sub) == 1),Log.x(sub)(Log.response(sub) == 1),'ko', ...
+%                 'MarkerFaceColor','k');
+%             plot(t(Log.response(sub) == 0),Log{sub}.x(Log{sub}.response == 0),'ko', ...
+%                 'MarkerFaceColor','w');
+%             
+%             set(gca,'FontSize',12);
+%             axis([0 max(t)+1 0 max(Log{sub}.alpha)+max(Log{sub}.seAlpha)+20])
+%             xlabel('Trial');
+%             ylabel('xCurrent (Deg)');
+%             
+%         end
+%         annotation('textbox', [0 0.9 1 0.1], 'String',...
+%             (sprintf('Threshold Estimation for subject %02d',tchain)), ...
+%             'EdgeColor', 'none', ...
+%             'HorizontalAlignment', 'center','FontSize',14)
+%         legend('xCurrent','estimated Threshold','Response = 1','Response = 0','Location','northeast');
+%       
+% %     end
+%     function Plot_Fit
+%         plotfit=figure(2);
+%          for sub=1:tchain;
+%             subplot(2,2,sub)
+%             t = 1:length(Log{sub}.x);
+%             hold on;
+%             plot(t,abs(Log{sub}.x),'bo-');
+%             errorbar(t,Log{1}.alpha,Log{1}.seAlpha,'r--')
+%             plot(t(Log{sub}.response == 1),Log{sub}.x(Log{sub}.response == 1),'ko', ...
+%                 'MarkerFaceColor','k');
+%             plot(t(Log{sub}.response == 0),Log{sub}.x(Log{sub}.response == 0),'ko', ...
+%                 'MarkerFaceColor','w');
+%             
+%             set(gca,'FontSize',12);
+%             axis([0 max(t)+1 0 max(Log{sub}.alpha)+max(Log{sub}.seAlpha)+20])
+%             xlabel('Trial');
+%             ylabel('xCurrent (Deg)');
+%             
+%         end
   function cleanup
         
         % Close window:
