@@ -14,6 +14,7 @@ if exist(imfolder_target) == 0
 end
 %prepare the kernel
 g = make_gaussian2D(40,40,fwhm,fwhm,20,20);
+g = g./sum(g(:));
 %%
 for imname = ListFiles([f '*.bmp'])'
     %
@@ -42,23 +43,34 @@ for imname = ListFiles([f '*.bmp'])'
         %zero the background
 %         dummy(~bmask(:)) = 0;        
         bmask            = b(:,:,fi);
+        I = double(bmask);
+        Gx = [-1 1];
+        Ix = conv2(I,Gx,'same');        
+        Iy = conv2(I,Gx','same');
+        I  = sqrt(Ix.^2+Iy.^2);
+        Id = imdilate(I,strel('disk',4)) > 0;
+        Id = logical(Id);
         %
-        bg = i(1,1,nch);%assumes the first channel to represent bg value.
-        bg = repmat(bg,400,400);
+        dummyg       = conv2(dummy,g,'same');
+        dummy(Id(:)) = dummyg(Id(:));
+        %
+%         bg = i(1,1,nch);%assumes the first channel to represent bg value.
+%         bg = repmat(bg,400,400);
+        
         
         %get the mean of the face for R,G and B channels, will make our life
         %easier if values are located in the 3rd dimension.
         face_mean(fi,1,nch) = mean(dummy(bmask));
         %smooth it with a gaussian kernel of fullwidthhalfmaximum (input)    
-        bmaskg    = conv2(double(bmask),g,'same');
-        bmaskg    = Scale(bmaskg.^4);
+%         bmaskg    = conv2(double(bmask),g,'same');
+%         bmaskg    = Scale(bmaskg.^4);
         
 %         %take the derivatives, take their absolute values, inverse it    
 %         v         = abs(diff(bmaskg,1,2));v = [ones(s(1),1) v];
 %         h         = abs(diff(bmaskg,1,1));h = [ones(1,s(2));h];
 %         m         = Scale((v+h));
 %         edge_mask = -m+1;
-        dummy =  bg.*(1-bmaskg) + dummy.*bmaskg;
+%         dummy =  bg.*(1-bmaskg) + dummy.*bmaskg;
         %
         %mask it: first remove its mean from the face (R, G, B separately if
         %an RGB image, and then point-wise multiply with the mask. In the
