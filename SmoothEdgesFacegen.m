@@ -34,7 +34,8 @@ for imname = ListFiles([f '*.bmp'])'
     % nan the image background, repmat the mask along 3rd dimen if
     % necessary
     i(repmat(~b(:,:,fi),[1 1 size(i,3)])) = NaN;
-    %get the mean of the image
+    %get the mean of the face for R,G and B channels, will make our life
+    %easier if values are located in the 3rd dimension.
     face_mean(fi,1,:) = squeeze(nanmean(nanmean(i,1),2));
     %smooth it with a gaussian kernel of fullwidthhalfmaximum (input)    
     bg = conv2(double(b(:,:,fi)),g,'same');
@@ -44,7 +45,9 @@ for imname = ListFiles([f '*.bmp'])'
     m  = Scale(v+h);
     m2 = -m+1;
     %
-    %mask it
+    %mask it: first remove the mean from the face (R, G, B separately if
+    %an RGB image, and then point-wise multiply with the mask. In the
+    %second, loop we will add the mean)
     i2(:,:,:,fi)      = (i - repmat(face_mean(fi,1,:),[size(i,1) size(i,2) 1])).*repmat(m2,[1 1 size(i,3)]);%we will add later the mean of the global face mean
 end
 
