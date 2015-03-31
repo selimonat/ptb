@@ -35,9 +35,7 @@ end
 if isempty(group) 
     group = ones(1,tstim);
 end
-%% read all the images and compute the mean, std
-imm = nan(1000,3);%to be on the secure side
-ims = nan(1000,3);
+%% read all the images and compute the mean, std: this is necessary to get the global mean.
 for i = 1:tstim
     sprintf('File %d...\n',i);
     [im]        = imread([Folder f(i).name]);
@@ -47,14 +45,15 @@ for i = 1:tstim
     face_index  = str2num(face_index);
     %    
     im    = double(im);
-    %find the background
+    %find the background from the original RGB images
     imori = imread([imfolder f(i).name]);
     b     = ~magicwand(imori,1,1,0);
-    % nan the image background
-    im(~b) = NaN;
-    %take Mean and Std of the image
-    imm(face_index,:) = squeeze(nanmean(nanmean(im,1),2));
-    ims(face_index,:) = squeeze(nanstd(nanstd(im,1,1),1,2));
+    for nchannel = 1:size(im,3)
+        dummy     = im(:,:,nchannel);        
+        %take Mean and Std of the image
+        imm(face_index,nchannel) = mean(dummy(b(:)));
+        ims(face_index,nchannel) = std(dummy(b(:)));
+    end
 end
 %% save the values as a bar plot
 figure;
@@ -65,16 +64,12 @@ subplot(2,2,2)
 bar(ims(~isnan(ims)));
 title('before_std','interpreter','none');
 
-%% take the global mean, std across all images
-mimm  = nanmean(imm);
-%%
-imm2 = nan(1,1000);%to be on the secure side
-ims2 = nan(1,1000);
+%% run a second loop with the global information
 for g = unique(group)
     ig = (group == g);
     for filename = {f(ig).name}
         %% read
-        [image]        = imread([Folder filename{1}]);
+        [image]     = imread([Folder filename{1}]);
         %get the face index from the filename
         face_index  = regexp(filename{1},'[0-9][0-9]','match');
         face_index  = face_index{1};
@@ -92,12 +87,12 @@ for g = unique(group)
         im = [];
         for nd = 1:size(image,3)
             dummy     = image(:,:,nd);
-            dummy(b)  = (dummy(b)-imm(face_index,nd))./ims(face_index,nd)*mean(ims(ig,nd))+mean(imm(ig,nd));
+            dummy(b)  = ((dummy(b)-imm(face_index,nd))/ims(face_index,nd))*mean(ims(ig,nd))+mean(imm(ig,nd));
             % Background is the global mean across groups
-            dummy(~b) = mimm(nd);
+            dummy(~b) = mean(imm(ig,nd));
             im        = cat(3,im,dummy);
             % control statistics, these should be perfectly constant
-            imm2(face_index,nd) = mean(dummy(:));
+            imm2(face_index,nd) = mean(dummy(b(:)));
             ims2(face_index,nd) = std(dummy(b(:)));
         end     
         %%
