@@ -1,8 +1,5 @@
 function [imfolder_target]=SmoothEdgesFacegen(f, fwhm, color )
-%Smoothens edges of the face, however to do so it requires the BG and the
-%face to have same mean luminance. The resulting effect is like a face
-%emerging from the background; if the face ML is different than the BG 
-%edges become salient.
+%Smoothens edges of the face...
 
 
 global imfolder%original folder of RGB images
