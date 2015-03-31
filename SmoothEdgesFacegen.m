@@ -1,4 +1,9 @@
 function [imfolder_target]=SmoothEdgesFacegen(f, fwhm, color )
+%Smoothens edges of the face, however to do so it requires the BG and the
+%face to have same mean luminance. The resulting effect is like a face
+%emerging from the background; if the face ML is different than the BG 
+%edges become salient.
+
 
 global imfolder%original folder of RGB images
 
@@ -24,43 +29,59 @@ for imname = ListFiles([f '*.bmp'])'
     %
     %read the image    
     i           = imread(sprintf('%s%s',f,imname{1}));
-    %get the image
+    %remove color if desired
     if ndims(i) == 3 && ~color
         i       = rgb2gray(i);
     end
     i           = double(i);
     s           = size(i);    
-    %
-    % nan the image background, repmat the mask along 3rd dimen if
-    % necessary
-    i(repmat(~b(:,:,fi),[1 1 size(i,3)])) = NaN;
-    %get the mean of the face for R,G and B channels, will make our life
-    %easier if values are located in the 3rd dimension.
-    face_mean(fi,1,:) = squeeze(nanmean(nanmean(i,1),2));
-    %smooth it with a gaussian kernel of fullwidthhalfmaximum (input)    
-    bg = conv2(double(b(:,:,fi)),g,'same');
-    %take the derivatives, take their absolute values, inverse it    
-    v  = abs(diff(bg,1,2));v = [ones(s(1),1) v];
-    h  = abs(diff(bg,1,1));h = [ones(1,s(2));h];
-    m  = Scale(v+h);
-    m2 = -m+1;
-    %
-    %mask it: first remove the mean from the face (R, G, B separately if
-    %an RGB image, and then point-wise multiply with the mask. In the
-    %second, loop we will add the mean)
-    i2(:,:,:,fi)      = (i - repmat(face_mean(fi,1,:),[size(i,1) size(i,2) 1])).*repmat(m2,[1 1 size(i,3)]);%we will add later the mean of the global face mean
+    %    
+    for nch = 1:size(i,3)%masking on a channel by channel basis
+        %get channel by channel
+        dummy           = i(:,:,nch);
+        %zero the background
+%         dummy(~bmask(:)) = 0;        
+        bmask            = b(:,:,fi);
+        %
+        bg = i(1,1,nch);%assumes the first channel to represent bg value.
+        bg = repmat(bg,400,400);
+        
+        %get the mean of the face for R,G and B channels, will make our life
+        %easier if values are located in the 3rd dimension.
+        face_mean(fi,1,nch) = mean(dummy(bmask));
+        %smooth it with a gaussian kernel of fullwidthhalfmaximum (input)    
+        bmaskg    = conv2(double(bmask),g,'same');
+        bmaskg    = Scale(bmaskg.^4);
+        
+%         %take the derivatives, take their absolute values, inverse it    
+%         v         = abs(diff(bmaskg,1,2));v = [ones(s(1),1) v];
+%         h         = abs(diff(bmaskg,1,1));h = [ones(1,s(2));h];
+%         m         = Scale((v+h));
+%         edge_mask = -m+1;
+        dummy =  bg.*(1-bmaskg) + dummy.*bmaskg;
+        %
+        %mask it: first remove its mean from the face (R, G, B separately if
+        %an RGB image, and then point-wise multiply with the mask. In the
+        %second, loop we will add the mean)
+%         i2(:,:,nch,fi)      = (dummy - face_mean(fi,1,nch)).*edge_mask;%we will add later the mean of the global face mean
+        tobesaved(:,:,nch) = dummy;
+    end
+    imwrite(tobesaved/255,sprintf('%s%s',imfolder_target,imname{1}));
 end
 
-%% run once more across all images to add the global mean
-for imname = ListFiles([f '*.bmp'])'
-    %get the face index from the filename
-    fi  = regexp(imname{1},'[0-9][0-9]','match');
-    fi  = fi{1};
-    fi  = str2num(fi);
-    % add the same global mean to all images.
-    dummy              = i2(:,:,:,fi);
-    dummy(isnan(dummy))= 0;
-    dummy              = dummy + repmat(mean(face_mean),[size(dummy,1) size(dummy,2) 1]);    
-    %
-    imwrite(dummy/255,sprintf('%s%s',imfolder_target,imname{1}));
-end
+% % %% run once more across all images to add the global mean
+% % for imname = ListFiles([f '*.bmp'])'
+% %     %get the face index from the filename
+% %     fi  = regexp(imname{1},'[0-9][0-9]','match');
+% %     fi  = fi{1};
+% %     fi  = str2num(fi);
+% %     % add the same global mean to all images.
+% %     for nch = 1:3
+% %         dummy              = i2(:,:,nch,fi);    
+% %         dummy              = dummy + repmat(face_mean(fi,1,nch),[400 400 1]);%+ repmat(mean(face_mean),[size(dummy,1) size(dummy,2) 1]);    
+% %         dummy(isnan(dummy))= face_mean(fi,1,nch);
+% %         tobesaved(:,:,nch) = dummy;
+% %     end
+% %     %
+% %     imwrite(tobesaved/255,sprintf('%s%s',imfolder_target,imname{1}));
+% % end
