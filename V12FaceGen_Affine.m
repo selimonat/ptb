@@ -1,7 +1,7 @@
 function [M] = V12FaceGen_Affine(v1_space,save_path)
 %[D,Z,T] = V12FaceGen_Procrustes(v1_space)
-facespace=GetFaceSpace;
-v = ones(length(facespace),1);
+facespace = GetFaceSpace;
+v         = ones(length(facespace),1);
 
 facespace    = [facespace v];
 % [D, Z, T] = procrustes(v1_space,facespace);
@@ -11,6 +11,8 @@ M(end)    = 1;
 
 v1space_r = facespace*M;
 
+%save the matrix and the v1space_r (fitted v1 space)
+save(save_path,'M','v1space_r');
 
 figure
 plot(facespace(:,1),facespace(:,2),'ro-')
