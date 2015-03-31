@@ -30,15 +30,17 @@ hold off
 %load the three guys here
 psi1=load('C:\Users\onat\Dropbox\feargen_lea\EthnoMaster\simdata\diffSDs\d_PSI_3SDs_end.mat');
 psi2=load('C:\Users\onat\Dropbox\feargen_lea\EthnoMaster\simdata\diffSDs\d_PSImarg2AFC_3SDs_merged.mat');
-psi3=load('C:\Users\onat\Dropbox\feargen_lea\EthnoMaster\simdata\diffSDs\d_PSImargYN_20150326_1445_merged_endof100.mat');
+psi3=load('C:\Users\onat\Dropbox\feargen_lea\EthnoMaster\simdata\diffSDs\d_PSImargYN_3SDs_endof200merged.mat');
 
+% how many trial levels do you want to display?
+t=5;
 
-mean1=squeeze(nanmean(psi1.d.alpha(:,1,1:3,1:4)));%average estimation       
-mean2=squeeze(nanmean(psi2.d.alpha(:,1,1:3,1:4)));
-mean3=squeeze(nanmean(psi3.d.alpha(:,1,1:3,1:4)));
-E1=squeeze(nanstd(psi1.d.alpha(:,1,1:3,1:4)));
-E2=squeeze(nanstd(psi2.d.alpha(:,1,1:3,1:4)));
-E3=squeeze(nanstd(psi3.d.alpha(:,1,1:3,1:4)));
+mean1=squeeze(nanmean(psi1.d.alpha(:,1,1:3,1:t)));%average estimation       
+mean2=squeeze(nanmean(psi2.d.alpha(:,1,1:3,1:t)));
+mean3=squeeze(nanmean(psi3.d.alpha(:,1,1:3,1:t)));
+E1=squeeze(nanstd(psi1.d.alpha(:,1,1:3,1:t)));
+E2=squeeze(nanstd(psi2.d.alpha(:,1,1:3,1:t)));
+E3=squeeze(nanstd(psi3.d.alpha(:,1,1:3,1:t)));
 % rows=SD [15 30 45]
 
 % % these guys are for one Method but 3 parameters of SD
@@ -50,8 +52,10 @@ E3=squeeze(nanstd(psi3.d.alpha(:,1,1:3,1:4)));
 % E2=squeeze(nanstd(psi1.d.sd(:,1,2,:)));
 % E3=squeeze(nanstd(psi1.d.sd(:,1,3,:)));
 
+
+
 trials  = unique(psi1.d.param.ttrials(~isnan(psi1.d.param.ttrials)));
-trials  = trials(1:4);
+trials  = trials(1:t);
 
 truealpha=45;
 for i=1:3
@@ -67,23 +71,24 @@ errorbar(trials+2,mean3(i,:),E3(i,:),'ko--','linewidth',2)
 legend('true Threshold','PSI','PSI marginal 2AFC',...
         'PSI marginal Y/N','Location','southoutside','orientation','horizontal')
 xlabel('ntrials');
-ylabel('estimated Slope in SD');
+ylabel('Mean estimated threshold in degrees (\pm std)');
+ylim([30 100])
 end
 
 % same for the beta estimation
 
 
 
-meanslope1=squeeze(nanmean(psi1.d.sd(:,1,1:3,1:4)));%average estimation       
-meanslope2=squeeze(nanmean(psi2.d.sd(:,1,1:3,1:4)));
-meanslope3=squeeze(nanmean(psi3.d.sd(:,1,1:3,1:4)));
+meanslope1=squeeze(nanmean(psi1.d.sd(:,1,1:3,1:t)));%average estimation       
+meanslope2=squeeze(nanmean(psi2.d.sd(:,1,1:3,1:t)));
+meanslope3=squeeze(nanmean(psi3.d.sd(:,1,1:3,1:t)));
 
-slopeE1=squeeze(nanstd(psi1.d.sd(:,1,1:3,1:4)));
-slopeE2=squeeze(nanstd(psi2.d.sd(:,1,1:3,1:4)));
-slopeE3=squeeze(nanstd(psi3.d.sd(:,1,1:3,1:4)));
+slopeE1=squeeze(nanstd(psi1.d.sd(:,1,1:3,1:t)));
+slopeE2=squeeze(nanstd(psi2.d.sd(:,1,1:3,1:t)));
+slopeE3=squeeze(nanstd(psi3.d.sd(:,1,1:3,1:t)));
 
 trials  = unique(psi1.d.param.ttrials(~isnan(psi1.d.param.ttrials)));
-trials  = trials(1:4);
+trials  = trials(1:t);
 
 
 
@@ -100,9 +105,10 @@ errorbar(trials,meanslope2(i,:),slopeE2(i,:),'ro--','linewidth',2)
 hold on;
 errorbar(trials+2,meanslope3(i,:),slopeE3(i,:),'ko--','linewidth',2)
 xlabel('ntrials');
-ylabel('estimated Slope in SD');
+ylabel('Mean estimated Slope in SD (\pm std)');
 legend('true slope','PSI','PSI marginal 2AFC',...
         'PSI marginal Y/N','Location','southoutside','orientation','horizontal')
 title('Slope Estimation by 3 PSI methods, constant \alpha=45','FontSize',14)
+ylim([0 80])
 
 end
