@@ -1,11 +1,13 @@
-function ProcessingStack(imfolder,color,varargin)
+function ProcessingStack(folder,color,varargin)
 %VARARGIN{1} = the group identity.
 
+global imfolder
+
 %check if there is slash at the end. Filesep knows if it is windoz or unix
+imfolder = folder;
 if strcmp(imfolder(end),filesep) == 0;
     imfolder(end+1) = filesep;
 end
-
 %
 if nargin > 2
     group = varargin{1};
@@ -15,7 +17,7 @@ end
 
 
 %Smooth the Face itself
-[f]        = SmoothFaceFacegen(imfolder,5,1.4,color);
+[f]        = SmoothFaceFacegen(folder,5,1.4,color);
 
 % Normalize the (grayscaled) Face
 [f]        = NormalizeMeanStdGray(f,group);
