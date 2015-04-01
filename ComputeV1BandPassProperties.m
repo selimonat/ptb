@@ -12,7 +12,9 @@ function ComputeV1BandPassProperties(folder)
 [vec,freq]=ReduceFFT2(d);
 figure;
 plot(freq*36,vec,'k');
-set(gca,'yscale','log','xscale','log','xtick',[.5 1 2 4 8 16]);xlim([0.5 16]);
+set(gca,'yscale','log','xscale','log','xtick',[.5 1 2 4 8 16]);
+axis tight
+xlim([0.5 16]);
 xlabel('Spatial Frequency (cycles per degree)');
 hold on;
 plot([2 2],ylim,'r-');

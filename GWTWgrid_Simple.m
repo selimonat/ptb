@@ -117,7 +117,7 @@ else
     JetsPhase      = zeros(length(Grid),nScale*nOrientation);
 end
 Spectrum = zeros(SizeX);
-for LevelL = 0:nScale-1
+for LevelL = [1 2 3 4];%0:nScale-1
     k0 = (pi/2)*(1/sqrt(2)).^LevelL;
     for DirecL = 0:nOrientation-1
         kA = pi*DirecL/nOrientation;

@@ -1,14 +1,7 @@
 function [ed] = V1_EuclidianDistance(imfolder)
-%   Computes a similarity metric using V1 complex cell model used in Yue et
-%   al, Vision Research 2012. So basically it is a wrapper around Yue's
-%   function to analyze the faces we use. PATH2STIM can optionaly be used
-%   to run the analysis on different faces tham the default set, in that
-%   case PATH2STIM must be a string representing the path to the folder
-%   containing the faces.
-%
+% It computes a similarity matrix based on V1 responses.
 
-
-tImage = length(ListFiles(sprintf('%s*.mat',imfolder)));
+tImage = length(ListFiles(sprintf('%sV1*.mat',imfolder)));
 %% compute a difference metric
 ed = zeros(tImage);
 r = [];
