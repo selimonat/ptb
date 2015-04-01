@@ -1,15 +1,9 @@
 function [save_path]=NormalizeMeanStdGray(Folder,group)
 %this function normalizes the mean luminance and standard deviation of RGB
-%channells independently, it thereofre equalized the color. The input to
-%this script must be the .png version of the faces with transparent
-%background. The reason is that, the background should not contribute to
-%the computation of the RGB ML and LC values. In order to run the script
-%first go to the Folder where different stimuli are located.
+%channells independently, it therefore equalized the color.
 %
 % Group defines group identity for separate mean/std normalization.
 %
-%Folder = './Circle12_08Face_Frontal_SkinModerated_Transparent/';
-% Folder = 'C:\Users\onat\Desktop\FaceSimilarityQuantification\_creation steps\selim first\36\png\'
 
 
 global imfolder%original folder of RGB images
@@ -86,11 +80,12 @@ for g = unique(group)
         %4 add the group mean
         im = [];
         for nd = 1:size(image,3)
-            dummy     = image(:,:,nd);
-            dummy(b)  = ((dummy(b)-imm(face_index,nd))/ims(face_index,nd))*mean(ims(ig,nd))+mean(imm(ig,nd));
-            % Background is the global mean across groups
-            dummy(~b) = mean(imm(ig,nd));
-            im        = cat(3,im,dummy);
+            dummy               = image(:,:,nd);
+            dummy(b)            = ((dummy(b)-imm(face_index,nd))/ims(face_index,nd))*mean(ims(ig,nd))+mean(imm(ig,nd));
+            % Background is the global mean across groups (doesn't care
+            % about the group variable)
+            dummy(~b)           = mean(mean(imm(:,:),2));
+            im                  = cat(3,im,dummy);
             % control statistics, these should be perfectly constant
             imm2(face_index,nd) = mean(dummy(b(:)));
             ims2(face_index,nd) = std(dummy(b(:)));
