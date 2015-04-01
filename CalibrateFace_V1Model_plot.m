@@ -47,7 +47,7 @@ else
     ylabel 'gender'
     zlabel 'ethnicity'
 end
-SaveFigure([path2stim mfilename '.png']);
+SaveFigure([path2stim mfilename '_' datestr(now,'ssFFF') '.png']);
 
 figure;
 if size(mds,2) == 2
@@ -70,5 +70,5 @@ else
     zlabel 'ethnicity'
 end
 
-SaveFigure([path2stim mfilename 'MDSzoom' '.png']);
+SaveFigure([path2stim mfilename 'MDSzoom' '_' datestr(now,'ssFFF')  '.png']);
 
