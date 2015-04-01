@@ -34,7 +34,7 @@ for i = 1:tstim
     sprintf('File %d...\n',i);
     [im]        = imread([Folder f(i).name]);
     %get the face index from the filename
-    face_index  = regexp(f(i).name,'[0-9][0-9]','match');
+    face_index  = regexp(f(i).name,'[0-9]*','match');
     face_index  = face_index{1};
     face_index  = str2num(face_index);
     %    
@@ -65,7 +65,7 @@ for g = unique(group)
         %% read
         [image]     = imread([Folder filename{1}]);
         %get the face index from the filename
-        face_index  = regexp(filename{1},'[0-9][0-9]','match');
+        face_index  = regexp(filename{1},'[0-9]*','match');
         face_index  = face_index{1};
         face_index  = str2num(face_index);
         %
