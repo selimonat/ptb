@@ -27,21 +27,20 @@ hold off
 % 2) PSI marginal 2 AFC, means with marginalized Lambda
 % 3) PSI marginal Yes/No, menas marginalized Gamma and Lambda
 
-truealpha=45;
-
 %load the three guys here
 psi1=load('C:\Users\onat\Dropbox\feargen_lea\EthnoMaster\simdata\diffSDs\d_PSI_3SDs_end.mat');
-psi2=load('C:\Users\onat\Dropbox\feargen_lea\EthnoMaster\simdata\diffSDs\d_PSImarg2AFC_3SDs_end.mat');
-psi3=load('C:\Users\onat\Dropbox\feargen_lea\EthnoMaster\simdata\diffSDs\d_PSImargYN_3SDs_end.mat');
+psi2=load('C:\Users\onat\Dropbox\feargen_lea\EthnoMaster\simdata\diffSDs\d_PSImarg2AFC_3SDs_merged.mat');
+psi3=load('C:\Users\onat\Dropbox\feargen_lea\EthnoMaster\simdata\diffSDs\d_PSImargYN_3SDs_endof200merged.mat');
 
-% big plot for all three SDs and all three methods
+% how many trial levels do you want to display?
+t=5;
 
-mean1=squeeze(nanmean(psi1.d.alpha(:,1,1:3,:)));%average estimation       
-mean2=squeeze(nanmean(psi2.d.alpha(:,1,1:3,:)));
-mean3=squeeze(nanmean(psi3.d.alpha(:,1,1:3,:)));
-E1=squeeze(nanstd(psi1.d.alpha(:,1,1:3,:)));
-E2=squeeze(nanstd(psi2.d.alpha(:,1,1:3,:)));
-E3=squeeze(nanstd(psi3.d.alpha(:,1,1:3,:)));
+mean1=squeeze(nanmean(psi1.d.alpha(:,1,1:3,1:t)));%average estimation       
+mean2=squeeze(nanmean(psi2.d.alpha(:,1,1:3,1:t)));
+mean3=squeeze(nanmean(psi3.d.alpha(:,1,1:3,1:t)));
+E1=squeeze(nanstd(psi1.d.alpha(:,1,1:3,1:t)));
+E2=squeeze(nanstd(psi2.d.alpha(:,1,1:3,1:t)));
+E3=squeeze(nanstd(psi3.d.alpha(:,1,1:3,1:t)));
 % rows=SD [15 30 45]
 
 % % these guys are for one Method but 3 parameters of SD
@@ -53,42 +52,63 @@ E3=squeeze(nanstd(psi3.d.alpha(:,1,1:3,:)));
 % E2=squeeze(nanstd(psi1.d.sd(:,1,2,:)));
 % E3=squeeze(nanstd(psi1.d.sd(:,1,3,:)));
 
+
+
 trials  = unique(psi1.d.param.ttrials(~isnan(psi1.d.param.ttrials)));
+trials  = trials(1:t);
 
-alphafig=figure;
+truealpha=45;
 for i=1:3
-subplot(3,1,i);
-line([0 max(trials)], [truealpha truealpha],'color','yellow','linewidth',2)
+alphafig15=figure(i);
+title(sprintf('Threshold Estimation by 3 PSI methods, SD=%d',i*15),'FontSize',14)
+line([0 max(trials)+10], [truealpha truealpha],'color','yellow','linewidth',2)
 hold on;
-errorbar(trials,mean1(i,:),E1(i,:),'bo-','linewidth',3)
+errorbar(trials-2,mean1(i,:),E1(i,:),'bo--','linewidth',2)
 hold on;
-errorbar(trials,mean2(i,:),E2(i,:),'ro-','linewidth',3)
+errorbar(trials,mean2(i,:),E2(i,:),'ro--','linewidth',2)
 hold on;
-errorbar(trials,mean3(i,:),E3(i,:),'ko-','linewidth',3)
-legend('true threshold \alpha=45','PSI','PSI marginal 2AFC','PSI marginal Y/N')
-title('Threshold Estimation by 3 PSI methods','FontSize',14)
-saveas(alphafig,'C:\Users\onat\Dropbox\feargen_lea\Ethno Master\simdata\diffSDs\plotAlpha15.png')
+errorbar(trials+2,mean3(i,:),E3(i,:),'ko--','linewidth',2)
+legend('true Threshold','PSI','PSI marginal 2AFC',...
+        'PSI marginal Y/N','Location','southoutside','orientation','horizontal')
+xlabel('ntrials');
+ylabel('Mean estimated threshold in degrees (\pm std)');
+ylim([30 100])
+end
 
-% % % % 
 % same for the beta estimation
 
-truebeta=15;
 
-meanslope1=squeeze(nanmean(psi1.d.sd(:,1,1,:)));%average estimation       
-meanslope2=squeeze(nanmean(psi2.d.sd(:,1,1,:)));
-meanslope3=squeeze(nanmean(psi3.d.sd(:,1,1,:)));
+
+meanslope1=squeeze(nanmean(psi1.d.sd(:,1,1:3,1:t)));%average estimation       
+meanslope2=squeeze(nanmean(psi2.d.sd(:,1,1:3,1:t)));
+meanslope3=squeeze(nanmean(psi3.d.sd(:,1,1:3,1:t)));
+
+slopeE1=squeeze(nanstd(psi1.d.sd(:,1,1:3,1:t)));
+slopeE2=squeeze(nanstd(psi2.d.sd(:,1,1:3,1:t)));
+slopeE3=squeeze(nanstd(psi3.d.sd(:,1,1:3,1:t)));
 
 trials  = unique(psi1.d.param.ttrials(~isnan(psi1.d.param.ttrials)));
+trials  = trials(1:t);
 
-betafig=figure;
-line([0 max(trials)], [truebeta truebeta],'color','yellow','linewidth',2)
+
+
+for i=1:3
+
+betafig=figure(i);
+truebeta=i*15;
+
+line([0 max(trials)+10], [truebeta truebeta],'color','yellow','linewidth',2)
 hold on;
-plot(trials,meanslope1,'bo-','linewidth',3)
+errorbar(trials-2,meanslope1(i,:),slopeE1(i,:),'bo--','linewidth',2)
 hold on;
-plot(trials,meanslope2,'ro-','linewidth',3)
+errorbar(trials,meanslope2(i,:),slopeE2(i,:),'ro--','linewidth',2)
 hold on;
-plot(trials,meanslope3,'ko-','linewidth',3)
-legend('true slope SD=15','PSI','PSI marginal 2AFC','PSI marginal Y/N')
-title('Slope(SD) Estimation by 3 PSI methods','FontSize',14)
-gca;
-SaveAs(betafig,'C:\Users\onat\Dropbox\feargen_lea\Ethno Master\simdata\diffSDs\plotBeta15.png')
+errorbar(trials+2,meanslope3(i,:),slopeE3(i,:),'ko--','linewidth',2)
+xlabel('ntrials');
+ylabel('Mean estimated Slope in SD (\pm std)');
+legend('true slope','PSI','PSI marginal 2AFC',...
+        'PSI marginal Y/N','Location','southoutside','orientation','horizontal')
+title('Slope Estimation by 3 PSI methods, constant \alpha=45','FontSize',14)
+ylim([0 80])
+
+end
