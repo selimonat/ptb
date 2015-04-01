@@ -18,7 +18,7 @@ for imname = ListFiles([f '*.bmp'])'
     %
     fprintf('Processing image: %s\n',imname{1})
     %get the face index from the filename
-    fi  = regexp(imname{1},'[0-9]','match');
+    fi  = regexp(imname{1},'[0-9]*','match');
     fi  = fi{1};
     fi  = str2num(fi);
     %
