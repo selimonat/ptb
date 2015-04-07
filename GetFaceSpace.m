@@ -11,10 +11,7 @@ function [face_space]= GetFaceSpace
 
 % 
 % 5 circles
-if ispc
-    face_space=textread('C:\Users\onat\Desktop\circle_calculation_txt.txt');
-else
-    face_space=textread('/Users/onat/Dropbox/feargen_lea/EthnoMaster/smoothingbusiness/5circles/circle_calculation_txt.txt');
-end
+face_space=textread('/Users/onat/Dropbox/feargen_lea/EthnoMaster/smoothingbusiness/5circles_RGB/circle_calculation_txt.txt');
+
 
 face_space=face_space-repmat(mean(face_space),[size(face_space,1),1]);
