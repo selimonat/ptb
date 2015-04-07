@@ -82,7 +82,7 @@ for tt = total_trials(:)';%how many trials for the "subject"
             %%save the stuff 
             try
 				if ispc%lea's super master-mind computer
-                	save_path        ='C:\Users\onat\Dropbox\feargen_lea\Ethno Master\simdata\';
+                	save_path        ='C:\Users\onat\Dropbox\feargen_lea\EthnoMaster\simdata\diffSDs';
 				elseif isunix%mathias's super nerdy clusters
                 	save_path        ='/home/kampermann/Documents/simdata/';
 				end

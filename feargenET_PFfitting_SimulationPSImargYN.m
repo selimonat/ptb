@@ -60,7 +60,7 @@ for tt = total_trials(:)';%how many trials for the "subject"
             fprintf('TotalTrial: %3.3g (%3d/%3d); Alpha: %3.3g (%3d/%3d); SD: %3.3g (%3d/%3d); %s; \n',tt,c(1),ttotal_trials,aa,c(2),talpha,ss,c(3),tSDs,datestr(now,'HH:MM:SS'))
             aaa = NaN(1,tSimulation);
             sss = aaa;                        
-            parfor simulation_repeat = 1:tSimulation;%how many simulation runs                
+            for simulation_repeat = 1:tSimulation;%how many simulation runs                
                 %take a different lambda per subject
                 Lambda = Lambdas(mod(simulation_repeat-1,length(Lambdas))+1);
                 Gamma  = Gammas(mod(simulation_repeat-1,length(Gammas))+1);
@@ -70,6 +70,7 @@ for tt = total_trials(:)';%how many trials for the "subject"
                 while ~PM.stop            
                     %subject's response
                     response = ObserverResponseFunction(PFfit,aa,1/ss,Gamma,Lambda,PM.xCurrent);
+                 
                     % update the PM
                     PM = PAL_AMPM_updatePM(PM,response);
                 end

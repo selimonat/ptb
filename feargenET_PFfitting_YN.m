@@ -89,12 +89,12 @@ while (PM{1}.stop ~= 1) || (PM{2}.stop ~= 1) || (PM{3}.stop ~= 1) || (PM{4}.stop
         ref       = PM{current_chain}.reference_face + csp_degree + PM{current_chain}.reference_circle;
         ref       = mod(ref,360)+ PM{current_chain}.reference_circle;
         
-        fprintf('Chain: %03d\nxCurrent: %6.2f\nDirection:%6.2f\n %6.2f -> %6.2f vs. %6.2f\n',current_chain,PM{current_chain}.xCurrent,direction,dummy,test,ref);
+%         fprintf('Chain: %03d\nxCurrent: %6.2f\nDirection:%6.2f\n %6.2f -> %6.2f vs. %6.2f\n',current_chain,PM{current_chain}.xCurrent,direction,dummy,test,ref);
         % start Trial
-        fprintf('Starting Trial.\n')
+        fprintf('Starting Trial %03d/%03d.\n',tt,tchain*numtrials)
         
         [test_face, ref_face, signal] = Trial_YN(ref,test,circle_id(current_chain));
-        fprintf('Trial Finished.\n')
+        fprintf('Rating.\n')
         %Rating Slider
         %
         message1 = 'Waren die Gesichter unterschiedlich?\n';
@@ -242,9 +242,8 @@ function SetLogB
         faces_trial = trial;
         
         fprintf('...Chain: %02d \n',current_chain)
-        fprintf('...xDelta: %4.2f Degrees.\n',PM{current_chain}.xCurrent)
-        fprintf('...Faces Trial: '),fprintf('%02d ',faces_trial)
-        
+        fprintf('...xDelta: %4.2f Degrees.\n',PM{current_chain}.xCurrent*direction)
+        fprintf('...Faces Trial: '),fprintf('%02d %02d\n',faces_trial(1),faces_trial(2))
         onsets     = p.trial.onsets + GetSecs;
         
         for i = 1:length(sprite_index)
@@ -259,6 +258,7 @@ function SetLogB
             end
             %show image.
             Screen('Flip',p.ptb.w,onsets(i),0);
+            
         end
         
         

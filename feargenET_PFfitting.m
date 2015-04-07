@@ -89,7 +89,7 @@ while (PM{1}.stop ~= 1) || (PM{2}.stop ~= 1) || (PM{3}.stop ~= 1) || (PM{4}.stop
     %Rating Slider
        %
        message1 = 'In welchem Paar waren die Gesichter unterschiedlich?\n';
-       message2 = 'Bewege den "Zeiger" mit der rechten und linken Pfeiltaste\n und bestätige deine Einschätzung mit der mit der oberen Pfeiltaste.';
+       message2 = 'Bewege den "Zeiger" mit der rechten und linken Pfeiltaste\n und bestätige deine Einschätzung mit der oberen Pfeiltaste.';
        if ~simulation_mode
            [response_subj]      = RatingSlider(p.ptb.rect,2,Shuffle(1:2,1),p.keys.increase,p.keys.decrease,p.keys.confirm,{ 'erstes\nPaar' 'zweites\nPaar'},message1,message2,0);
            
