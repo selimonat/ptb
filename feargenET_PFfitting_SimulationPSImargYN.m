@@ -22,7 +22,7 @@ priorLambdaRange = 0:0.01:0.1;
 %Range of guess rates (Prins: 0:0.03:0.3);
 priorGammaRange = 0:0.03:0.3;
 % Stimulus values to select from (need not be equally spaced)
-stimRange       = 0:22.5:180;
+stimRange       = 0:11.25:180;
 % % conversion of parameter: SD to precision
 % beta            = 1./SDs;
 % % 2-D Gaussian prior
