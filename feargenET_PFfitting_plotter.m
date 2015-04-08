@@ -29,11 +29,11 @@ hold off
 
 %load the three guys here
 psi1=load('C:\Users\onat\Dropbox\feargen_lea\EthnoMaster\simdata\diffSDs\d_PSI_3SDs_end.mat');
-psi2=load('C:\Users\onat\Dropbox\feargen_lea\EthnoMaster\simdata\diffSDs\d_PSImarg2AFC_3SDs_merged.mat');
-psi3=load('C:\Users\onat\Dropbox\feargen_lea\EthnoMaster\simdata\diffSDs\d_PSImargYN_3SDs_endof200merged.mat');
+psi2=load('C:\Users\onat\Dropbox\feargen_lea\EthnoMaster\simdata\diffSDs\d_PSImarg2AFC_3SDs_end.mat');
+psi3=load('C:\Users\onat\Dropbox\feargen_lea\EthnoMaster\simdata\diffSDs\d_PSImargYN_3SDs_end.mat');
 
 % how many trial levels do you want to display?
-t=5;
+t=7;
 
 mean1=squeeze(nanmean(psi1.d.alpha(:,1,1:3,1:t)));%average estimation       
 mean2=squeeze(nanmean(psi2.d.alpha(:,1,1:3,1:t)));
@@ -99,16 +99,32 @@ truebeta=i*15;
 
 line([0 max(trials)+10], [truebeta truebeta],'color','yellow','linewidth',2)
 hold on;
-errorbar(trials-2,meanslope1(i,:),slopeE1(i,:),'bo--','linewidth',2)
+errorbar(trials-5,meanslope1(i,:),slopeE1(i,:),'bo--','linewidth',2)
 hold on;
 errorbar(trials,meanslope2(i,:),slopeE2(i,:),'ro--','linewidth',2)
 hold on;
-errorbar(trials+2,meanslope3(i,:),slopeE3(i,:),'ko--','linewidth',2)
+errorbar(trials+5,meanslope3(i,:),slopeE3(i,:),'ko--','linewidth',2)
 xlabel('ntrials');
 ylabel('Mean estimated Slope in SD (\pm std)');
 legend('true slope','PSI','PSI marginal 2AFC',...
         'PSI marginal Y/N','Location','southoutside','orientation','horizontal')
 title('Slope Estimation by 3 PSI methods, constant \alpha=45','FontSize',14)
-ylim([0 80])
+xlim([0 max(trials)+20])
+ylim([0  max(meanslope1(:,end))+max(slopeE1(:,end))+5])
 
 end
+
+
+% % plotting the real observer's procedure
+load('C:\Users\onat\Documents\Experiments\FearGeneralization_Ethnic\data\')
+figure
+plot(Log.globaltrial(chain,:),abs(Log.x(chain,:)),'bo-')
+hold on;
+plot(Log.globaltrial(chain,(Log.response(chain,:)==1)),abs(Log.x(chain,Log.response(chain,:)==1)),'ko','MarkerFaceColor','k')
+plot(Log.globaltrial(chain,(Log.response(chain,:)==0)),abs(Log.x(chain,Log.response(chain,:)==0)),'ko','MarkerFaceColor','w')
+errorbar(Log.globaltrial(chain,:),Log.alpha(chain,:),Log.seAlpha(chain,:),'r--')
+xlabel('overall trial')
+ylabel('presented \Delta X in degrees')
+title('Procedure Subject %02d',sub)
+
+
