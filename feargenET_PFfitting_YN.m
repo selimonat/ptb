@@ -23,7 +23,7 @@ priorLambdaRange = 0:0.01:0.1;
 %Range of guess rates (Prins: 0:0.03:0.3);
 priorGammaRange = 0:0.03:0.3;
 % Stimulus values to select from (need not be equally spaced)
-stimRange       = 0:22.5:180;
+stimRange       = 0:11.25:180;
 
 
 % %2-D Gaussian prior
@@ -33,7 +33,7 @@ stimRange       = 0:22.5:180;
 
 
 %Termination after n Trials
-numtrials      = 20;
+numtrials      = 2;
 
 %Function to be fitted during procedure
 PFfit = @PAL_CumulativeNormal;    %Shape to be assumed
@@ -61,6 +61,9 @@ PM{nc}.reference_circle = circle_shift(nc);
 % set up Log Variable
 SetupLog(nc);
 end
+
+ShowInstruction(1);
+
 
 while (PM{1}.stop ~= 1) || (PM{2}.stop ~= 1) || (PM{3}.stop ~= 1) || (PM{4}.stop ~= 1)
 
@@ -97,10 +100,10 @@ while (PM{1}.stop ~= 1) || (PM{2}.stop ~= 1) || (PM{3}.stop ~= 1) || (PM{4}.stop
         fprintf('Rating.\n')
         %Rating Slider
         %
-        message1 = 'Waren die Gesichter unterschiedlich?\n';
+        message1 = 'Waren die Gesichter unterschiedlich oder gleich?\n';
         message2 = 'Bewege den "Zeiger" mit der rechten und linken Pfeiltaste\n und bestätige deine Einschätzung mit der oberen Pfeiltaste.';
         if ~simulation_mode
-            [response_subj]      = RatingSlider(p.ptb.rect,2,Shuffle(1:2,1),p.keys.increase,p.keys.decrease,p.keys.confirm,{ 'Ja' 'Nein'},message1,message2,0);
+            [response_subj]      = RatingSlider(p.ptb.rect,2,Shuffle(1:2,1),p.keys.increase,p.keys.decrease,p.keys.confirm,{ 'Unterschiedlich' 'Gleich'},message1,message2,0);
             
             %see if subject found the different pair of faces...
             % buttonpress left (Yes) is response_subj=2, right alternative (No) outputs a 1.
@@ -140,18 +143,19 @@ while (PM{1}.stop ~= 1) || (PM{2}.stop ~= 1) || (PM{3}.stop ~= 1) || (PM{4}.stop
     
         %updating PM
         PM{current_chain} = PAL_AMPM_updatePM(PM{current_chain},response);
-        SetLogA;
-        SetLogB;
+        SetLog;
     
     end
+    
+
     %save Logfile here
    
-    save(p.path.path_param,'Log'); 
+    save([p.path.path_param 'Log.mat'],'Log'); 
   
 
   
 end
-
+ShowInstruction(2);
 %Print summary of results to screen
 for chain=1:tchain
 fprintf('Chain %g: Estimated Threshold (alpha): %4.2f \n',chain,PM{chain}.threshold(end));
@@ -187,7 +191,7 @@ movefile(p.path.subject,p.path.finalsubject);
         
     end
 
-    function SetLogA
+    function SetLog
         
        
         Log.globaltrial(current_chain,cc(current_chain))= tt;
@@ -196,15 +200,6 @@ movefile(p.path.subject,p.path.finalsubject);
         Log.refface(current_chain,cc(current_chain))    = ref_face;
         Log.testface(current_chain,cc(current_chain))   = test_face;
         Log.response(current_chain,cc(current_chain))   = response;
-        
-       
-        
-    end
-
-function SetLogB
-        
-       
-        
         Log.alpha(current_chain,cc(current_chain))      = PM{current_chain}.threshold(end);
         Log.seAlpha(current_chain,cc(current_chain))    = PM{current_chain}.seThreshold(end);
         Log.beta(current_chain,cc(current_chain))       = PM{current_chain}.slope(end);
@@ -330,7 +325,7 @@ function SetLogB
         end
         
         p.path.experiment             = [p.path.baselocation 'FearGeneralization_Ethnic\'];
-        p.path.stimfolder             = 'ethno_pilote\grayfaces_2403';
+        p.path.stimfolder             = 'ethno_pilote\64faces';
         p.path.stim                   = [p.path.baselocation 'Stimuli\Gradients\' p.path.stimfolder '\'];
         %
         p.subID                       = sprintf('sub%02d',subject);
@@ -507,6 +502,55 @@ function SetLogB
         shuffled        = vector(idx(1:N));
         shuffled        = shuffled(:);
   end
+
+    function ShowInstruction(nInstruct)
+        
+        [text]=GetText(nInstruct);
+        ShowText(text);
+        %let subject read it and ask confirmation to proceed.
+        
+        KbStrokeWait;
+        
+        Screen('FillRect',p.ptb.w,p.stim.bg);
+        Screen('Flip',p.ptb.w);
+        
+        function ShowText(text)
+            
+            
+            Screen('FillRect',p.ptb.w,p.stim.bg);
+            %DrawFormattedText(p.ptb.w, text, p.text.start_x, 'center',p.stim.white,[],[],[],2,[]);
+            DrawFormattedText(p.ptb.w, text, 'center', 'center',p.stim.white,[],[],[],2,[]);
+            Screen('Flip',p.ptb.w);
+            
+            %show the messages at the experimenter screen
+            fprintf([repmat('=',1,50) '\n']);
+            fprintf('Subject''s monitor:\n');
+            fprintf(text);
+            fprintf([repmat('=',1,50) '\n']);
+            
+        end
+        
+        function [text]=GetText(nInstruct);
+            
+            
+            if nInstruct == 1
+                text = ['Du siehst nun nacheinander zwei Gesichter.\n'...
+                    '\n'...
+                    'Danach wirst Du gefragt, ob die Gesichter unterschiedlich oder gleich waren.\n'...
+                    '\n'...
+                    'Benutze dazu die Pfeiltasten (links, rechts) und die obere Taste zum Bestätigen.\n'...
+                    '\n'...
+                    'Wenn du noch Fragen hast, kannst du jetzt den Versuchsleiter fragen.\n'...
+                    '\n'...
+                    'Drücke ansonsten die mittlere Taste,\n'...
+                    '   um das Experiment zu starten.\n' ...
+                    ];
+            elseif nInstruct == 2%end
+                text = ['Experiment beendet!\n'];
+                
+            end
+        end
+    end
 %     function PlotProcedure
 %         plotproc=figure(1);
 %         %         title(sprintf('Threshold Estimation for subject %02d',tchain),'FontSize',14)
@@ -514,11 +558,11 @@ function SetLogB
 %             subplot(2,2,sub)
 %             t = 1:length(Log.x(sub));
 %             hold on;
-%             plot(t,abs(Log{sub}.x),'bo-');
+%             plot(t,abs(Log.x(sub)),'bo-');
 %             errorbar(t,Log.alpha(sub),Log.seAlpha(sub),'r--')
 %             plot(t(Log.response(sub) == 1),Log.x(sub)(Log.response(sub) == 1),'ko', ...
 %                 'MarkerFaceColor','k');
-%             plot(t(Log.response(sub) == 0),Log{sub}.x(Log{sub}.response == 0),'ko', ...
+%             plot(t(Log.response(sub) == 0),Log.x(sub)(Log.response(sub) == 0),'ko', ...
 %                 'MarkerFaceColor','w');
 %             
 %             set(gca,'FontSize',12);
