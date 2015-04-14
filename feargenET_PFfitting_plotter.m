@@ -118,6 +118,11 @@ end
 % % plotting the real observer's procedure
 load('C:\Users\onat\Documents\Experiments\FearGeneralization_Ethnic\data\')
 figure
+title('Procedure Subject 01')
+
+for chain=1:4
+subplot(2,2,chain)
+
 plot(Log.globaltrial(chain,:),abs(Log.x(chain,:)),'bo-')
 hold on;
 plot(Log.globaltrial(chain,(Log.response(chain,:)==1)),abs(Log.x(chain,Log.response(chain,:)==1)),'ko','MarkerFaceColor','k')
@@ -125,6 +130,27 @@ plot(Log.globaltrial(chain,(Log.response(chain,:)==0)),abs(Log.x(chain,Log.respo
 errorbar(Log.globaltrial(chain,:),Log.alpha(chain,:),Log.seAlpha(chain,:),'r--')
 xlabel('overall trial')
 ylabel('presented \Delta X in degrees')
-title('Procedure Subject %02d',sub)
+title(sprintf('chain %d',chain))
+xlim([0 max(max(Log.globaltrial))])
+ylim([0 max(max(abs((Log.x))))])
+end
 
+legend('presented X (deg)','subject: Different','subject: Same','estimated \alpha (\pm SE)','Location','southoutside','orientation','horizontal')
+figure
+for chain=1:4
+subplot(2,2,chain)
+
+% plot(Log.globaltrial(chain,:),abs(Log.x(chain,:)),'bo-')
+% hold on;
+% plot(Log.globaltrial(chain,(Log.response(chain,:)==1)),abs(Log.x(chain,Log.response(chain,:)==1)),'ko','MarkerFaceColor','k')
+% plot(Log.globaltrial(chain,(Log.response(chain,:)==0)),abs(Log.x(chain,Log.response(chain,:)==0)),'ko','MarkerFaceColor','w')
+errorbar(Log.globaltrial(chain,:),Log.beta(chain,:),Log.seBeta(chain,:),'r--')
+xlabel('overall trial')
+ylabel('presented \Delta X in degrees')
+title(sprintf('chain %d',chain))
+xlim([0 max(max(Log.globaltrial))])
+ylim([-2 0])
+end
+
+legend('estimated \beta (\pm SE)','Location','southoutside','orientation','horizontal')
 
