@@ -12,7 +12,7 @@ function [S,i]=SecondOrderBalancedSequence(tItem,repetition,start_condition)
 %the starting condition of the sequence.
 %
 %Example Usage: 
-%S = [S,i]=SecondOrderBalancedSequence(8,ones(1,8)*34,1)
+%[S,i]=SecondOrderBalancedSequence(8,ones(1,8)*34,1)
 %
 % Sonja Schall, Selim Onat, 01-May-2012 19:34:05
 % Selim Onat, 30-Jan-2013 17:32:37 (extended to ability to have stimuli
