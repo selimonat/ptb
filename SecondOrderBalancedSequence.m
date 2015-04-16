@@ -1,25 +1,27 @@
 function [S,i]=SecondOrderBalancedSequence(tItem,repetition,start_condition)
 %[S,i]=SecondOrderBalancedSequence(tItem,repetition,start_condition)
 %
-%Generates a so-called t1r1 sequence, see Aguirre for fMRI applications.
-%These sequences are balanced over second-order transitions. TITEM is the
-%number of different conditions and REPETITION is the number of repetition
-%of a given stimulus. Even if REPETITION is equal to, note that each single
-%condition will be repeated TITEM times, this is a necessity of the
-%constraints characterizing second order balancing. Also note that the
-%total number of elements in the sequence will be TITEM*REPETITION+1, the
-%+1 is needed to make all transitions possible. START_CONDITION indicates
-%the starting condition of the sequence.
+%   Generates a so-called t1r1 sequence, see Aguirre for fMRI applications.
+%   These sequences are balanced over second-order transitions. 
 %
-%Example Usage: 
-%[S,i]=SecondOrderBalancedSequence(8,ones(1,8)*34,1)
+%   TITEM is the
+%   total number of conditions. REPETITION is the number of transitions. If
+%   REPETITION is equal to 1, all transitions are repeated only once.
+%   Therefore the number of total repetitions will depend on the TITEM,
+%   this is a necessity of the  constraints characterizing second order
+%   balancing. Also note that the total number of elements in the sequence
+%   will be TITEM*REPETITION+1, the  +1 is needed to make all transitions
+%   possible. START_CONDITION indicates the starting condition of the sequence.
 %
-% Sonja Schall, Selim Onat, 01-May-2012 19:34:05
-% Selim Onat, 30-Jan-2013 17:32:37 (extended to ability to have stimuli
-% with different occurences, this involves modifying the transition matrix)
-% Selim Onat, 06-Feb-2013 23:52:00 (outputs the location of the transitions
-% on the sequence as a matrix I. I(1,2,:) gives the locations of 1 to 2
-% transitions on the sequence S.
+%   Example Usage: 
+%   [S,i]=SecondOrderBalancedSequence(8,ones(1,8)*34,1)
+%
+%   Sonja Schall, Selim Onat, 01-May-2012 19:34:05
+%   Selim Onat, 30-Jan-2013 17:32:37 (extended to ability to have stimuli
+%   with different occurences, this involves modifying the transition matrix)
+%   Selim Onat, 06-Feb-2013 23:52:00 (outputs the location of the transitions
+%   on the sequence as a matrix I. I(1,2,:) gives the locations of 1 to 2
+%   transitions on the sequence S.
 
 % fprintf('Creating 2nd order balanced sequence...\n')
 counter = 0;
