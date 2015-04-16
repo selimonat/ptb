@@ -1,27 +1,31 @@
-function [S,i]=SecondOrderBalancedSequence(tItem,repetition,start_condition)
+function [S,i]=SecondOrderBalancedSequence(repetition,start_condition)
 %[S,i]=SecondOrderBalancedSequence(tItem,repetition,start_condition)
 %
 %   Generates a so-called t1r1 sequence, see Aguirre for fMRI applications.
-%   These sequences are balanced over second-order transitions.
+%   These sequences are balanced for second-order transitions. 
+%   The length of repetition determines the number of conditions, and each
+%   value in the repetition vector determines how many times a given
+%   transition occurs. For example, a vector [5 5 5 1] means that the
+%   sequence contains 5 transitions between conditions 1 to 3 and only 1
+%   transition to the 4th condition.
 %
-%   TITEM is the total number of conditions. REPETITION is the number of
-%   transitions. If REPETITION is equal to 1, all transitions are repeated
-%   only once. Therefore the number of total repetitions will depend on the
-%   TITEM, this is a necessity of the  constraints characterizing second
-%   order balancing. Also note that the total number of elements in the
-%   sequence will be TITEM*REPETITION+1, the  +1 is needed to make all
-%   transitions possible. START_CONDITION indicates the starting condition
-%   of the sequence.
+%   Note that the total number of elements in the sequence will be
+%   TITEM*REPETITION+1, the  +1 is needed to make all  transitions
+%   possible. This additional trial can be used as a dummy trial.
+%   START_CONDITION indicates the starting condition of the 
+%   sequence.
+%
+%   If REPETITION is a matrix, it is considered as a transition matrix as
+%   such. Thus arbitrary shaped transition matrices can be used, please
+%   note that not all transition matrices will converge to a solution.
 %
 %   Example Usage:
-%   [S,i]=SecondOrderBalancedSequence(8,ones(1,8)*34,1)
+%   as a vector:
+%   [S,i]=SecondOrderBalancedSequence(ones(1,8)*34,1)
+%   as a matrice:
+%   m = [1 2 1 2 1;2 1 2 1 2;1 2 1 2 1; 2 1 2 1 2;1 2 1 2 1];;
+%   [S,i]=SecondOrderBalancedSequence(m,1); 
 %
-%   Sonja Schall, Selim Onat, 01-May-2012 19:34:05
-%   Selim Onat, 30-Jan-2013 17:32:37 (extended to ability to have stimuli
-%   with different occurences, this involves modifying the transition matrix)
-%   Selim Onat, 06-Feb-2013 23:52:00 (outputs the location of the transitions
-%   on the sequence as a matrix I. I(1,2,:) gives the locations of 1 to 2
-%   transitions on the sequence S.
 
 %%
 %T=ones(tItem,tItem) .* repetition;%the old way, equal number of trials
