@@ -4,14 +4,14 @@ function [S,i]=SecondOrderBalancedSequence(tItem,repetition,start_condition)
 %   Generates a so-called t1r1 sequence, see Aguirre for fMRI applications.
 %   These sequences are balanced over second-order transitions. 
 %
-%   TITEM is the
-%   total number of conditions. REPETITION is the number of transitions. If
-%   REPETITION is equal to 1, all transitions are repeated only once.
-%   Therefore the number of total repetitions will depend on the TITEM,
-%   this is a necessity of the  constraints characterizing second order
-%   balancing. Also note that the total number of elements in the sequence
-%   will be TITEM*REPETITION+1, the  +1 is needed to make all transitions
-%   possible. START_CONDITION indicates the starting condition of the sequence.
+%   TITEM is the total number of conditions. REPETITION is the number of
+%   transitions. If REPETITION is equal to 1, all transitions are repeated
+%   only once. Therefore the number of total repetitions will depend on the
+%   TITEM, this is a necessity of the  constraints characterizing second
+%   order balancing. Also note that the total number of elements in the
+%   sequence will be TITEM*REPETITION+1, the  +1 is needed to make all
+%   transitions possible. START_CONDITION indicates the starting condition
+%   of the sequence.
 %
 %   Example Usage: 
 %   [S,i]=SecondOrderBalancedSequence(8,ones(1,8)*34,1)
@@ -26,7 +26,7 @@ function [S,i]=SecondOrderBalancedSequence(tItem,repetition,start_condition)
 % fprintf('Creating 2nd order balanced sequence...\n')
 counter = 0;
 success = 0;
-while ~success
+while ~success%when T sums to 0
     
     %T=ones(tItem,tItem) .* repetition;%the old way, equal number of trials
     %for each condition...
@@ -52,7 +52,7 @@ while ~success
     S   = [row col];
     ok  = 1;
     counter = 0;
-    while ok
+    while ok%it is OK when next stim is correctly selected
         %store the location of the transition on the sequence
         counter = counter + 1;
         i(row,col,T(row,col)) = counter; 
