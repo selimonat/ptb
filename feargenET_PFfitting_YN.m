@@ -33,13 +33,13 @@ stimRange       = 0:11.25:100;
 
 
 %Termination after n Trials
-numtrials0      = 60;
+numtrials      = 60;
 % percentage of obligatory x=0 trials
 p0=.2;
-numtrials  = numtrials0+numtrials0*p0;
+% numtrials  = numtrials0+numtrials0*p0;
 
 % make a break every ....th Trial
-breakpoint=5;
+breakpoint=70;
 %Function to be fitted during procedure
 PFfit = @PAL_CumulativeNormal;    %Shape to be assumed
 
@@ -64,8 +64,8 @@ PM{nc} = PAL_AMPM_setupPM('priorAlphaRange',prioraaRange,'priorBetaRange',...
 PM{nc}.reference_face   = face_shift(nc);
 PM{nc}.reference_circle = circle_shift(nc);
 if p0 ~= 0
-%     zerotrials(:,nc)=randsample([1:numtrials],numtrials0*p0);
-zerotrials(:,nc)=[1 3 5 7 9 11 13 15 17];
+zerotrials(:,nc)=randsample([1:numtrials],ceil(numtrials*p0));
+% zerotrials(:,nc)=[1 3 5 7 9 11 13 15 17];
 end
 % set up Log Variable
 SetupLog(nc);
@@ -151,7 +151,7 @@ while OK
             
         else
             true_a = 45;
-            true_s = 30;
+            true_s = 10;
             true_g = 0.2;
             true_l = 0.02;
             response = ObserverResponseFunction(PFfit,true_a,1/true_s,true_g,true_l,PM{current_chain}.xCurrent);
@@ -179,7 +179,7 @@ while OK
 
     %save Logfile here
    
-    save([p.path.path_param 'Log.mat'],'Log'); 
+    save([p.path.path_param 'Log' num2str(subject) '.mat'],'Log'); 
   
 
   
@@ -190,6 +190,7 @@ for chain=1:tchain
 fprintf('Chain %g: Estimated Threshold (alpha): %4.2f \n',chain,PM{chain}.threshold(end));
 fprintf('Chain %g: Estimated Slope (beta): %4.2f \n',chain,PM{chain}.slope(end));
 end
+save([p.path.dropbox 'Log' num2str(subject) '.mat'],'Log')
 % save PF Fit Plot
 feargenET_PFfitting_Fitplot(num2str(subject),Log)
 %clear the screen
@@ -321,11 +322,12 @@ movefile(p.path.subject,p.path.finalsubject);
         timestamp                     = datestr(now,30);
         p.path.subject                = [p.path.experiment 'data\tmp\' p.subID '_' timestamp '\'];
         p.path.finalsubject           = [p.path.experiment 'data\' p.subID '_' timestamp '\' ];
+        p.path.dropbox                = ['C:\Users\onat\Dropbox\feargen_lea\EthnoMaster\DiscriminationTask\pilotedata\data'];
         %create folder hierarchy
         mkdir(p.path.subject);
         mkdir([p.path.subject 'stimulation']);
         mkdir([p.path.subject 'pmf']);
-        p.path.path_param             = sprintf([regexprep(p.path.subject,'\\','\\\') 'stimulation\\']);
+        p.path.path_param             = sprintf([regexprep(p.path.subject,'\\','\\\') 'stimulation\\' 'p.mat']);
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
         %get stim files
