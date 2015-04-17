@@ -1,4 +1,4 @@
-function [d]=feargenET_PFfitting_SimulationPSImargYN0(alphas,SDs,total_trials,p0)
+function [d]=feargenET_PFfitting_SimulationPSImargYN0(alphas,SDs,total_trials,p0,logname)
 %
 % This function simulates the PF Fitting Process PAL_AMPM for different
 % alphas (i.e. thresholds), betas (in SD units) and trials per fitting process (total_trials).
@@ -13,7 +13,7 @@ function [d]=feargenET_PFfitting_SimulationPSImargYN0(alphas,SDs,total_trials,p0
 
 tSimulation     = 1000;
 %% Define prior, these are always the same so defining once is enough.
-prioraaRange    = linspace(0,180,50); %values of aa to include in prior
+prioraaRange    = linspace(0,90,50); %values of aa to include in prior
 %IS THIS RANGE OF BETA VALUES REASONABLE?
 priorBetaRange  = linspace(-2,0,50);  %values of log_10(beta) to include in prior
 %Range of lapse rates for the marginalized estimation of lambda
@@ -22,7 +22,7 @@ priorLambdaRange = 0:0.01:0.1;
 %Range of guess rates (Prins: 0:0.03:0.3);
 priorGammaRange = 0:0.03:0.3;
 % Stimulus values to select from (need not be equally spaced)
-stimRange       = 0:11.25:180;
+stimRange       = 0:11.25:90;
 % % conversion of parameter: SD to precision
 % beta            = 1./SDs;
 % % 2-D Gaussian prior
@@ -32,8 +32,10 @@ stimRange       = 0:11.25:180;
 PFfit           = @PAL_CumulativeNormal;    %Shape to be assumed
 
 %% generator parameters
-Lambdas         = [0 .025 .05 .1];
-Gammas          = [0 .1 .2 .3];
+% Lambdas         = [0 .025 .05 .1];
+% Gammas          = [0 .1 .2 .3];
+Lambdas =[0.02];
+Gammas  =[0.1];
 %% init the output variable
 talpha        = length(alphas);
 tSDs          = length(SDs);
@@ -41,7 +43,7 @@ ttotal_trials = length(total_trials);
 Init_var;
 %%
 c = zeros(1,3);%[tt_c aa_c ss_c ];%counters
-total_trials=total_trials+total_trials*p0;
+
 for tt = total_trials(:)';%how many trials for the "subject"
     c(1) = c(1) + 1;
     c(2) = 0;
@@ -60,7 +62,8 @@ for tt = total_trials(:)';%how many trials for the "subject"
             %verbose            
             fprintf('TotalTrial: %3.3g (%3d/%3d); Alpha: %3.3g (%3d/%3d); SD: %3.3g (%3d/%3d); %s; \n',tt,c(1),ttotal_trials,aa,c(2),talpha,ss,c(3),tSDs,datestr(now,'HH:MM:SS'))
             aaa = NaN(1,tSimulation);
-            sss = aaa;                        
+            sss = aaa;   
+            xxx = NaN(length(stimRange),tSimulation);
             for simulation_repeat = 1:tSimulation;%how many simulation runs                
                 %take a different lambda per subject
                 Lambda = Lambdas(mod(simulation_repeat-1,length(Lambdas))+1);
@@ -69,7 +72,7 @@ for tt = total_trials(:)';%how many trials for the "subject"
                 PM = dummy;%reuse 
                 
                 %add zero trials
-                zerotrials=randsample(1:(tt+tt*p0),tt*p0);
+                zerotrials=randsample(1:tt,ceil(tt*p0));
               
                 %% simulation proper
                 while ~PM.stop
@@ -93,7 +96,16 @@ for tt = total_trials(:)';%how many trials for the "subject"
                 ggg(simulation_repeat) = PM.guess(end);
                 ll(simulation_repeat)  = Lambda;
                 gg(simulation_repeat)  = Gamma;
+                
+                xx                     = NaN(length(stimRange),1);
+                for i=1:length(stimRange)
+                    xx(i)=length(find(PM.x==stimRange(i)));
+                end
+                
+                    
+                xxx(:,simulation_repeat)  = xx;
             end
+            d.nxmean=xxx;
             %store the estimated parameters
             d.alpha(:,c(2),c(3),c(1))          = aaa;
             d.sd(:,c(2),c(3),c(1))             = sss;
@@ -109,12 +121,12 @@ for tt = total_trials(:)';%how many trials for the "subject"
             %%save the stuff
             try
                 if ispc
-                    save_path        ='C:\Users\onat\Documents\GitHub\ExperimentalCode\simdata\';
+                    save_path        ='C:\Users\onat\Dropbox\feargen_lea\EthnoMaster\simdata\';
                     
                 elseif isunix
                     save_path        ='/home/kampermann/Documents/simdata/';
                 end
-                save(sprintf('%sd_PSImargYN_%s.mat',save_path,datestr(now,'yyyymmdd_HHMM')),'d');
+                save(sprintf('%sd_PSImargYN_%s_%s.mat',save_path,logname,datestr(now,'yyyymmdd_HHMM')),'d');
             catch
                 fprintf('Cannot save here...\n');
             end
