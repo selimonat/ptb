@@ -64,7 +64,8 @@ for tt = total_trials(:)';%how many trials for the "subject"
             aaa = NaN(1,tSimulation);
             sss = aaa;   
             xxx = NaN(length(stimRange),tSimulation);
-            for simulation_repeat = 1:tSimulation;%how many simulation runs                
+            for simulation_repeat = 1:tSimulation;%how many simulation runs        
+                fprintf('Simulation Run No %g\n',simulation_repeat);
                 %take a different lambda per subject
                 Lambda = Lambdas(mod(simulation_repeat-1,length(Lambdas))+1);
                 Gamma  = Gammas(mod(simulation_repeat-1,length(Gammas))+1);
@@ -117,11 +118,11 @@ for tt = total_trials(:)';%how many trials for the "subject"
             d.param.guess(:,c(2),c(3),c(1))    = gg;
             d.param.lapse(:,c(2),c(3),c(1))    = ll;
             d.param.ttrials(:,c(2),c(3),c(1))  = tt;
-            d.param.ttrials(:,c(2),c(3),c(1))  = p0;
+            d.param.zerotrials(:,c(2),c(3),c(1))  = p0;
             %%save the stuff
-            try
+             try
                 if ispc
-                    save_path        ='C:\Users\onat\Dropbox\feargen_lea\EthnoMaster\simdata\';
+                      save_path        ='C:\Users\onat\Dropbox\feargen_lea\EthnoMaster\simdata\diffSDs\trial_question';
                     
                 elseif isunix
                     save_path        ='/home/kampermann/Documents/simdata/';
@@ -130,8 +131,7 @@ for tt = total_trials(:)';%how many trials for the "subject"
             catch
                 fprintf('Cannot save here...\n');
             end
-            
-           
+         
         end
     end
 end

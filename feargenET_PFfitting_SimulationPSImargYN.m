@@ -11,7 +11,7 @@ function [d]=feargenET_PFfitting_SimulationPSImargYN(alphas,SDs,total_trials,log
 % (capital Lambda / Gamma)
 
 
-tSimulation     = 10;
+tSimulation     = 1000;
 %% Define prior, these are always the same so defining once is enough.
 prioraaRange    = linspace(0,100,50); %values of aa to include in prior
 %IS THIS RANGE OF BETA VALUES REASONABLE?
@@ -120,7 +120,7 @@ for tt = total_trials(:)';%how many trials for the "subject"
             catch
                 fprintf('Cannot save here...\n');
             end
-            
+         
            
         end
     end
