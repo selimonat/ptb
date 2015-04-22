@@ -110,10 +110,11 @@ for tt = total_trials(:)';%how many trials for the "subject"
             %%save the stuff
             try
                 if ispc
-                      save_path        ='C:\Users\onat\Dropbox\feargen_lea\EthnoMaster\simdata\diffSDs\trial_question';
-                    
+                    save_path        ='C:\Users\onat\Dropbox\feargen_lea\EthnoMaster\simdata\';
+                elseif ismac
+                    save_path        ='/Users/onat/Dropbox/feargen_lea/EthnoMaster/simdata/';
                 elseif isunix
-                    save_path        ='/home/kampermann/Documents/simdata/';
+                    save_path        ='/home/kampermann/Documents/simdata/';                
                 end
                 save(sprintf('%sd_PSImargYN_%s_%s.mat',save_path,logname,datestr(now,'yyyymmdd_HHMM')),'d');
             catch
