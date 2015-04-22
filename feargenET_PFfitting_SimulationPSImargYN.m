@@ -112,7 +112,7 @@ for tt = total_trials(:)';%how many trials for the "subject"
                 if ispc
                     save_path        ='C:\Users\onat\Dropbox\feargen_lea\EthnoMaster\simdata\';
                 elseif ismac
-                    save_path        ='/Users/onat/Desktop/';    
+                    save_path        ='/Users/onat/Dropbox/feargen_lea/EthnoMaster/simdata/';
                 elseif isunix
                     save_path        ='/home/kampermann/Documents/simdata/';                
                 end
