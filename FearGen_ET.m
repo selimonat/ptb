@@ -249,7 +249,7 @@ cleanup;
          Eyelink('Message', 'FX Onset at %03d',pos1);
          Log(TimeCrossOn,1,stim_id);%cross onset.                     
          %turn the eye tracker on
-         StartEyelinkRecording(stim_id,p_var_ExpPhase,oddball,ucs,pos1,p_ptb_CrossPosition_x);     
+         StartEyelinkRecording(stim_id,p_var_ExpPhase,oddball,ucs,pos1);     
          
          
          
@@ -354,7 +354,7 @@ cleanup;
         end
         
         p.path.experiment             = [p.path.baselocation 'FearGeneralization_Ethnic\'];
-        p.path.stimfolder             = 'ethno_pilote';
+        p.path.stimfolder             = 'ethno_pilote\8faces';
         p.path.stim                   = [p.path.baselocation 'Stimuli\Gradients\' p.path.stimfolder '\'];
         %
         p.subID                       = sprintf('sub%02d',subject);
@@ -796,7 +796,7 @@ cleanup;
         %fontsizes, font names.
         %Find the number of the screen to be opened        
         screens                     =  Screen('Screens');
-        p.ptb.screenNumber          =  1;%the maximum is the second monitor        
+        p.ptb.screenNumber          =  max(screens);%1;%the maximum is the second monitor        
         %Make everything transparent for debugging purposes.
         if debug
             commandwindow;
@@ -837,7 +837,7 @@ cleanup;
         %         [~, ny bb]                  = DrawFormattedText(p.ptb.w,'+','center','center');
         %         p.ptb.cross_shift           = [45 60];%incremental upper and lower cross positions
         %         p.ptb.CrossPosition_y       = p.ptb.midpoint(2)%[ny-p.ptb.cross_shift(1)  ny+p.ptb.cross_shift(2) ];
-        %         p.ptb.CrossPosition_x       = p.ptb.midpoint(1)%bb(1);%always the same
+        p.ptb.CrossPosition_x       = p.ptb.midpoint(1);%bb(1);%always the same
         %         %cross position for the eyetracker screen.
         %         p.ptb.CrossPositionET_x     = [p.ptb.midpoint(1) p.ptb.midpoint(1)];
         %         p.ptb.CrossPositionET_y     = [p.ptb.midpoint(2)-p.ptb.cross_shift(2) p.ptb.midpoint(2)+p.ptb.cross_shift(2)];
@@ -922,7 +922,7 @@ cleanup;
         Eyelink('Command', 'clear_screen %d', 0);
         Log(t,-8,NaN);
     end
-    function [t]=StartEyelinkRecording(nStim,phase,oddball,ucs,crosspositiony,crosspositionx)
+    function [t]=StartEyelinkRecording(nStim,phase,oddball,ucs,pos1)
         t = [];
         nStim = double(nStim);
         Eyelink('Message', 'TRIALID: %03d, PHASE: %02d, ODDBALL: %02d, UCS: %02d', nStim, phase, double(oddball), double(ucs));
@@ -943,8 +943,9 @@ cleanup;
         if nStim <= 16
             Eyelink('ImageTransfer',p_stim_files(nStim,:),p_ptb_imrect(1),p_ptb_imrect(2),p_ptb_imrect(3),p_ptb_imrect(4),p_ptb_imrect(1),p_ptb_imrect(2));
         end
-        Eyelink('Command', 'draw_cross %d %d 15',p_ptb_CrossPositionET_x(1),p_ptb_CrossPositionET_y(1) );
-        Eyelink('Command', 'draw_cross %d %d 15',p_ptb_CrossPositionET_x(2),p_ptb_CrossPositionET_y(2) );
+%         Eyelink('Command', 'draw_cross %d %d 15',p_ptb_CrossPositionET_x(1),p_ptb_CrossPositionET_y(1) );
+%         Eyelink('Command', 'draw_cross %d %d 15',p_ptb_CrossPositionET_x(2),p_ptb_CrossPositionET_y(2) );
+        Eyelink('Command', 'draw_cross %d %d 15',pos1(1),pos1(2))
         %
         %drift correction
         %EyelinkDoDriftCorrection(el,crosspositionx,crosspositiony,0,0);
