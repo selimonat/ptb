@@ -1,4 +1,4 @@
-function [p]=PainThreshold(subject,varargin)
+function [p]=exp_PainThreshold(subject,varargin)
 
 clear mex global functions
 cgshut;
@@ -35,20 +35,24 @@ cleanup;
         %message to show on the rating screen.
         message = 'War der Reiz schmerzhaft oder nicht?\nBewege den "Zeiger" mit der rechten und linken Pfeiltaste\n und bestätige deine Einschätzung mit der mit der oberen Pfeiltaste.';
         %
-        p.threshold.init.alphas        = log(0.1):0.177/100:log(50);
-        p.threshold.init.prior         = PAL_pdfNormal(p.threshold.init.alphas, log(3), log(2.5));
-        p.threshold.init.stopcriterion = 'trials';
-        p.threshold.init.stoprule      = 12;
-        p.threshold.init.PFfit         = @PAL_Gumbel;
-        p.threshold.init.beta          = 3.5;
-        p.threshold.init.lambda        = 0;
-        p.threshold.init.gamma         = 0;
-        p.threshold.init.meanmode      = 'mode';
-        p.threshold.final.factor       = [1.2 1.3 1.4];
+        p.threshold.init.alphas        = linspace(1,6,50);%log(0.1):0.177/100:log(50);
+        p.threshold.init.betas         = linspace(-2,0,50);
+        p.threshold.init.gamma         = linspace(0,0.2,10);
+        p.threshold.init.lambda        = linspace(0,0.05,5);
+        %p.threshold.init.prior         = PAL_pdfNormal(p.threshold.init.alphas, log(3), log(2.5));
+        p.threshold.init.numtrials      = 20; %12
+        p.threshold.init.PFfit         = @PAL_CumulativeNormal; %@PAL_Gumbel;
+       
+       
+        p.threshold.init.stimRange     = linspace(0,10,50);
+        
+         p.threshold.final.factor       = [1.5 2 2.5];
         %
-        p.threshold.RF = PAL_AMRF_setupRF('priorAlphaRange', p.threshold.init.alphas, 'prior', p.threshold.init.prior,...
-            'stopCriterion',p.threshold.init.stopcriterion,'stoprule',p.threshold.init.stoprule,'beta',p.threshold.init.beta,'gamma',p.threshold.init.gamma,...
-            'lambda',p.threshold.init.lambda,'PF',p.threshold.init.PFfit,'meanmode',p.threshold.init.meanmode);
+        %p.threshold.RF = PAL_AMRF_setupRF('priorAlphaRange', p.threshold.init.alphas, 'prior', p.threshold.init.prior,...
+        %   'stopCriterion',p.threshold.init.stopcriterion,'stoprule',p.threshold.init.stoprule,'beta',p.threshold.init.beta,'gamma',p.threshold.init.gamma,...
+        %   'lambda',p.threshold.init.lambda,'PF',p.threshold.init.PFfit,'meanmode',p.threshold.init.meanmode);
+        p.threshold.RF=PAL_AMPM_setupPM('priorAlphaRange', p.threshold.init.alphas,'priorBetaRange',...
+            p.threshold.init.betas,'priorLamdaRange',p.threshold.init.lambda,'priorGammaRange',p.threshold.init.gamma,'numtrials',p.threshold.init.numtrials, 'PF' , p.threshold.init.PFfit, 'stimRange',p.threshold.init.stimRange,'marginalize',[3 4]);
         %
         p.threshold.RF.xCurrent        = log(1);%start shock;
         %
@@ -61,9 +65,10 @@ cleanup;
             %
             counter = counter + 1;
             fprintf([repmat('=',1,50) '\n']);
-            fprintf('SHOCK No: %d of %d.\n',counter,p.threshold.init.stoprule);
+            fprintf('SHOCK No: %d of %d.\n',counter,p.threshold.init.numtrials);
             fprintf('!!! ADJUST THE SHOCK INTENSITY ON THE DIGITIMER !!!\n');
-            fprintf('    The intensity is now: %g\n',exp(p.threshold.RF.xCurrent));
+            %fprintf('    The intensity is now: %g\n',exp(p.threshold.RF.xCurrent));
+            fprintf('    The intensity is now: %g\n',p.threshold.RF.xCurrent);
             fprintf('    Experimenter: Press any key to deliver a shock.\n');
             fprintf('    Or escape to quit prematurely.\n');
             fprintf([repmat('=',1,50) '\n']);
@@ -84,7 +89,7 @@ cleanup;
                 %
                 response        = logical(response);
                 amplitude       = p.threshold.RF.xCurrent;
-                p.threshold.RF  = PAL_AMRF_updateRF(p.threshold.RF, amplitude, response);
+                p.threshold.RF  = PAL_AMPM_updatePM(p.threshold.RF, amplitude, response);
                 %
                 plot(p.threshold.RF.priorAlphaRange,p.threshold.RF.pdf,'r')
                 drawnow;
@@ -105,15 +110,31 @@ cleanup;
 % % %                 %plot(exp(alphas),RF.pdf,'r');
             end
         end
-        log_threshold   = p.threshold.RF.(p.threshold.init.meanmode);
-        p.threshold.final.estimated       = exp(log_threshold);
+        %log_threshold   = p.threshold.RF.(p.threshold.init.meanmode);
+        %p.threshold.final.estimated       = exp(log_threshold);
+        p.threshold.final.estimatedA=p.threshold.RF.threshold(end);
+        p.threshold.final.estimatedB=10^(p.threshold.RF.slope(end));
+        p.threshold.final.estimatedG=p.threshold.RF.guess(end);
+        p.threshold.final.estimatedL=p.threshold.RF.lapse(end);
+        
+        
         
         fprintf('\n\n\nRESULT:\n');
-        fprintf('The estimated pain threshold : %g mA\n',p.threshold.final.estimated);
+        fprintf('The estimated pain threshold : %g mA\n',p.threshold.final.estimatedA);
+        fprintf('The estimated slope : %g \n',10^(p.threshold.final.estimatedB));
+        fprintf('The estimated guess rate : %g \n',p.threshold.final.estimatedG);
+        fprintf('The estimated lapse : %g \n',p.threshold.final.estimatedL);
+        fprintf('\n')
+        
         fprintf('Choose an intensity:\n');
-        fprintf('Intensity to be used for factor x 1.2): %g mA\n',exp(log_threshold.*p.threshold.final.factor(1)));
-        fprintf('Intensity to be used for factor x 1.3): %g mA\n',exp(log_threshold.*p.threshold.final.factor(2)));
-        fprintf('Intensity to be used for factor x 1.4): %g mA\n',exp(log_threshold.*p.threshold.final.factor(3)));
+        fprintf('Intensity to be used for factor x 1.5): %g mA\n',exp(log_threshold.*p.threshold.final.factor(1)));
+        fprintf('Intensity to be used for factor x 2.0): %g mA\n',exp(log_threshold.*p.threshold.final.factor(2)));
+        fprintf('Intensity to be used for factor x 2.5): %g mA\n',exp(log_threshold.*p.threshold.final.factor(3)));
+        
+        fprintf('Stimulus Level at which PF reaches top: %g mA\n',...
+            PAL_CumulativeNormal([p.threshold.final.estimatedA p.threshold.final.estimatedB p.threshold.final.estimatedG p.threshold.final.estimatedL],...
+            1-2*p.threshold.final.estimatedL,'Inverse'));
+        
         fprintf('We will now ask whether this is bearable...\n');                
     end
     function ConfirmIntensity(factor)
@@ -312,7 +333,7 @@ cleanup;
             elseif nInstruct == 4%shock calibration
                 text = ['Wir werden nun deine Schmerzschwelle bestimmen.\n'...
                     '\n'...
-                    'Dafür wirst du mehrere (~10) elektrische Reize bekommen.\n' ...
+                    'Dafür wirst du mehrere (~20) elektrische Reize bekommen.\n' ...
                     '\n'...
                     'Bitte gib jeweils nach jedem Reiz an, ob er schmerzhaft war oder nicht.\n'...
                     '\n'...
