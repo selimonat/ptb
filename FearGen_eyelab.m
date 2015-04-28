@@ -1,4 +1,4 @@
-function [p]=FearGen_ET(subject,phase,csp,PainThreshold)
+function [p]=FearGen_eyelab(subject,phase,csp,PainThreshold)
 %[p]=Conditioning(subject,NthSeq,CSpface,phase,PainThreshold)
 %
 %Used for the last recording (3rd Scan Request) sessions of the Feargen
@@ -46,36 +46,9 @@ TimeTrackerOn             = [];
 TimeCrossOn               = [];   
 p_var_ExpPhase            = [];
 p_var_event_count         = 0;
-p_out_log                 = p.out.log;
-p_ptb_w                   = p.ptb.w;
-p_ptb_stim_sprites        = p.ptb.stim_sprites;
-p_ptb_CrossPosition_x     = p.ptb.CrossPosition_x;
-p_ptb_imrect              = p.ptb.imrect;
-p_ptb_CrossPositionET_x   = p.ptb.CrossPositionET_x;
-p_ptb_CrossPositionET_y   = p.ptb.CrossPositionET_y;
-p_ptb_slack               = p.ptb.slack;
-p_stim_white              = p.stim.white;
-p_ptb_midpoint            = p.ptb.midpoint;
-p_com_lpt_address         = p.com.lpt.address;
-p_com_lpt_StimOnset       = p.com.lpt.StimOnset;
-p_com_lpt_UCS             = p.com.lpt.UCS;
-p_com_lpt_FixOnset        = p.com.lpt.FixOnset;
-p_com_lpt_FixMove         = p.com.lpt.FixMove;
-p_com_lpt_StimOffset      =  p.com.lpt.StimOffset;
 
-p_duration_shockpulse     = p.duration.shockpulse;
-p_duration_crossmoves     = p.duration.crossmoves;
-p_duration_stim           = p.duration.stim;
-p_duration_onset2shock    = p.duration.onset2shock;
-p_duration_keep_recording = p.duration.keep_recording;
-p_duration_prestim        = p.duration.prestim;
-p_stim_files              = p.stim.files;
-p_duration_prestim_ori    = p.duration.prestim_ori;
-% p.com.serial              = p.com.serial;
-%
-p_presentation_cross_position = p.presentation.cross_position;
-p_ptb_device                  = p.ptb.device;
-p_keys_confirm                = p.keys.confirm;
+
+
 %%
 InitEyeLink;
 WaitSecs(2);
@@ -132,10 +105,10 @@ end
 %get the eyelink file back to this computer
 StopEyelink(p.path.edf);
 %trim the log file and save
-p_out_log = p_out_log(sum(isnan(p_out_log),2) ~= size(p_out_log,2),:);
+p.out.log = p.out.log(sum(isnan(p.out.log),2) ~= size(p.out.log,2),:);
 %shift the time so that the first timestamp is equal to zero
-p_out_log(:,1) = p_out_log(:,1) - p_out_log(1);
-p.out.log      = p_out_log;%copy it to the output variable.
+p.out.log(:,1) = p.out.log(:,1) - p.out.log(1);
+p.out.log      = p.out.log;%copy it to the output variable.
 save(p.path.path_param,'p');
 %
 %move the file to its final location.
@@ -165,8 +138,8 @@ cleanup;
             Buzz;
         end
         %
-        message   = 'Bewege den "Zeiger" mit der rechten und linken Pfeiltaste\n und besttige deine Einschï¿½tzung mit der mit der oberen Pfeiltaste.';
-        rect        = [p.ptb.width*0.2  p_ptb_midpoint(2) p.ptb.width*0.6 100];
+        message   = 'Bewege den "Zeiger" mit der rechten und linken Pfeiltaste\n und bestätige deine Einschätzung mit der mit der oberen Pfeiltaste.';
+        rect        = [p.ptb.width*0.2  p.ptb.midpoint(2) p.ptb.width*0.6 100];
         response = RatingSlider(rect,2,1,p.keys.increase,p.keys.decrease,p.keys.confirm,{ 'nicht\nerträglich' 'erträglich'},message,0);
         if response == 2
             fprintf('All is fine :)\n');
@@ -186,26 +159,28 @@ cleanup;
     function PresentStimuli
         %Enter the presentation loop and wait for the first pulse to
         %arrive.   
-            p_presentation_stim_id   = p.presentation.stim_id;            
-            p_ptb_CrossPosition_y    = p.ptb.CrossPosition_y;
-            p_presentation_isi       = p.presentation.isi;
-            p_presentation_ucs       = p.presentation.ucs;
-            p_presentation_oddball   = p.presentation.oddball;
-            p_presentation_prestim_dur = p.presentation.prestim_duration;
-            %      
+                        
+           
+           
+         
+            
+%            
+              
             TimeEndStim                 = GetSecs;
         for nTrial  = 1:p.presentation.tTrial;
             %
             %Get the variables that Trial function needs.
-            stim_id      = p_presentation_stim_id(nTrial);
-%             pos1         = p_ptb_CrossPosition_y(p_presentation_cross_position(nTrial));
-            pos1         = p.ptb.CrossPosition(nTrial);
-            %pos2         = p_ptb_CrossPosition_y(3-p_presentation_cross_position(nTrial));
-            ISI          = p_presentation_isi(nTrial);
-            ucs          = p_presentation_ucs(nTrial);
-            oddball      = p_presentation_oddball(nTrial);
-            prestimdur   = p_presentation_prestim_dur(nTrial);
-            %
+            stim_id      = p.presentation.stim_id(nTrial);
+%           
+            pos1         = p.ptb.CrossPosition(nTrial,:);
+           
+            ISI          = p.presentation.isi(nTrial);
+            ucs          = p.presentation.ucs(nTrial);
+            oddball      = p.presentation.oddball(nTrial);
+            prestimdur   = p.duration.prestim;
+            %prestimdur   = p_presentation_prestim_dur(nTrial);
+            
+            
             fprintf('%d of %d, S: %d, ISI: %d, UCS: %d, ODD: %d.\n',nTrial,p.presentation.tTrial,stim_id,ISI,ucs,oddball);
             %
 
@@ -217,13 +192,13 @@ cleanup;
 %                OnsetTime = OnsetTime + GetSecs - jetz;
 %             end
             
-            KbQueueStart(p_ptb_device);%monitor keypresses...
+            KbQueueStart(p.ptb.device);%monitor keypresses...
             
             %Start with the trial, here is time-wise sensitive must be
             %optimal            
             [TimeEndStim]= Trial(OnsetTime, prestimdur, stim_id , ucs  , pos1 ,  oddball);            
             %
-            [keypressed, firstPress]=KbQueueCheck(p_ptb_device);
+            [keypressed, firstPress]=KbQueueCheck(p.ptb.device);
             %if the press was after stimulus onset and before stimulus
             %offset
             if keypressed && (firstPress(p_keys_confirm) > OnsetTime) && (firstPress(p_keys_confirm) < TimeEndStim)
@@ -237,16 +212,16 @@ cleanup;
     function [TimeEndStim]=Trial(TimeStimOnset , prestimdur, stim_id , ucs  , pos1 , oddball )
         %get all the times
          TimeCrossOnset     = TimeStimOnset  - prestimdur;
-         %TimeCrossJumpTime  = TimeStimOnset  + p_duration_crossmoves - p_ptb_slack;
-         TimeEndStim        = TimeStimOnset  + p_duration_stim;                
-         TimeStartShock     = TimeStimOnset  + p_duration_onset2shock;
-         TimeTrackerOff     = TimeStimOnset  + p_duration_keep_recording;                
+         %TimeCrossJumpTime  = TimeStimOnset  + p.duration.crossmoves - p.ptb.slack;
+         TimeEndStim        = TimeStimOnset  + p.duration.stim;                
+         TimeStartShock     = TimeStimOnset  + p.duration.onset2shock;
+         TimeTrackerOff     = TimeStimOnset  + p.duration.keep_recording;                
          
          %% Fixation Onset
-         Screen('DrawText', p_ptb_w, double('+'), p_ptb_CrossPosition_x,pos1, p_stim_white);            
-         TimeCrossOn  = Screen('Flip',p_ptb_w,TimeCrossOnset,0);            
-         MarkCED(p_com_lpt_address,p_com_lpt_FixOnset);
-         Eyelink('Message', 'FX Onset at %03d',pos1);
+         Screen('DrawText', p.ptb.w, double('+'), pos1(1),pos1(2), p.stim.white);            
+         TimeCrossOn  = Screen('Flip',p.ptb.w,TimeCrossOnset,0);            
+         MarkCED(p.com.lpt.address,p.com.lpt.FixOnset);
+         Eyelink('Message', 'FX Onset at %03d %03d',pos1(1),pos1(2));
          Log(TimeCrossOn,1,stim_id);%cross onset.                     
          %turn the eye tracker on
          StartEyelinkRecording(stim_id,p_var_ExpPhase,oddball,ucs,pos1);     
@@ -254,53 +229,30 @@ cleanup;
          
          
         %% Draw the stimulus to the buffer        
-        Screen('DrawTexture', p_ptb_w, p_ptb_stim_sprites(stim_id));
-        %Screen('DrawText'   , p_ptb_w, double('+'), p_ptb_CrossPosition_x,pos1, p_stim_white);
+        Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(stim_id));
+        %Screen('DrawText'   , p.ptb.w, double('+'), p.ptb.CrossPosition_x,pos1, p.stim.white);
         if oddball%add freckles to the face
             x = randn(1,100)*35;
             y = randn(1,100)*10;
             s = rand(1,100);%[0 1]
-            Screen('DrawDots',p_ptb_w,[x;y],1+s.*1.5,[180 0 0 160],p_ptb_midpoint,1);
+            Screen('DrawDots',p.ptb.w,[x;y],1+s.*1.5,[180 0 0 160],p.ptb.midpoint,1);
             %the dots size
         end
-        Screen('DrawingFinished',p_ptb_w,0);
+        Screen('DrawingFinished',p.ptb.w,0);
                 
         %% STIMULUS ONSET                        
         %Here we wait only for the next pulse.
         %The proper amount is obtained with the second call of WaitPulse
         %below, before the onset of the fixation cross.
         %fprintf('Will Wait for the pulse to Stim Onset\n');
-        TimeStimOnset  = Screen('Flip',p_ptb_w,TimeStimOnset,0);%asap and dont clear
+        TimeStimOnset  = Screen('Flip',p.ptb.w,TimeStimOnset,0);%asap and dont clear
         %send eyelink and ced a marker asap
         Eyelink('Message', 'Stim Onset');
         Eyelink('Message', 'SYNCTIME');
-        MarkCED( p_com_lpt_address, p_com_lpt_StimOnset );                
+        MarkCED( p.com.lpt.address, p.com.lpt.StimOnset );                
         Log(TimeStimOnset,2,stim_id);%log the stimulus onset
         
-        
-        %% CROSS JUMPS                        
-        %Update the image on the buffer with the new cross_pos
-        %Screen('DrawTexture', p_ptb_w, p_ptb_stim_sprites(stim_id));
-        %Screen('DrawText'   , p_ptb_w, double('+'), p_ptb_CrossPosition_x, pos2, p_stim_white);
-        %if oddball == 1
-        %    Screen('DrawDots',p_ptb_w,[x;y],1+s.*1.5,[180 0 0 160],p_ptb_midpoint,2);
-        %end
-        %Screen('DrawingFinished',p_ptb_w,0);
-        
-        %present it after 750 ms following Pulse Detection.
-        %why pulse detection and not stimulus onset. Because we don't want
-        %additional variability, everything should be defined with respect
-        %to the arrival...
-        %TimeCrossJumpTime = Screen('Flip', p_ptb_w, TimeCrossJumpTime , 0);
-        
-        %send eyelink and ced a marker
-        %MarkCED(p_com_lpt_address,p_com_lpt_FixMove);
-        %Eyelink('Message', 'FX Moves to %03d' ,pos2);
-        %Log(TimeCrossJumpTime,3,NaN);%log the fixation cross move
-                        
-        %% UCS 
-        %Screen('DrawingFinished',p_ptb_w,0);
-        
+          
         if ucs == 1
             %%%%%%%%%%%%%%%%%%%%%%%
             %Deliver shock and stim off immediately            
@@ -313,9 +265,9 @@ cleanup;
         end
         
         %% STIM OFF immediately
-        TimeEndStim = Screen('Flip',p_ptb_w,TimeEndStim,0);
+        TimeEndStim = Screen('Flip',p.ptb.w,TimeEndStim,0);
         %send eyelink and ced a marker        
-        MarkCED(p_com_lpt_address,p_com_lpt_StimOffset);
+        MarkCED(p.com.lpt.address,p.com.lpt.StimOffset);
         Eyelink('Message', 'Stim Offset');            
         Eyelink('Message', 'BLANK_SCREEN');
         Log(TimeEndStim,-2,stim_id);%log the stimulus offset
@@ -359,9 +311,9 @@ cleanup;
         %
         p.subID                       = sprintf('sub%02d',subject);
         p.path.edf                    = sprintf([p.subID 'p%02d' ],phase);
-        timestamp                     = datestr(now,30);
-        p.path.subject                = [p.path.experiment 'data\tmp\' p.subID '_' timestamp '\'];
-        p.path.finalsubject           = [p.path.experiment 'data\' p.subID '_' timestamp '\' ];
+        %timestamp                     = datestr(now,30);
+        p.path.subject                = [p.path.experiment 'data\tmp\' p.subID '\'];
+        p.path.finalsubject           = [p.path.experiment 'data\' p.subID '\' ];
         %create folder hierarchy
         mkdir(p.path.subject);
         mkdir([p.path.subject 'scr']);
@@ -453,11 +405,14 @@ cleanup;
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
          %stimulus sequence
         if phase == 1
-            seq = FeargenSequence_ET( 1:8, [], 4,1);
+            seq = seq_feargen_eyelab(csp,'b');
         elseif phase == 3%conditioning
-            seq = FeargenSequence_ET( [csp csn], csp, 30,2);
+            seq = seq_feargen_eyelab(csp,'c');
         elseif phase == 4
-            seq = FeargenSequence_ET( 1:8, csp, 4,1);
+            %seq = seq_feargen_eyelab(csp,'t');
+        baseline=load(sprintf([regexprep(p.path.subject,'\\','\\\') 'stimulation\\param_phase_01.mat']),'p');
+        p.presentation=baseline.p.presentation;
+        p.presentation.stim_id(p.presentation.stim_id==9)=csp;
         end
         %create the randomized design
         p.stim.cs_plus                 = csp;%index of cs stimulus, this is the one paired to shock
@@ -500,12 +455,12 @@ cleanup;
         SliderTextL = GetText(13);
         SliderTextR = GetText(12);
         %
-        Screen('FillRect', p_ptb_w , p.stim.bg);
-        Screen('Flip',p_ptb_w);
+        Screen('FillRect', p.ptb.w , p.stim.bg);
+        Screen('Flip',p.ptb.w);
         WaitSecs(2);
         %
         ShowInstruction(7,1);
-        rect        = [p.ptb.width*0.2  p_ptb_midpoint(2) p.ptb.width*0.6 100];
+        rect        = [p.ptb.width*0.2  p.ptb.midpoint(2) p.ptb.width*0.6 100];
         tRatend     = length(rating_seq);
         %save the rating sequence just for security
         p.out.rating_seq = rating_seq;
@@ -523,13 +478,13 @@ cleanup;
             %We will turn on the fixation cross and start the tracker
             %for the first trial. These have to be done before the main
             %for loop.            
-            Screen('DrawText', p_ptb_w, double('+'), p.ptb.CrossPosition_x, pos1, p_stim_white);
-            t  = Screen('Flip',p_ptb_w);
+            Screen('DrawText', p.ptb.w, double('+'), p.ptb.CrossPosition_x, pos1, p.stim.white);
+            t  = Screen('Flip',p.ptb.w);
             %
             StartEyelinkRecording(stim_id,p_var_ExpPhase,0,0,pos1,p.ptb.CrossPosition_x);
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %Mark the onset
-            MarkCED(p_com_lpt_address,p_com_lpt_FixOnset);
+            MarkCED(p.com.lpt.address,p.com.lpt.FixOnset);
             Eyelink('Message', 'FX Onset at %03d',pos1);
             Log(t,1,pos1);%log the mark onset...
             
@@ -559,7 +514,7 @@ cleanup;
         rate         = reshape(rate(i),p.rating.repetition,p.stim.tFile)';
         p.out.rating = rate;
         save(p.path.path_param,'p');
-        Screen('FillRect',p_ptb_w,p.stim.bg);
+        Screen('FillRect',p.ptb.w,p.stim.bg);
         p.stim.bg = BG;
         %
         save(p.path.path_param,'p');
@@ -568,8 +523,8 @@ cleanup;
         %
         %Detect the bounding boxes of the labels.
         for nlab = 1:2
-            [~ , ~, bb(nlab,:)]=DrawFormattedText(p_ptb_w,labels{nlab}, 'center', 'center',  p_stim_white,[],[],[],2);
-            Screen('FillRect',p_ptb_w,p.stim.bg);
+            [~ , ~, bb(nlab,:)]=DrawFormattedText(p.ptb.w,labels{nlab}, 'center', 'center',  p.stim.white,[],[],[],2);
+            Screen('FillRect',p.ptb.w,p.stim.bg);
         end
         bb = max(bb);
         bb_size = bb(3)-bb(1);%vertical size of the bb.
@@ -591,8 +546,8 @@ cleanup;
                 elseif keyCode == confirm
                     WaitSecs(0.1);
                     ok = 0;
-                    Screen('FillRect',p_ptb_w,p.stim.bg);
-                    t=Screen('Flip',p_ptb_w);
+                    Screen('FillRect',p.ptb.w,p.stim.bg);
+                    t=Screen('Flip',p.ptb.w);
                 end
             end
         end
@@ -606,26 +561,26 @@ cleanup;
             ss                   = tick_size/5*0.9;%slider size.
             %
             for tick = 1:length(tick_x)%draw ticks
-                Screen('DrawLine', p_ptb_w, [255 0 0], tick_x(tick), rect(2), tick_x(tick), rect(2)+rect(4) , 3);
+                Screen('DrawLine', p.ptb.w, [255 0 0], tick_x(tick), rect(2), tick_x(tick), rect(2)+rect(4) , 3);
                 if tick <= tSection && numbersOn
-                    Screen('TextSize', p_ptb_w,p.text.fontsize./2);
-                    DrawFormattedText(p_ptb_w, mat2str(tick) , tick_x(tick)+ss/2, rect(2)+rect(4),  p_stim_white);
-                    Screen('TextSize', p_ptb_w,p.text.fontsize);
+                    Screen('TextSize', p.ptb.w,p.text.fontsize./2);
+                    DrawFormattedText(p.ptb.w, mat2str(tick) , tick_x(tick)+ss/2, rect(2)+rect(4),  p.stim.white);
+                    Screen('TextSize', p.ptb.w,p.text.fontsize);
                 end
                 if tick == 1
-                    DrawFormattedText(p_ptb_w, labels{1},tick_x(tick)-bb_size*1.4,rect(2), p_stim_white);
+                    DrawFormattedText(p.ptb.w, labels{1},tick_x(tick)-bb_size*1.4,rect(2), p.stim.white);
                 elseif tick == tSection+1
-                    DrawFormattedText(p_ptb_w, labels{2},tick_x(tick)+bb_size*0.4,rect(2), p_stim_white);
+                    DrawFormattedText(p.ptb.w, labels{2},tick_x(tick)+bb_size*0.4,rect(2), p.stim.white);
                 end
             end
             %slider coordinates
             slider = [ tick_x(position)+tick_size*0.1 rect(2) tick_x(position)+tick_size*0.9 rect(2)+rect(4)];
             %draw the slider
-            Screen('FillRect',p_ptb_w, p_stim_white, round(slider));
-            Screen('TextSize', p_ptb_w,p.text.fontsize./2);
-            DrawFormattedText(p_ptb_w,message, 'center', p_ptb_midpoint(2)*0.2,  p_stim_white,[],[],[],2);
-            Screen('TextSize', p_ptb_w,p.text.fontsize);
-            t = Screen('Flip',p_ptb_w);
+            Screen('FillRect',p.ptb.w, p.stim.white, round(slider));
+            Screen('TextSize', p.ptb.w,p.text.fontsize./2);
+            DrawFormattedText(p.ptb.w,message, 'center', p.ptb.midpoint(2)*0.2,  p.stim.white,[],[],[],2);
+            Screen('TextSize', p.ptb.w,p.text.fontsize);
+            t = Screen('Flip',p.ptb.w);
             Log(t,6,NaN);
         end
     end
@@ -645,8 +600,8 @@ cleanup;
             else
                 WaitSecs(2.5+rand(1));
             end
-            Screen('FillRect',p_ptb_w,p.stim.bg);
-            t = Screen('Flip',p_ptb_w);
+            Screen('FillRect',p.ptb.w,p.stim.bg);
+            t = Screen('Flip',p.ptb.w);
             Log(t,-5,nInstruct);
         else
             if nInstruct ~= 10%this is for the Reiz kommnt
@@ -659,10 +614,10 @@ cleanup;
         
         function ShowText(text)
             
-            Screen('FillRect',p_ptb_w,p.stim.bg);
-            %DrawFormattedText(p_ptb_w, text, p.text.start_x, 'center',p_stim_white,[],[],[],2,[]);
-            DrawFormattedText(p_ptb_w, text, 'center', 'center',p_stim_white,[],[],[],2,[]);
-            t=Screen('Flip',p_ptb_w);
+            Screen('FillRect',p.ptb.w,p.stim.bg);
+            %DrawFormattedText(p.ptb.w, text, p.text.start_x, 'center',p.stim.white,[],[],[],2,[]);
+            DrawFormattedText(p.ptb.w, text, 'center', 'center',p.stim.white,[],[],[],2,[]);
+            t=Screen('Flip',p.ptb.w);
             Log(t,5,nInstruct);
             %show the messages at the experimenter screen
             fprintf('=========================================================\n');
@@ -844,14 +799,16 @@ cleanup;
         %         %%
         [nx, ny bb]                  = DrawFormattedText(p.ptb.w,'+','center','center');
         
-        p.ptb.cross_angles=0:45:315;
+        p.ptb.cross_angles=linspace(0,30,17);
         p.ptb.cross_radius=520; %in px
-        p.ptb.CrossPosition=[cos(RandSample(p.ptb.cross_angles,p.presentation.tTrial))*p.ptb.cross_radius+p.ptb.midpoint(1) ...
-            sin(RandSample(p.ptb.cross_angles,p.presentation.tTrial))*p.ptb.cross_radius+p.ptb.midpoint(2)];
+        p.ptb.cross_angle_trials=RandSample(p.ptb.cross_angles,[p.presentation.tTrial,1]);
+        p.ptb.cross_direction=[-1 1];
+        p.ptb.CrossPosition=[cosd(p.ptb.cross_angle_trials)*p.ptb.cross_radius+p.ptb.midpoint(1) ...
+            sind(p.ptb.cross_angle_trials)*p.ptb.cross_radius+p.ptb.midpoint(2)];
         
         %cross position for the eyetracker screen.
-        p.ptb.CrossPositionET_x     = [p.ptb.midpoint(1) p.ptb.midpoint(1)];
-        p.ptb.CrossPositionET_y     = [p.ptb.midpoint(2)-p.ptb.cross_shift(2) p.ptb.midpoint(2)+p.ptb.cross_shift(2)];
+%         p.ptb.CrossPositionET_x     = [p.ptb.midpoint(1) p.ptb.midpoint(1)];
+%         p.ptb.CrossPositionET_y     = [p.ptb.midpoint(2)-p.ptb.cross_shift(2) p.ptb.midpoint(2)+p.ptb.cross_shift(2)];
         %%
         %priorityLevel=MaxPriority(['GetSecs'],['KbCheck'],['KbWait'],['GetClicks']);
         Priority(MaxPriority(p.ptb.w));
@@ -930,7 +887,7 @@ cleanup;
         % overlay background when performing Data Viewer analysis.
         WaitSecs(0.01);
         %return
-        Eyelink('Message', '!V IMGLOAD CENTER %s %d %d', p_stim_files(nStim,:), p_ptb_midpoint(1), p_ptb_midpoint(2));
+        Eyelink('Message', '!V IMGLOAD CENTER %s %d %d', p.stim.files(nStim,:), p.ptb.midpoint(1), p.ptb.midpoint(2));
         % This supplies the title at the bottom of the eyetracker display
         Eyelink('Command', 'record_status_message "Stim: %02d, Phase: %d"', nStim, phase);
         %
@@ -941,7 +898,7 @@ cleanup;
         Eyelink('Command', 'clear_screen %d', 0);
         %draw the image on the screen but also the two crosses
         if nStim <= 16
-            Eyelink('ImageTransfer',p_stim_files(nStim,:),p_ptb_imrect(1),p_ptb_imrect(2),p_ptb_imrect(3),p_ptb_imrect(4),p_ptb_imrect(1),p_ptb_imrect(2));
+            Eyelink('ImageTransfer',p.stim.files(nStim,:),p.ptb.imrect(1),p.ptb.imrect(2),p.ptb.imrect(3),p.ptb.imrect(4),p.ptb.imrect(1),p.ptb.imrect(2));
         end
 %         Eyelink('Command', 'draw_cross %d %d 15',p_ptb_CrossPositionET_x(1),p_ptb_CrossPositionET_y(1) );
 %         Eyelink('Command', 'draw_cross %d %d 15',p_ptb_CrossPositionET_x(2),p_ptb_CrossPositionET_y(2) );
@@ -965,9 +922,9 @@ cleanup;
         shuffled        = shuffled(:);
     end
     function Buzz
-        outp(p_com_lpt_address, p_com_lpt_UCS );
-        WaitSecs(p_duration_shockpulse);
-        outp(p_com_lpt_address, 0);
+        outp(p.com.lpt.address, p.com.lpt.UCS );
+        WaitSecs(p.duration.shockpulse);
+        outp(p.com.lpt.address, 0);
         WaitSecs(p.duration.intershockpulse);
     end
     function MarkCED(socket,port)
@@ -989,7 +946,7 @@ cleanup;
         [~, vs] = Eyelink('GetTrackerVersion');
         fprintf('=================\nRunning experiment on a ''%s'' tracker.\n', vs );
         %
-        el                          = EyelinkInitDefaults(p_ptb_w);
+        el                          = EyelinkInitDefaults(p.ptb.w);
         %update the defaults of the eyelink tracker
         el.backgroundcolour         = p.stim.bg;
         el.msgfontcolour            = WhiteIndex(el.window);
@@ -1058,7 +1015,7 @@ cleanup;
         IOPort('Close',p.com.serial);
         commandwindow;
         ListenChar(0);
-        KbQueueRelease(p_ptb_device);
+        KbQueueRelease(p.ptb.device);
     end
     function CalibrateEL
         fprintf('=================\n=================\nEntering Eyelink Calibration\n')
@@ -1101,10 +1058,10 @@ cleanup;
         %       disp(x)
         %   end
         % 
-        p_out_log(p_var_event_count,:)   = [ptb_time event_type event_info p_var_ExpPhase];
-        % %         p_out_log(p.out.event_counter,:)
-        %logstring([ 'Logged: ' mat2str(p_out_log(p.out.event_counter,:)) ' - Type: ' p.verbose.eventtype{abs(event_type)} ' - Phase: ' p.verbose.eventphase{CurrentExperimentalPhase}])
-        %for i = 1:3;subplot(3,1,i);plot(p_out_log(1:p.out.event_counter ,i),'o-');drawnow;end
+        p.out.log(p_var_event_count,:)   = [ptb_time event_type event_info p_var_ExpPhase];
+        % %         p.out.log(p.out.event_counter,:)
+        %logstring([ 'Logged: ' mat2str(p.out.log(p.out.event_counter,:)) ' - Type: ' p.verbose.eventtype{abs(event_type)} ' - Phase: ' p.verbose.eventphase{CurrentExperimentalPhase}])
+        %for i = 1:3;subplot(3,1,i);plot(p.out.log(1:p.out.event_counter ,i),'o-');drawnow;end
         %
         
     end
