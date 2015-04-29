@@ -1,4 +1,4 @@
-function [p,Log]=feargenET_PFfitting_YN(subject,phase,csp_degree)
+function [p,Log]=exp_feargen_PFfitting_YN(subject,phase,csp_degree)
 
 % Diskrimination Task estimating the Threshold alpha and Slope beta of an
 % observer's underlying Psychometric Function (PF).
