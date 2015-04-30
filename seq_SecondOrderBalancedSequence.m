@@ -19,6 +19,10 @@ function [S,i]=SecondOrderBalancedSequence(repetition,start_condition)
 %   such. Thus arbitrary shaped transition matrices can be used, please
 %   note that not all transition matrices will converge to a solution.
 %
+%   I returns the position of a given transition in the sequence S. For
+%   example squeeze(i(1,1,:)) would return the position of the 1 to 1
+%   transition in S. The index is for the first element of the transition.
+%
 %   Example Usage:
 %   as a vector:
 %   [S,i]=SecondOrderBalancedSequence(ones(1,8)*34,1)
