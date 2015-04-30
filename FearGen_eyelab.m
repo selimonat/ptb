@@ -5,8 +5,6 @@ function [p]=FearGen_eyelab(subject,phase,csp,PainThreshold)
 %project. Mainly different in loading the precomputed sequences...
 % 
 % 
-% This is the Version used for one circle, focus on Perception, 1 Circle
-% (Masterthesis LK).
 
 if nargin ~= 4
     fprintf('Wrong number of inputs\n');
