@@ -34,36 +34,10 @@ save(p.path.path_param,'p');
 %Set up running fit procedure:
 
 
-%move to SETPTB
-%% Define prior, these are always the same so defining once is enough.
-prioraaRange    = linspace(0,100,50); %values of aa to include in prior
-%IS THIS RANGE OF BETA VALUES REASONABLE?
-priorBetaRange  = linspace(-2,0,50);  %values of log_10(beta) to include in prior
-%Range of lapse rates for the marginalized estimation of lambda
-%Prins(2013) uses 0:0.01:0.1;
-priorLambdaRange = 0:0.01:0.05;
-%Range of guess rates (Prins: 0:0.03:0.3);
-priorGammaRange = 0:0.03:0.3;
-% Stimulus values to select from (need not be equally spaced)
-stimRange       = 0:11.25:100;
 
-
-% %2-D Gaussian prior
-% prior = repmat(PAL_pdfNormal(priorAlphaRange,60,60),[length(priorBetaRange) 1]).* repmat(PAL_pdfNormal(priorBetaRange',0,4),[1 length(priorAlphaRange)]);
-% 
-% prior = prior./sum(sum(prior)); %prior should sum to 1
-
-
-%Termination after n Trials
-numtrials      = 60;
-% percentage of obligatory x=0 trials
-p0=.2;
-% numtrials  = numtrials0+numtrials0*p0;
 
 % make a break every ....th Trial
-breakpoint=70;
-%Function to be fitted during procedure
-PFfit = @PAL_CumulativeNormal;    %Shape to be assumed
+breakpoint=100;
 
 %set up procedure
 PM = [];
@@ -77,16 +51,16 @@ tt=0;
 
 for nc = 1:tchain
 %set up procedure
-PM{nc} = PAL_AMPM_setupPM('priorAlphaRange',prioraaRange,'priorBetaRange',...
-    priorBetaRange, 'priorLambdaRange', priorLambdaRange,'priorGammaRange',...
-    priorGammaRange,'numtrials',numtrials, 'PF' , PFfit, 'stimRange',stimRange,...
+PM{nc} = PAL_AMPM_setupPM('priorAlphaRange',p.psi.prioraaRange,'priorBetaRange',...
+    p.psi.priorBetaRange, 'priorLambdaRange', p.psi.priorLambdaRange,'priorGammaRange',...
+    p.psi.priorGammaRange,'numtrials',p.psi.numtrials, 'PF' , p.psi.PFfit, 'stimRange',p.psi.stimRange,...
     'marginalize', [3 4]);
 
 % 
 PM{nc}.reference_face   = face_shift(nc);
 PM{nc}.reference_circle = circle_shift(nc);
-if p0 ~= 0
-zerotrials(:,nc)=randsample([1:numtrials],ceil(numtrials*p0));
+if p.ptb.p0 ~= 0
+zerotrials(:,nc)=randsample([1:p.ptb.numtrials],ceil(p.ptb.numtrials*p.ptb.p0));
 
 end
 % set up Log Variable
@@ -103,9 +77,10 @@ while OK
     
     if PM{current_chain}.stop ~= 1
         tt=tt+1;
-        % enter in Break Loop
+        % enter in break loop
             if (tt~=1 && mod(tt,breakpoint)==1 && simulation_mode==0);
                 ShowInstruction(4);
+                ShowInstruction(1);
             end
         cc(current_chain)=cc(current_chain)+1;
         fprintf('Chain %4.2f , Trial %02d\n',current_chain,cc)
@@ -142,7 +117,7 @@ while OK
         
         % fprintf('Chain: %03d\nxCurrent: %6.2f\nDirection:%6.2f\n %6.2f -> %6.2f vs. %6.2f\n',current_chain,PM{current_chain}.xCurrent,direction,dummy,test,ref);
         % start Trial
-        fprintf('Starting Trial %03d/%03d.\n',tt,tchain*numtrials)
+        fprintf('Starting Trial %03d/%03d.\n',tt,tchain*p.ptb.numtrials)
       
         [test_face, ref_face, signal] = Trial_YN(ref,test,circle_id(current_chain),tt);
       
@@ -187,7 +162,7 @@ while OK
      
         % store everything in the Log
         row                                     = round(PM{current_chain}.xCurrent/p.stim.delta+1);
-        Log.trial_counter(row,current_chain)   = Log.trial_counter(row,current_chain) + 1;
+        Log.trial_counter(row,current_chain)    = Log.trial_counter(row,current_chain) + 1;
         Log.xrounded(row,Log.trial_counter(row,current_chain),current_chain) = response;
         
     
@@ -267,6 +242,7 @@ movefile(p.path.subject,p.path.finalsubject);
         %fixation cross 1
         Screen('DrawText', p.ptb.w, double('+'),fix(1),fix(2), p.stim.white)
         Screen('Flip',p.ptb.w,onsets(2),0);
+        Eyelink('Command', 'draw_cross %d %d',fix(1),fix(2))
         Eyelink('Message', 'FX 1 Onset at %g/%g',fix(1),fix(2));
         %face trial(1)
         Screen('DrawTexture',p.ptb.w,p.ptb.stim_sprites(trial(1)));
@@ -284,8 +260,8 @@ movefile(p.path.subject,p.path.finalsubject);
         Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(trial(2)));
         Screen('Flip',p.ptb.w,onsets(6),0);
         Eyelink('Message', 'Stim 2 Onset');
-        
-        StopEyelinkRecordung;    
+        WaitSecs(0.3);
+        StopEyelinkRecording;    
         end
     end
 
@@ -340,8 +316,8 @@ movefile(p.path.subject,p.path.finalsubject);
             
             %setting up fixation cross pool vector of size
             % totaltrials x 4 (face_1_x face_1_y face_2_x face_2_y)
-            cross_directions = round(rand(tchain*numtrials,2))*180;
-            dummy            = cross_directions + rand(tchain*numtrials,2)*30-15;
+            cross_directions = round(rand(tchain*p.ptb.numtrials,2))*180;
+            dummy            = cross_directions + rand(tchain*p.ptb.numtrials,2)*30-15;
             cross_positions  = [cosd(dummy(:,1))*radius+center(1) sind(dummy(:,1))*radius+center(2)...
                 cosd(dummy(:,2))*radius+center(1) sind(dummy(:,2))*radius+center(2)];
         end
@@ -458,7 +434,7 @@ movefile(p.path.subject,p.path.finalsubject);
         
         %create the randomized design
         p.stim.cs_plus                 = csp_degree;%index of cs stimulus, this is the one paired to shock
-%         p.stim.cs_neg                  = csn;
+        %p.stim.cs_neg                  = csn;
       
 
         event_onsets = 0.15;
@@ -469,11 +445,44 @@ movefile(p.path.subject,p.path.finalsubject);
         event_onsets = [event_onsets event_onsets(end)+p.duration.fix];
         event_onsets = [event_onsets event_onsets(end)+p.duration.stim];
         %event_onsets = [event_onsets event_onsets(end)+p.duration.gray];
-        
 
         p.trial.onsets = event_onsets;
 %         p.out.rating                  = [];
-%         p.out.log                     = zeros(numtrials*4,4).*NaN;
+%         p.out.log                     = zeros(p.ptb.numtrials*4,4).*NaN;
+
+
+        
+        
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        %priors for the PSI fitting structure PM
+        
+        %% Define prior, these are always the same so defining once is enough.
+        p.psi.prioraaRange    = linspace(0,100,50); %values of aa to include in prior
+        %IS THIS RANGE OF BETA VALUES REASONABLE?
+        p.psi.priorBetaRange  = linspace(-2,0,50);  %values of log_10(beta) to include in prior
+        %Range of lapse rates for the marginalized estimation of lambda
+        %Prins(2013) uses 0:0.01:0.1;
+        p.psi.priorLambdaRange = 0:0.01:0.05;
+        %Range of guess rates (Prins: 0:0.03:0.3);
+        p.psi.priorGammaRange = 0:0.03:0.3;
+        % Stimulus values to select from (need not be equally spaced)
+        p.psi.stimRange       = 0:11.25:100;
+        %Function to be fitted during procedure
+        p.psi.PFfit = @PAL_CumulativeNormal;    %Shape to be assumed
+        
+        %Termination after n Trials
+        p.psi.numtrials      = 60;
+        % percentage of obligatory x=0 trials
+        p.psi.p0  = .2;
+        
+   
+
+        
+     
+
+
+
+
 
         %Save the stuff
         save(p.path.path_param,'p');
@@ -622,8 +631,8 @@ movefile(p.path.subject,p.path.finalsubject);
             text = ['Experiment beendet!\n'];
             
         elseif nInstruct==4%break
-            text = [sprintf('Du hast bereits %g von %g Durchgängen geschafft!\n',tt-1,numtrials*tchain)...
-                'Mache eine kurze Pause.\n'...
+            text = [sprintf('Du hast bereits %g von %g Durchgängen geschafft!\n',tt-1,p.ptb.numtrials*tchain)...
+                'Mache eine kurze Pause, aber halte Deinen Kopf in der gleichen Position!\n'...
                 'Drücke anschließend die mittlere Taste, um weiterzumachen.\n'];
         end
     end
@@ -631,22 +640,22 @@ movefile(p.path.subject,p.path.finalsubject);
     function SetupLog(nc)
         
         
-        Log.globaltrial= NaN(nc,numtrials);
-        Log.signal     = NaN(nc,numtrials);
-        Log.x          = NaN(nc,numtrials);
-        Log.refface    = NaN(nc,numtrials);
-        Log.testface   = NaN(nc,numtrials);
+        Log.globaltrial= NaN(nc,p.ptb.numtrials);
+        Log.signal     = NaN(nc,p.ptb.numtrials);
+        Log.x          = NaN(nc,p.ptb.numtrials);
+        Log.refface    = NaN(nc,p.ptb.numtrials);
+        Log.testface   = NaN(nc,p.ptb.numtrials);
         
-        Log.response   = NaN(nc,numtrials);
-        Log.alpha      = NaN(nc,numtrials);
-        Log.seAlpha    = NaN(nc,numtrials);
-        Log.beta       = NaN(nc,numtrials);
-        Log.seBeta     = NaN(nc,numtrials);
-        Log.gamma      = NaN(nc,numtrials);
-        Log.seGamma    = NaN(nc,numtrials);
-        Log.lambda     = NaN(nc,numtrials);
-        Log.seLambda   = NaN(nc,numtrials);
-        Log.xrounded   = NaN(p.stim.tFace/tchain+1,numtrials,nc);
+        Log.response   = NaN(nc,p.ptb.numtrials);
+        Log.alpha      = NaN(nc,p.ptb.numtrials);
+        Log.seAlpha    = NaN(nc,p.ptb.numtrials);
+        Log.beta       = NaN(nc,p.ptb.numtrials);
+        Log.seBeta     = NaN(nc,p.ptb.numtrials);
+        Log.gamma      = NaN(nc,p.ptb.numtrials);
+        Log.seGamma    = NaN(nc,p.ptb.numtrials);
+        Log.lambda     = NaN(nc,p.ptb.numtrials);
+        Log.seLambda   = NaN(nc,p.ptb.numtrials);
+        Log.xrounded   = NaN(p.stim.tFace/tchain+1,p.ptb.numtrials,nc);
         Log.trial_counter  = zeros(p.stim.tFace/tchain+1,nc);
         
     end
@@ -718,6 +727,7 @@ movefile(p.path.subject,p.path.finalsubject);
 %         end
 function [t]=StopEyelinkRecording
         Eyelink('StopRecording');
+        
         t = GetSecs;
         %this is the end of the trial scope.
         WaitSecs(0.01);
@@ -731,15 +741,14 @@ function [t]=StopEyelinkRecording
     end
 function [t]=StartEyelinkRecording(tt,phase,trial,fix)
         t = [];
-        nStim = double(nStim);
+       
         Eyelink('Message', 'Trial: %03d, Phase: %02d, Faces: %d %d,FX %d,%d and %d,%d:', tt, phase, trial(1), trial(2),fix(1),fix(2),fix(3),fix(4));
         % an integration message so that an image can be loaded as
         % overlay background when performing Data Viewer analysis.
         WaitSecs(0.01);
         %return
-        Eyelink('Message', '!V IMGLOAD CENTER %s %d %d', p.stim.files(nStim,:), p.ptb.midpoint(1), p.ptb.midpoint(2));
         % This supplies the title at the bottom of the eyetracker display
-        Eyelink('Command', 'record_status_message "Stim: %02d, Phase: %d"', nStim, phase);
+        Eyelink('Command', 'record_status_message "Stim: %02d %02d, Phase: %d"',trial(1),trial(2), phase);
         %
         %Put the tracker offline and draw the stimuli.
         Eyelink('Command', 'set_idle_mode');
@@ -750,7 +759,7 @@ function [t]=StartEyelinkRecording(tt,phase,trial,fix)
         if nStim <= 16
             Eyelink('ImageTransfer',p.stim.files(nStim,:),p.ptb.imrect(1),p.ptb.imrect(2),p.ptb.imrect(3),p.ptb.imrect(4),p.ptb.imrect(1),p.ptb.imrect(2));
         end
-        Eyelink('Command', 'draw_cross %d %d',fix(1),fix(2))
+        %Eyelink('Command', 'draw_cross %d %d',fix(1),fix(2))
         %
         %drift correction
         %EyelinkDoDriftCorrection(el,crosspositionx,crosspositiony,0,0);
