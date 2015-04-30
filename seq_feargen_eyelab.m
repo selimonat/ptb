@@ -57,7 +57,7 @@ fprintf('Starting Sanity Check....\n')
 while ~OK
     
     %create the 2nd Order Balanced Sequence
-    [seq.cond_id]= seq_SecondOrderBalancedSequence(rep_vec,1);
+    [seq.cond_id,ranks]= seq_SecondOrderBalancedSequence(rep_vec,1);
     %replace Conditions with real Stimuli numbers
     seq.stim_id    = stimuli(seq.cond_id);
     
@@ -134,16 +134,26 @@ FixationCrossSequence;
 %% viz stuff.
 visualization =1;
 if visualization == 1
-    subplot(2,1,1)
+    subplot(3,1,1)
     plot(1:length(seq.ucs==1 ),seq.cond_id,'o-');
     hold on;
     plot(find(seq.ucs == 1),seq.cond_id(seq.ucs == 1),'+r','markersize',10);
     plot(find(seq.oddball == 1),seq.cond_id(seq.oddball == 1),'sg','markersize',10);
     hold off;
-    subplot(2,1,2)
+    subplot(3,1,2)
     n = hist3([seq.cond_id ; [seq.cond_id(2:end) NaN]]');
     imagesc(n)
     title('transition check');
+    subplot(3,1,3)
+    n = hist3([seq.cond_id ; [seq.cond_id(2:end) NaN]]');
+    for y = 1:length(unique(seq.cond_id));
+        for x = 1:length(unique(seq.cond_id));
+            r = ranks(y,x,:);
+            isis_m(y,x) = mean(seq.isi(r(~isnan(r))));
+        end;
+    end
+    imagesc(isis_m);colorbar;
+    title('Average ISIs');
 end
 
 
