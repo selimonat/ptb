@@ -22,6 +22,9 @@ balancing='quasiuniform';
 oddball  = 10;
 ucs      = 9;
 csn      = mod( csp + 8/2-1, 8)+1;
+%store csp and csn in the output
+seq.csp = csp;
+seq.csn = csn;
 %% SEQ is between 1:tCond ==> 1 2 3 3 1 2 1 2 1 3 3 4
 %% Stim ID = stimuli(SEQ)
 
