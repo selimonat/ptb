@@ -97,15 +97,7 @@ while ~success%when T sums to 0
     end
 end
 
-%% GET DIAGNOSTICS
-for i = unique(S)
-    c(i) = sum(S == i);
-end
-tcond = length(unique(S));
-fprintf('Total Trials: %d\n', length(S))
-fprintf('Trials per condition:\n')
-fprintf('%d ',c)
-fprintf('\n')
+
 
 % %
 % % fprintf('Checking balancing...\n')
