@@ -53,6 +53,7 @@ seq.cond_id = [];
 seq.CrossPosition=[];
 OK=0;
 seq.ucs   = logical(zeros(1,length(seq.cond_id)));
+fprintf('Starting Sanity Check....\n')
 while ~OK
     
     %create the 2nd Order Balanced Sequence
@@ -69,12 +70,10 @@ while ~OK
 
     
     
-% % % % %     
-    fprintf('Starting Sanity Check....\n')
+% % % % %         
     if ExcludeEvents(seq.ucs,0.95) || ExcludeEvents(seq.oddball,0.95) || ExcludeEvents(seq.oddball,0.1)|| SlopeCheck(seq.ucs)  || LongestNoEventDistance(seq.ucs,40) || TucsTest(seq.ucs,tucs)
     
-        OK=0;
-        fprintf('...creating New Sequence.\n')
+        OK=0;        
     else
         OK=1;
         fprintf('Sanity Check: OK. \n')
