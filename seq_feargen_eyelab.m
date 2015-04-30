@@ -1,7 +1,6 @@
-function [seq]=seq_feargen_eyelab(condition,csp)
+function [seq]=seq_feargen_eyelab(condition,csp,balancing,isis)
 % FEARGENSEQUENCE_ET
 % for 1 Circle!
-
 % 
 %
 % creates a sequence for all the given faces, plus ucs and oddball.
@@ -10,6 +9,8 @@ function [seq]=seq_feargen_eyelab(condition,csp)
 % CSP (in face Number) contains the CSplus face.
 % 
 % condition='b' for Baseline, 't' for Test, and 'c' for Conditioning.
+% isis=[2 3 4 5]; %for example
+% balancing='quasiuniform';
 
 trialduration      = .75;
 % minimum ISI
@@ -17,8 +18,7 @@ mini_isi       = 1.5;
 % minimum pre stimulus
 mini_ps        = 0.4;
 
-isis=[2 3 4 5];
-balancing='quasiuniform';
+
 oddball  = 10;
 ucs      = 9;
 csn      = mod( csp + 8/2-1, 8)+1;
@@ -132,7 +132,7 @@ fprintf('Total duration is %02g minutes.\n',duration./60);
 FixationCrossSequence;
 
 %% viz stuff.
-visualization =1;
+visualization =0;
 if visualization == 1
     subplot(3,1,1)
     plot(1:length(seq.ucs==1 ),seq.cond_id,'o-');
