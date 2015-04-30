@@ -132,11 +132,16 @@ FixationCrossSequence;
 %% viz stuff.
 visualization =1;
 if visualization == 1
+    subplot(2,1,1)
     plot(1:length(seq.ucs==1 ),seq.cond_id,'o-');
     hold on;
     plot(find(seq.ucs == 1),seq.cond_id(seq.ucs == 1),'+r','markersize',10);
     plot(find(seq.oddball == 1),seq.cond_id(seq.oddball == 1),'sg','markersize',10);
     hold off;
+    subplot(2,1,2)
+    n = hist3([seq.cond_id ; [seq.cond_id(2:end) NaN]]');
+    imagesc(n)
+    title('transition check');
 end
 
 
