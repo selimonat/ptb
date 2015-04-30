@@ -9,8 +9,10 @@ function [seq]=seq_feargen_eyelab(condition,csp,balancing,isis)
 % CSP (in face Number) contains the CSplus face.
 % 
 % condition='b' for Baseline, 't' for Test, and 'c' for Conditioning.
-% isis=[2 3 4 5]; %for example
-% balancing='quasiuniform';
+% isis=[2 3 4 5]; could be anything
+% balancing: 'quasiuniform' 'random' 'uniform' 'exponential'
+%
+%
 
 trialduration      = .75;
 % minimum ISI
@@ -67,9 +69,7 @@ while ~OK
     seq.ucs     = seq.cond_id == (tface + 1);
     tucs = sum(seq.ucs);
     seq.tTrial             = length(seq.cond_id);
-
-    
-    
+        
 % % % % %         
     if ExcludeEvents(seq.ucs,0.95) || ExcludeEvents(seq.oddball,0.95) || ExcludeEvents(seq.oddball,0.1)|| SlopeCheck(seq.ucs)  || LongestNoEventDistance(seq.ucs,40) || TucsTest(seq.ucs,tucs)
     
@@ -119,11 +119,11 @@ elseif strcmp(balancing,'quasiuniform')
     events_i=seq.ucs|seq.oddball;
     seq.isi(events_i) = max(isis);
     % from faces to ucs/odd should also be nicely random
-    nanpos=isnan(seq.isi);
-    seq.isi(isnan(seq.isi))=seq_BalancedDist(ones(1,sum(nanpos)),isis);
-    seq.cond_id(end)=[];
-    
-    
+    nanpos                  = isnan(seq.isi);
+    seq.isi(isnan(seq.isi)) = seq_BalancedDist(ones(1,sum(nanpos)),isis);
+    seq.cond_id(end)        = [];
+elseif strcmp(balancing,'random')
+    seq.isi  = randsample(isis,seq.tTrial,1);    
 end
 
 duration = sum(seq.isi)+seq.tTrial*trialduration;
