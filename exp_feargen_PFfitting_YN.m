@@ -31,11 +31,6 @@ end
 %save again the parameter file
 save(p.path.path_param,'p');
 
-%Set up running fit procedure:
-
-
-
-
 % make a break every ....th Trial
 breakpoint=100;
 
@@ -49,6 +44,7 @@ tchain = 1;
 cc=zeros(1,tchain);
 tt=0; 
 
+
 for nc = 1:tchain
 %set up procedure
 PM{nc} = PAL_AMPM_setupPM('priorAlphaRange',p.psi.prioraaRange,'priorBetaRange',...
@@ -60,7 +56,7 @@ PM{nc} = PAL_AMPM_setupPM('priorAlphaRange',p.psi.prioraaRange,'priorBetaRange',
 PM{nc}.reference_face   = face_shift(nc);
 PM{nc}.reference_circle = circle_shift(nc);
 if p.ptb.p0 ~= 0
-zerotrials(:,nc)=randsample([1:p.ptb.numtrials],ceil(p.ptb.numtrials*p.ptb.p0));
+p.psi.zerotrials(:,nc)=randsample(1:p.psi.numtrials,ceil(p.psi.numtrials*p.psi.p0));
 
 end
 % set up Log Variable
@@ -88,7 +84,7 @@ while OK
         fprintf('Original PM.x: %4.2f \n',PM{current_chain}.x(cc))
         % manually force x=0 trial, if it fits the zerotrial condition
         if p0 ~= 0
-           if any(zerotrials(:,current_chain)==cc(current_chain))
+           if any(p.psi.zerotrials(:,current_chain)==cc(current_chain))
              fprintf('Forcing x=0 Trial...\n')
              PM{current_chain}.xCurrent=0;
              PM{current_chain}.x(cc)=0;
@@ -118,7 +114,7 @@ while OK
         
         % fprintf('Chain: %03d\nxCurrent: %6.2f\nDirection:%6.2f\n %6.2f -> %6.2f vs. %6.2f\n',current_chain,PM{current_chain}.xCurrent,direction,dummy,test,ref);
         % start Trial
-        fprintf('Starting Trial %03d/%03d.\n',tt,tchain*p.ptb.numtrials)
+        fprintf('Starting Trial %03d/%03d.\n',tt,tchain*p.psi.numtrials)
       
         [test_face, ref_face, signal] = Trial_YN(ref,test,circle_id(current_chain),tt);
       
@@ -318,8 +314,8 @@ movefile(p.path.subject,p.path.finalsubject);
             
             %setting up fixation cross pool vector of size
             % totaltrials x 4 (face_1_x face_1_y face_2_x face_2_y)
-            cross_directions = round(rand(tchain*p.ptb.numtrials,2))*180;
-            dummy            = cross_directions + rand(tchain*p.ptb.numtrials,2)*30-15;
+            cross_directions = round(rand(tchain*p.psi.numtrials,2))*180;
+            dummy            = cross_directions + rand(tchain*p.psi.numtrials,2)*30-15;
             cross_positions  = [cosd(dummy(:,1))*radius+center(1) sind(dummy(:,1))*radius+center(2)...
                 cosd(dummy(:,2))*radius+center(1) sind(dummy(:,2))*radius+center(2)];
         end
@@ -450,7 +446,7 @@ movefile(p.path.subject,p.path.finalsubject);
 
         p.trial.onsets = event_onsets;
 %         p.out.rating                  = [];
-%         p.out.log                     = zeros(p.ptb.numtrials*4,4).*NaN;
+%         p.out.log                     = zeros(p.psi.numtrials*4,4).*NaN;
 
 
         
@@ -476,6 +472,7 @@ movefile(p.path.subject,p.path.finalsubject);
         p.psi.numtrials      = 60;
         % percentage of obligatory x=0 trials
         p.psi.p0  = .2;
+
         
    
 
@@ -633,7 +630,7 @@ movefile(p.path.subject,p.path.finalsubject);
             text = ['Experiment beendet!\n'];
             
         elseif nInstruct==4%break
-            text = [sprintf('Du hast bereits %g von %g Durchgängen geschafft!\n',tt-1,p.ptb.numtrials*tchain)...
+            text = [sprintf('Du hast bereits %g von %g Durchgängen geschafft!\n',tt-1,p.psi.numtrials*tchain)...
                 'Mache eine kurze Pause, aber halte Deinen Kopf in der gleichen Position!\n'...
                 'Drücke anschließend die mittlere Taste, um weiterzumachen.\n'];
         end
@@ -642,22 +639,22 @@ movefile(p.path.subject,p.path.finalsubject);
     function SetupLog(nc)
         
         
-        Log.globaltrial= NaN(nc,p.ptb.numtrials);
-        Log.signal     = NaN(nc,p.ptb.numtrials);
-        Log.x          = NaN(nc,p.ptb.numtrials);
-        Log.refface    = NaN(nc,p.ptb.numtrials);
-        Log.testface   = NaN(nc,p.ptb.numtrials);
+        Log.globaltrial= NaN(nc,p.psi.numtrials);
+        Log.signal     = NaN(nc,p.psi.numtrials);
+        Log.x          = NaN(nc,p.psi.numtrials);
+        Log.refface    = NaN(nc,p.psi.numtrials);
+        Log.testface   = NaN(nc,p.psi.numtrials);
         
-        Log.response   = NaN(nc,p.ptb.numtrials);
-        Log.alpha      = NaN(nc,p.ptb.numtrials);
-        Log.seAlpha    = NaN(nc,p.ptb.numtrials);
-        Log.beta       = NaN(nc,p.ptb.numtrials);
-        Log.seBeta     = NaN(nc,p.ptb.numtrials);
-        Log.gamma      = NaN(nc,p.ptb.numtrials);
-        Log.seGamma    = NaN(nc,p.ptb.numtrials);
-        Log.lambda     = NaN(nc,p.ptb.numtrials);
-        Log.seLambda   = NaN(nc,p.ptb.numtrials);
-        Log.xrounded   = NaN(p.stim.tFace/tchain+1,p.ptb.numtrials,nc);
+        Log.response   = NaN(nc,p.psi.numtrials);
+        Log.alpha      = NaN(nc,p.psi.numtrials);
+        Log.seAlpha    = NaN(nc,p.psi.numtrials);
+        Log.beta       = NaN(nc,p.psi.numtrials);
+        Log.seBeta     = NaN(nc,p.psi.numtrials);
+        Log.gamma      = NaN(nc,p.psi.numtrials);
+        Log.seGamma    = NaN(nc,p.psi.numtrials);
+        Log.lambda     = NaN(nc,p.psi.numtrials);
+        Log.seLambda   = NaN(nc,p.psi.numtrials);
+        Log.xrounded   = NaN(p.stim.tFace/tchain+1,p.psi.numtrials,nc);
         Log.trial_counter  = zeros(p.stim.tFace/tchain+1,nc);
         
     end
