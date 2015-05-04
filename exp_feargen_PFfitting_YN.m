@@ -81,6 +81,7 @@ while OK
             if (tt~=1 && mod(tt,breakpoint)==1 && simulation_mode==0);
                 ShowInstruction(4);
                 ShowInstruction(1);
+                CalibrateEL;
             end
         cc(current_chain)=cc(current_chain)+1;
         fprintf('Chain %4.2f , Trial %02d\n',current_chain,cc)
@@ -174,13 +175,14 @@ while OK
         OK    = sum([dummy(:).stop]) ~= tchain;
     end
     
-
+    
     %save Logfile here
-   
-    save([p.path.path_param 'Log' num2str(subject) '.mat'],'Log'); 
-  
+    
+    save([p.path.path_param 'Log' num2str(subject) '.mat'],'Log');
+    
+    %save again the parameter file
+    save(p.path.path_param,'p');
 
-  
 end
 ShowInstruction(2);
 %Print summary of results to screen
@@ -677,6 +679,7 @@ movefile(p.path.subject,p.path.finalsubject);
         Log.seGamma(current_chain,cc(current_chain))    = PM{current_chain}.seGuess(end);
         Log.lambda(current_chain,cc(current_chain))     = PM{current_chain}.lapse(end);
         Log.seLambda(current_chain,cc(current_chain))   = PM{current_chain}.seLapse(end);
+        p.out=Log;
         
     end
 %     function PlotProcedure
