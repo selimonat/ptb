@@ -420,6 +420,9 @@ cleanup;
         p.hostname                    = deblank(hostname);
         if strcmp(p.hostname,'triostim1')
             p.path.baselocation       = 'C:\USER\onat\Experiments\';
+        elseif strcmp(p.hostname,'etpc')
+            1111
+            p.path.baselocation       = 'C:\Users\PsychToolbox\Documents\onat\Experiments\';
         else
             p.path.baselocation       = 'C:\Users\onat\Documents\Experiments\';
         end
@@ -522,8 +525,11 @@ cleanup;
         p.duration.prestim_ori         = .95;
         p.duration.prestim             = 2-p.duration.prestim_ori;%that is 0.95 seconds
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        %stimulus sequence
-        s                              = FeargenSequencer;
+        %stimulus sequence        
+        d = dir([p.path.experiment '*.mat']);   
+        s = load([p.path.experiment d(end).name]);
+        s = s.sub;
+                        
         %create the randomized design
         p.stim.cs_plus                 = s(NthSeq,CSpface).cs_plus;%index of cs stimulus, this is the one paired to shock
         p.stim.cs_neg                  = s(NthSeq,CSpface).cs_neg;
@@ -918,12 +924,12 @@ cleanup;
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
         %set serial communication channels
         IOPort('CloseAll');
-        p.com.serial = IOPort('OpenSerialPort', 'COM1', 'InputBufferSize=51840000 HardwareBufferSizes=32768,32768 Terminator=0 ReceiveLatency=0.0001 BaudRate=9600 ReceiveTimeout=7');
-        IOPort('ConfigureSerialPort', p.com.serial, 'BlockingBackgroundRead=1');
+%         p.com.serial = IOPort('OpenSerialPort', 'COM1', 'InputBufferSize=51840000 HardwareBufferSizes=32768,32768 Terminator=0 ReceiveLatency=0.0001 BaudRate=9600 ReceiveTimeout=7');
+%         IOPort('ConfigureSerialPort', p.com.serial, 'BlockingBackgroundRead=1');
         %because of the BlockingBackgroundRead=1, the flush and close all
         %command will wait for the next byte to arrive...
-        IOPort('ConfigureSerialPort', p.com.serial, 'StartBackgroundRead=2');
-        IOPort('Flush', p.com.serial);
+%         IOPort('ConfigureSerialPort', p.com.serial, 'StartBackgroundRead=2');
+%         IOPort('Flush', p.com.serial);
         %2 is the granularity of the data, cogent box sends 2 bytes.
         %IOPort('ConfigureSerialPort', p.com.serial, 'ReadTimeout=5');
         
