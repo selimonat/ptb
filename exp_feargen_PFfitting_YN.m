@@ -16,8 +16,8 @@ global cogent;
 GetSecs;
 WaitSecs(0.001);
 
-
-p = [];
+el = [];
+p  = [];
 SetParams;
 SetPTB;
 
@@ -51,8 +51,9 @@ PM{nc} = PAL_AMPM_setupPM('priorAlphaRange',p.psi.prioraaRange,'priorBetaRange',
 PM{nc}.reference_face   = face_shift(nc);
 PM{nc}.reference_circle = circle_shift(nc);
 if p.psi.p0 ~= 0
-p.psi.zerotrials(:,nc)=randsample(1:p.psi.numtrials,ceil(p.psi.numtrials*p.psi.p0));
 
+shuffledummy=Shuffle(1:p.psi.numtrials);
+p.psi.zerotrials(:,nc)=shuffledummy(1:ceil(p.psi.numtrials*p.psi.p0));
 end
 % set up Log Variable
 SetupLog(nc);
@@ -63,7 +64,7 @@ ShowInstruction(3);
 OK = 1;
 while OK
     
-    current_chain = randsample(1:tchain,1);
+    current_chain = RandSample(1:tchain,[1 1]);
     
     
     if PM{current_chain}.stop ~= 1
@@ -90,7 +91,7 @@ while OK
        
         %Present trial here at stimulus intensity PM.xCurrent and collect
         %response
-        direction = randsample([-1 1],1);
+        direction = RandSample([-1 1],[1 1]);
         test      = PM{current_chain}.xCurrent * direction + PM{current_chain}.reference_face + csp_degree + PM{current_chain}.reference_circle;
         dummy = test;
         % the computed degree has to stay in the same circle:
@@ -219,12 +220,12 @@ movefile(p.path.subject,p.path.finalsubject);
             signal = 1;
         end
         %get fixation crosses and onsets from p parameter
-        fix        = p.ptb.CrossPositions(tt,:);
+        fix        = round(p.ptb.CrossPositions(tt,:));
         
         onsets     = p.trial.onsets + GetSecs;
         
         %transform degrees to sprite indices:
-        pink_noise   = repmat(Image2PinkNoise(p.stim.stim(:,:,1)),[1 1 3]);
+        pink_noise   = repmat(Image2PinkNoise(p.stim.stim(:,:,1)),[1 1 3])/255;
         %sprite_index = [pink_noise FixationCross trial(1) FixationCross pink_noise trial(2) NaN];
         
         StartEyelinkRecording(tt,phase,trial,fix);
@@ -236,7 +237,7 @@ movefile(p.path.subject,p.path.finalsubject);
         Screen('DrawText', p.ptb.w, double('+'),fix(1),fix(2), p.stim.white);
         Screen('Flip',p.ptb.w,onsets(2),0);
         Eyelink('Command', 'draw_cross %d %d',fix(1),fix(2));
-        Eyelink('Message', 'FX 1 Onset at %g/%g',fix(1),fix(2));
+        Eyelink('Message', 'FX 1 Onset at %d %d',fix(1),fix(2));
         %face trial(1)
         Screen('DrawTexture',p.ptb.w,p.ptb.stim_sprites(trial(1)));
         Screen('Flip',p.ptb.w,onsets(3),0);
@@ -248,7 +249,7 @@ movefile(p.path.subject,p.path.finalsubject);
         %fixation cross 2
         Screen('DrawText', p.ptb.w, double('+'), fix(3),fix(4), p.stim.white);
         Screen('Flip',p.ptb.w,onsets(5),0);
-        Eyelink('Message', 'FX Onset 2 at %g/%g',fix(3),fix(4));
+        Eyelink('Message', 'FX Onset 2 at %d %d',fix(3),fix(4));
         %face trial(2)
         Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(trial(2)));
         Screen('Flip',p.ptb.w,onsets(6),0);
@@ -262,7 +263,7 @@ movefile(p.path.subject,p.path.finalsubject);
     debug =0;
         %Open a graphics window using PTB
         screens       =  Screen('Screens');
-        screenNumber  =  max(screens);
+        screenNumber  =  1;%max(screens);
         %make everything transparent for debuggin purposes.
         if debug
             commandwindow;
@@ -464,7 +465,7 @@ movefile(p.path.subject,p.path.finalsubject);
         p.psi.PFfit = @PAL_CumulativeNormal;    %Shape to be assumed
         
         %Termination after n Trials
-        p.psi.numtrials      = 20;
+        p.psi.numtrials      = 10;
         % percentage of obligatory x=0 trials
         p.psi.p0  = .2;
         
@@ -743,7 +744,7 @@ function [t]=StopEyelinkRecording
     end
 function [t]=StartEyelinkRecording(tt,phase,trial,fix)
         t = [];
-       
+        
         Eyelink('Message', 'Trial: %03d, Phase: %02d, Faces: %d %d,FX %d,%d and %d,%d:', tt, phase, trial(1), trial(2),fix(1),fix(2),fix(3),fix(4));
         % an integration message so that an image can be loaded as
         % overlay background when performing Data Viewer analysis.
@@ -841,7 +842,7 @@ function StopEyelink(filename)
     end
 function CalibrateEL
         fprintf('=================\n=================\nEntering Eyelink Calibration\n')
-        p_var_ExpPhase  = 0;
+        p.var.ExpPhase  = 0;
         ShowInstruction(0);
         EyelinkDoTrackerSetup(el);
         %Returns 'messageString' text associated with result of last calibration
