@@ -1,10 +1,10 @@
-function [p,Log]=exp_feargen_PFfitting_YN(subject,phase,csp_degree)
+function [p]=exp_feargen_PFfitting_YN(subject,phase,csp_degree)
 
 % Diskrimination Task estimating the Threshold alpha and Slope beta of an
 % observer's underlying Psychometric Function (PF).
 % Enter the subject Number as well as the CS+ Face in Degrees (where 00 is
 % 1st face, and so)
-simulation_mode = 1;
+simulation_mode = 0;
 
 ListenChar(2);%disable pressed keys to be spitted around
 commandwindow;
@@ -32,14 +32,9 @@ end
 save(p.path.path_param,'p');
 
 % make a break every ....th Trial
-breakpoint=100;
+breakpoint=50;
 
-%set up procedure
-PM = [];
-face_shift   = [0 180 0 180];
-circle_shift = [0 0 360 360];
-circle_id    = [1 1 2 2]*p.stim.tFace/2;
-tchain = 1;
+
 % counter for within chain trials (cc) and global trials (tt)
 cc=zeros(1,tchain);
 tt=0; 
@@ -55,7 +50,7 @@ PM{nc} = PAL_AMPM_setupPM('priorAlphaRange',p.psi.prioraaRange,'priorBetaRange',
 % 
 PM{nc}.reference_face   = face_shift(nc);
 PM{nc}.reference_circle = circle_shift(nc);
-if p.ptb.p0 ~= 0
+if p.psi.p0 ~= 0
 p.psi.zerotrials(:,nc)=randsample(1:p.psi.numtrials,ceil(p.psi.numtrials*p.psi.p0));
 
 end
@@ -80,18 +75,18 @@ while OK
                 CalibrateEL;
             end
         cc(current_chain)=cc(current_chain)+1;
-        fprintf('Chain %4.2f , Trial %02d\n',current_chain,cc)
-        fprintf('Original PM.x: %4.2f \n',PM{current_chain}.x(cc))
+        fprintf('Chain %4.2f , Trial %02d\n',current_chain,cc(current_chain))
+        fprintf('Original PM.x: %4.2f \n',PM{current_chain}.x(cc(current_chain)))
         % manually force x=0 trial, if it fits the zerotrial condition
-        if p0 ~= 0
+        if p.psi.p0 ~= 0
            if any(p.psi.zerotrials(:,current_chain)==cc(current_chain))
              fprintf('Forcing x=0 Trial...\n')
              PM{current_chain}.xCurrent=0;
-             PM{current_chain}.x(cc)=0;
+             PM{current_chain}.x(cc(current_chain))=0;
             
            end
         end
-        fprintf('PM.x is now %4.2f ',PM{current_chain}.x(cc))
+        fprintf('PM.x is now %4.2f \n',PM{current_chain}.x(cc(current_chain)))
        
         %Present trial here at stimulus intensity PM.xCurrent and collect
         %response
@@ -149,7 +144,7 @@ while OK
             true_s = 10;
             true_g = 0.2;
             true_l = 0.02;
-            response = ObserverResponseFunction(PFfit,true_a,1/true_s,true_g,true_l,PM{current_chain}.xCurrent);
+            response = ObserverResponseFunction(p.psi.PFfit,true_a,1/true_s,true_g,true_l,PM{current_chain}.xCurrent);
             
                     
                        
@@ -159,8 +154,8 @@ while OK
      
         % store everything in the Log
         row                                     = round(PM{current_chain}.xCurrent/p.stim.delta+1);
-        Log.trial_counter(row,current_chain)    = Log.trial_counter(row,current_chain) + 1;
-        Log.xrounded(row,Log.trial_counter(row,current_chain),current_chain) = response;
+        p.psi.log.trial_counter(row,current_chain)    = p.psi.log.trial_counter(row,current_chain) + 1;
+        p.psi.log.xrounded(row,p.psi.log.trial_counter(row,current_chain),current_chain) = response;
         
     
         %updating PM
@@ -174,7 +169,7 @@ while OK
     
     %save Logfile here
     
-    save([p.path.path_param 'Log' num2str(subject) '.mat'],'Log');
+    %save([p.path.path_param 'Log' num2str(subject) '.mat'],'p.psi.log');
     
     %save again the parameter file
     save(p.path.path_param,'p');
@@ -191,9 +186,9 @@ end
 StopEyelink(p.path.edf);
 
 
-save([p.path.dropbox 'Log' num2str(subject) '.mat'],'Log')
+%save([p.path.dropbox 'Log' num2str(subject) '.mat'],'p.psi.log')
 % save PF Fit Plot
-%feargenET_PFfitting_Fitplot(num2str(subject),Log)
+%feargenET_PFfitting_Fitplot(num2str(subject),p.log)
 
 
 %clear the screen
@@ -232,26 +227,26 @@ movefile(p.path.subject,p.path.finalsubject);
         pink_noise   = repmat(Image2PinkNoise(p.stim.stim(:,:,1)),[1 1 3]);
         %sprite_index = [pink_noise FixationCross trial(1) FixationCross pink_noise trial(2) NaN];
         
-        StartEyelinkRecording(tt,trial,fix);
+        StartEyelinkRecording(tt,phase,trial,fix);
         %pink_noise 1
-        Screen('MakeTexture', p.ptb.w, pink_noise)
+        Screen('MakeTexture', p.ptb.w, pink_noise);
         Screen('Flip',p.ptb.w,onsets(1),0);
-        Eyelink('Message', 'Pink Noise 1 Onset')
+        Eyelink('Message', 'Pink Noise 1 Onset');
         %fixation cross 1
-        Screen('DrawText', p.ptb.w, double('+'),fix(1),fix(2), p.stim.white)
+        Screen('DrawText', p.ptb.w, double('+'),fix(1),fix(2), p.stim.white);
         Screen('Flip',p.ptb.w,onsets(2),0);
-        Eyelink('Command', 'draw_cross %d %d',fix(1),fix(2))
+        Eyelink('Command', 'draw_cross %d %d',fix(1),fix(2));
         Eyelink('Message', 'FX 1 Onset at %g/%g',fix(1),fix(2));
         %face trial(1)
         Screen('DrawTexture',p.ptb.w,p.ptb.stim_sprites(trial(1)));
         Screen('Flip',p.ptb.w,onsets(3),0);
         Eyelink('Message', 'Stim 1 Onset');
         %pink_noise 2
-        Screen('MakeTexture', p.ptb.w, pink_noise)
+        Screen('MakeTexture', p.ptb.w, pink_noise);
         Screen('Flip',p.ptb.w,onsets(4),0);
         Eyelink('Message', 'Pink Noise 2 Onset');
         %fixation cross 2
-        Screen('DrawText', p.ptb.w, double('+'), fix(3),fix(4), p.stim.white)
+        Screen('DrawText', p.ptb.w, double('+'), fix(3),fix(4), p.stim.white);
         Screen('Flip',p.ptb.w,onsets(5),0);
         Eyelink('Message', 'FX Onset 2 at %g/%g',fix(3),fix(4));
         %face trial(2)
@@ -259,9 +254,9 @@ movefile(p.path.subject,p.path.finalsubject);
         Screen('Flip',p.ptb.w,onsets(6),0);
         Eyelink('Message', 'Stim 2 Onset');
         WaitSecs(0.3);
-        StopEyelinkRecording;    
-        end
+        StopEyelinkRecording;
     end
+    
 
     function SetPTB
     debug =0;
@@ -327,7 +322,7 @@ movefile(p.path.subject,p.path.finalsubject);
     
         %
         p.var.timings                 = zeros(1,10);
-        p_var_event_count             = 0;
+        p.var.event_count             = 0;
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
         %relative path to stim and experiments
         %Path Business.
@@ -342,7 +337,7 @@ movefile(p.path.subject,p.path.finalsubject);
         end
         
         p.path.experiment             = [p.path.baselocation 'FearGeneralization_Ethnic\'];
-        p.path.stimfolder             = 'ethno_pilote\64faces';
+        p.path.stimfolder             = 'ethno_pilote\locals\32discrimination';
         p.path.stim                   = [p.path.baselocation 'Stimuli\Gradients\' p.path.stimfolder '\'];
         %
         p.subID                       = sprintf('sub%02d',subject);
@@ -469,9 +464,16 @@ movefile(p.path.subject,p.path.finalsubject);
         p.psi.PFfit = @PAL_CumulativeNormal;    %Shape to be assumed
         
         %Termination after n Trials
-        p.psi.numtrials      = 60;
+        p.psi.numtrials      = 20;
         % percentage of obligatory x=0 trials
         p.psi.p0  = .2;
+        
+        %set up procedure
+        PM = [];
+        face_shift   = [0 180 0 180];
+        circle_shift = [0 0 360 360];
+        circle_id    = [1 1 2 2]*p.stim.tFace/2;
+        tchain = 2;
 
         
    
@@ -639,44 +641,44 @@ movefile(p.path.subject,p.path.finalsubject);
     function SetupLog(nc)
         
         
-        Log.globaltrial= NaN(nc,p.psi.numtrials);
-        Log.signal     = NaN(nc,p.psi.numtrials);
-        Log.x          = NaN(nc,p.psi.numtrials);
-        Log.refface    = NaN(nc,p.psi.numtrials);
-        Log.testface   = NaN(nc,p.psi.numtrials);
+        p.psi.log.globaltrial= NaN(nc,p.psi.numtrials);
+        p.psi.log.signal     = NaN(nc,p.psi.numtrials);
+        p.psi.log.x          = NaN(nc,p.psi.numtrials);
+        p.psi.log.refface    = NaN(nc,p.psi.numtrials);
+        p.psi.log.testface   = NaN(nc,p.psi.numtrials);
         
-        Log.response   = NaN(nc,p.psi.numtrials);
-        Log.alpha      = NaN(nc,p.psi.numtrials);
-        Log.seAlpha    = NaN(nc,p.psi.numtrials);
-        Log.beta       = NaN(nc,p.psi.numtrials);
-        Log.seBeta     = NaN(nc,p.psi.numtrials);
-        Log.gamma      = NaN(nc,p.psi.numtrials);
-        Log.seGamma    = NaN(nc,p.psi.numtrials);
-        Log.lambda     = NaN(nc,p.psi.numtrials);
-        Log.seLambda   = NaN(nc,p.psi.numtrials);
-        Log.xrounded   = NaN(p.stim.tFace/tchain+1,p.psi.numtrials,nc);
-        Log.trial_counter  = zeros(p.stim.tFace/tchain+1,nc);
+        p.psi.log.response   = NaN(nc,p.psi.numtrials);
+        p.psi.log.alpha      = NaN(nc,p.psi.numtrials);
+        p.psi.log.seAlpha    = NaN(nc,p.psi.numtrials);
+        p.psi.log.beta       = NaN(nc,p.psi.numtrials);
+        p.psi.log.seBeta     = NaN(nc,p.psi.numtrials);
+        p.psi.log.gamma      = NaN(nc,p.psi.numtrials);
+        p.psi.log.seGamma    = NaN(nc,p.psi.numtrials);
+        p.psi.log.lambda     = NaN(nc,p.psi.numtrials);
+        p.psi.log.seLambda   = NaN(nc,p.psi.numtrials);
+        p.psi.log.xrounded   = NaN(p.stim.tFace/tchain+1,p.psi.numtrials,nc);
+        p.psi.log.trial_counter  = zeros(p.stim.tFace/tchain+1,nc);
         
     end
 
     function SetLog
         
         
-        Log.globaltrial(current_chain,cc(current_chain))= tt;
-        Log.signal(current_chain,cc(current_chain))     = signal;
-        Log.x(current_chain,cc(current_chain))          = PM{current_chain}.x(cc(current_chain))*direction;
-        Log.refface(current_chain,cc(current_chain))    = ref_face;
-        Log.testface(current_chain,cc(current_chain))   = test_face;
-        Log.response(current_chain,cc(current_chain))   = response;
-        Log.alpha(current_chain,cc(current_chain))      = PM{current_chain}.threshold(end);
-        Log.seAlpha(current_chain,cc(current_chain))    = PM{current_chain}.seThreshold(end);
-        Log.beta(current_chain,cc(current_chain))       = PM{current_chain}.slope(end);
-        Log.seBeta(current_chain,cc(current_chain))     = PM{current_chain}.seSlope(end);
-        Log.gamma(current_chain,cc(current_chain))      = PM{current_chain}.guess(end);
-        Log.seGamma(current_chain,cc(current_chain))    = PM{current_chain}.seGuess(end);
-        Log.lambda(current_chain,cc(current_chain))     = PM{current_chain}.lapse(end);
-        Log.seLambda(current_chain,cc(current_chain))   = PM{current_chain}.seLapse(end);
-        p.out=Log;
+        p.psi.log.globaltrial(current_chain,cc(current_chain))= tt;
+        p.psi.log.signal(current_chain,cc(current_chain))     = signal;
+        p.psi.log.x(current_chain,cc(current_chain))          = PM{current_chain}.x(cc(current_chain))*direction;
+        p.psi.log.refface(current_chain,cc(current_chain))    = ref_face;
+        p.psi.log.testface(current_chain,cc(current_chain))   = test_face;
+        p.psi.log.response(current_chain,cc(current_chain))   = response;
+        p.psi.log.alpha(current_chain,cc(current_chain))      = PM{current_chain}.threshold(end);
+        p.psi.log.seAlpha(current_chain,cc(current_chain))    = PM{current_chain}.seThreshold(end);
+        p.psi.log.beta(current_chain,cc(current_chain))       = PM{current_chain}.slope(end);
+        p.psi.log.seBeta(current_chain,cc(current_chain))     = PM{current_chain}.seSlope(end);
+        p.psi.log.gamma(current_chain,cc(current_chain))      = PM{current_chain}.guess(end);
+        p.psi.log.seGamma(current_chain,cc(current_chain))    = PM{current_chain}.seGuess(end);
+        p.psi.log.lambda(current_chain,cc(current_chain))     = PM{current_chain}.lapse(end);
+        p.psi.log.seLambda(current_chain,cc(current_chain))   = PM{current_chain}.seLapse(end);
+        
         
     end
 %     function PlotProcedure
@@ -684,17 +686,17 @@ movefile(p.path.subject,p.path.finalsubject);
 %         %         title(sprintf('Threshold Estimation for subject %02d',tchain),'FontSize',14)
 %         for sub=1:tchain;
 %             subplot(2,2,sub)
-%             t = 1:length(Log.x(sub));
+%             t = 1:length(p.log.x(sub));
 %             hold on;
-%             plot(t,abs(Log.x(sub)),'bo-');
-%             errorbar(t,Log.alpha(sub),Log.seAlpha(sub),'r--')
-%             plot(t(Log.response(sub) == 1),Log.x(sub)(Log.response(sub) == 1),'ko', ...
+%             plot(t,abs(p.log.x(sub)),'bo-');
+%             errorbar(t,p.log.alpha(sub),p.log.seAlpha(sub),'r--')
+%             plot(t(p.log.response(sub) == 1),p.log.x(sub)(p.log.response(sub) == 1),'ko', ...
 %                 'MarkerFaceColor','k');
-%             plot(t(Log.response(sub) == 0),Log.x(sub)(Log.response(sub) == 0),'ko', ...
+%             plot(t(p.log.response(sub) == 0),p.log.x(sub)(p.log.response(sub) == 0),'ko', ...
 %                 'MarkerFaceColor','w');
 %             
 %             set(gca,'FontSize',12);
-%             axis([0 max(t)+1 0 max(Log{sub}.alpha)+max(Log{sub}.seAlpha)+20])
+%             axis([0 max(t)+1 0 max(p.log{sub}.alpha)+max(p.log{sub}.seAlpha)+20])
 %             xlabel('Trial');
 %             ylabel('xCurrent (Deg)');
 %             
@@ -710,17 +712,17 @@ movefile(p.path.subject,p.path.finalsubject);
 %         plotfit=figure(2);
 %          for sub=1:tchain;
 %             subplot(2,2,sub)
-%             t = 1:length(Log{sub}.x);
+%             t = 1:length(p.log{sub}.x);
 %             hold on;
-%             plot(t,abs(Log{sub}.x),'bo-');
-%             errorbar(t,Log{1}.alpha,Log{1}.seAlpha,'r--')
-%             plot(t(Log{sub}.response == 1),Log{sub}.x(Log{sub}.response == 1),'ko', ...
+%             plot(t,abs(p.log{sub}.x),'bo-');
+%             errorbar(t,p.log{1}.alpha,p.log{1}.seAlpha,'r--')
+%             plot(t(p.log{sub}.response == 1),p.log{sub}.x(p.log{sub}.response == 1),'ko', ...
 %                 'MarkerFaceColor','k');
-%             plot(t(Log{sub}.response == 0),Log{sub}.x(Log{sub}.response == 0),'ko', ...
+%             plot(t(p.log{sub}.response == 0),p.log{sub}.x(p.log{sub}.response == 0),'ko', ...
 %                 'MarkerFaceColor','w');
 %             
 %             set(gca,'FontSize',12);
-%             axis([0 max(t)+1 0 max(Log{sub}.alpha)+max(Log{sub}.seAlpha)+20])
+%             axis([0 max(t)+1 0 max(p.log{sub}.alpha)+max(p.log{sub}.seAlpha)+20])
 %             xlabel('Trial');
 %             ylabel('xCurrent (Deg)');
 %             
@@ -756,9 +758,9 @@ function [t]=StartEyelinkRecording(tt,phase,trial,fix)
         % clear tracker display and draw box at center
         Eyelink('Command', 'clear_screen %d', 0);
         %draw the image on the screen but also the two crosses
-        if nStim <= 16
-            Eyelink('ImageTransfer',p.stim.files(nStim,:),p.ptb.imrect(1),p.ptb.imrect(2),p.ptb.imrect(3),p.ptb.imrect(4),p.ptb.imrect(1),p.ptb.imrect(2));
-        end
+        %if nStim <= 16
+        %    Eyelink('ImageTransfer',p.stim.files(nStim,:),p.ptb.imrect(1),p.ptb.imrect(2),p.ptb.imrect(3),p.ptb.imrect(4),p.ptb.imrect(1),p.ptb.imrect(2));
+        %end
         %Eyelink('Command', 'draw_cross %d %d',fix(1),fix(2))
         %
         %drift correction
@@ -847,8 +849,42 @@ function CalibrateEL
         Eyelink('Message','%s',messageString);%
         WaitSecs(0.05);
         fprintf('=================\n=================\nNow we are done with the calibration\n')
-    end
+end
 
+
+function Log(ptb_time, event_type, event_info)
+        %Phases:
+        %Pre-Experiment       :     1
+        %Post-Experiment      :     2
+%         %Instruction          :     1
+%         %Baseline             :     2
+%         %Conditioning         :     3
+%         %Test                 :     4
+%         %Rating               :     5
+%         %Calibration          :     0
+        %
+        %event types are as follows:
+        %
+        %Scan Detection       :     0    info: NaN;
+        %Cross Onset          :     1    info: position
+        %Stimulus Onset/Offset:     2/-2 info: stim_id
+        %Cross Movement       :     3    info: NaN;
+        %Stimulus Offset      :     -2   info: NaN;
+        %UCS Delivery         :     4    info: NaN;
+        %Key Presses          :     7    info: NaN;
+        %Tracker Onset/Offset :     8    info: NaN;
+        %
+        %Text on the screen   :     5    info: Which Text?
+        %RatingScreen Onset   :     6    info: NaN;
+        
+        p.var.event_count                = p.var.event_count + 1;
+        p.out.log(p.var.event_count,:)   = [ptb_time event_type event_info phase];
+        % %         p_out_log(p.out.event_counter,:)
+        %logstring([ 'Logged: ' mat2str(p_out_log(p.out.event_counter,:)) ' - Type: ' p.verbose.eventtype{abs(event_type)} ' - Phase: ' p.verbose.eventphase{CurrentExperimentalPhase}])
+        %for i = 1:3;subplot(3,1,i);plot(p_out_log(1:p.out.event_counter ,i),'o-');drawnow;end
+        %
+        
+    end
 function cleanup
         
         % Close window:
@@ -865,5 +901,6 @@ function cleanup
 %         commandwindow;
 %         ListenChar(0);
 %         KbQueueRelease(p_ptb_device);
-    end
+end
+
 end
