@@ -10,7 +10,7 @@ function [E,power]=seq_RunDesignEfficiency
 %
 %   Dependency: seq_feargen_eyelab, spm_Volterra, spm_get_bf,
 %   spm_get_onsets.
-tseq          = 100;%how many to test
+tseq          = 10;%how many to test
 sampling_rate = 2;
 % IRF
 TR                    = sampling_rate;%in seconds
@@ -38,13 +38,12 @@ seq_gen     = @(dummy) seq_feargen_eyelab(dummy{:});%function to generate sequen
 inputs      = {{'b' 1  'quasiuniform' [2 3 4 5]} {'b' 1 'random' [2 3 4 5] } {'b' 1  'exponential' [2 3 4 5]} ...
     {'b' 1 'quasiuniform' [2 4 6] } {'b' 1  'random' [2 4 6]} {'b' 1  'exponential' [2 4 6]}};
 t_input     = length(inputs);
-E           = nan(t_input,tseq);
+E           = nan(tseq,t_input);
 %% make the simulation
 c_input     = 0;
 for input = inputs;
     c_input = c_input + 1;
-    dummy   = seq_gen(input{1});%a dummy sequence
-    tcond   = length(unique(dummy.cond_id));
+    dummy   = seq_gen(input{1});%a dummy sequence    
     cums    = cumsum(dummy.isi);
     %% The constant part for the spm_function that will generate the DM    
     Sess  = [];
@@ -67,7 +66,8 @@ for input = inputs;
     while nseq <= tseq
         fprintf('\tRUN: %03d, SEQUENCE %03d of %03d...\n',c_input,nseq,tseq);
         nseq    = nseq + 1;
-        seq     = seq_gen(input{1});                
+        seq     = seq_gen(input{1});
+        cums    = cumsum(seq.isi);
         %% get the onsets
         for i = 1:length(unique(seq.cond_id));%one regressor for each condition
             SPM.Sess.U(i).ons  = cums( seq.cond_id == i );%- onsets    (in SPM.xBF.UNITS)
@@ -75,9 +75,10 @@ for input = inputs;
         SPM.Sess.U = spm_get_ons(SPM,1);
         %%        
         % Convolve stimulus functions with basis functions
-        [X,Xn,Fc]       = spm_Volterra(SPM.Sess.U,SPM.xBF.bf,SPM.xBF.Volterra);
+        [X,~,~]       = spm_Volterra(SPM.Sess.U,SPM.xBF.bf,SPM.xBF.Volterra);
         % Resample regressors at acquisition times (32 bin offset)
         X               = X((0:(SPM.nscan - 1))*fMRI_T + fMRI_T0 + 32,:);  
+        X               = reshape(zscore(X(:)),size(X));
         % efficiency(nseq) =1./trace(Con*inv(X'*X)*Con');
         E(nseq,c_input) = 1./trace(inv(X'*X));
         %% Compute also the power spectrum of the X*[1..1]'
