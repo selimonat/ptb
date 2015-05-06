@@ -233,6 +233,7 @@ movefile(p.path.subject,p.path.finalsubject);
         Screen('MakeTexture', p.ptb.w, pink_noise);
         Screen('Flip',p.ptb.w,onsets(1),0);
         Eyelink('Message', 'Pink Noise 1 Onset');
+        
         %fixation cross 1
         Screen('DrawText', p.ptb.w, double('+'),fix(1),fix(2), p.stim.white);
         Screen('Flip',p.ptb.w,onsets(2),0);
@@ -242,6 +243,8 @@ movefile(p.path.subject,p.path.finalsubject);
         Screen('DrawTexture',p.ptb.w,p.ptb.stim_sprites(trial(1)));
         Screen('Flip',p.ptb.w,onsets(3),0);
         Eyelink('Message', 'Stim 1 Onset');
+        Eyelink('ImageTransfer',p.stim.files(trial(1),:),p.ptb.imrect(1),p.ptb.imrect(2),p.ptb.imrect(3),p.ptb.imrect(4),p.ptb.imrect(1),p.ptb.imrect(2));
+        %fixation cross 1
         %pink_noise 2
         Screen('MakeTexture', p.ptb.w, pink_noise);
         Screen('Flip',p.ptb.w,onsets(4),0);
@@ -250,10 +253,12 @@ movefile(p.path.subject,p.path.finalsubject);
         Screen('DrawText', p.ptb.w, double('+'), fix(3),fix(4), p.stim.white);
         Screen('Flip',p.ptb.w,onsets(5),0);
         Eyelink('Message', 'FX Onset 2 at %d %d',fix(3),fix(4));
+        Eyelink('Command', 'draw_cross %d %d 15',fix(3),fix(4));
         %face trial(2)
         Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(trial(2)));
         Screen('Flip',p.ptb.w,onsets(6),0);
         Eyelink('Message', 'Stim 2 Onset');
+        Eyelink('ImageTransfer',p.stim.files(trial(2),:),p.ptb.imrect(1),p.ptb.imrect(2),p.ptb.imrect(3),p.ptb.imrect(4),p.ptb.imrect(1),p.ptb.imrect(2));
         WaitSecs(0.3);
         StopEyelinkRecording;
     end
@@ -263,7 +268,16 @@ movefile(p.path.subject,p.path.finalsubject);
     debug =0;
         %Open a graphics window using PTB
         screens       =  Screen('Screens');
-        screenNumber  =  1;%max(screens);
+        [~, hostname] = system('hostname');
+        p.hostname                    = deblank(hostname);
+        
+        if strcmp(p.hostname,'etpc')
+           screenNumber=1;
+        else
+           screenNumber=max(screens);
+        end
+        
+       
         %make everything transparent for debuggin purposes.
         if debug
             commandwindow;
