@@ -43,7 +43,7 @@ elseif strcmp(condition,'t') || strcmp(condition,'b')
     valid_oddballs         = mod([csp csn]+2,8);
     tface = 8;
 elseif strcmp(condition,'b')
-    % stimuli has to include stim_id=ucs==9, to keep the shock signal
+   % stimuli has to include stim_id=ucs==9, to keep the shock signal
     stimuli = [1:8 ucs oddball];
 end
 
@@ -82,7 +82,7 @@ while ~OK
 end
 
 %% final variables
-seq.cross_position   = ones(1,seq.tTrial).*2;
+%seq.cross_position   = ones(1,seq.tTrial).*2;
 %prestim durations should be smaller than ISI, right now they are [0.4 0.7]
 seq.prestim_duration = mini_ps+rand(1,seq.tTrial).*.3;
 %
@@ -97,8 +97,12 @@ end
 if strcmp(balancing,'uniform')
     seq.isi     = seq_BalancedDist(seq.cond_id,isis);
 elseif strcmp(balancing,'exponential')
-    dummy=exprnd(.75,[1 seq.tTrial]);
-    seq.isi      = mini_isi+floor(dummy*2)/2;
+    if length(isis)~=2
+        fprintf('Enter correct parameters for exponential distribution [min mean]! \n')
+        return
+    end
+    dummy=exprnd(isis(2),[1 seq.tTrial]);
+    seq.isi      = isis(1)+floor(dummy*2)/2;
 elseif strcmp(balancing,'quasiuniform')
     seq.isi = nan(1,seq.tTrial);
     seq.cond_id(end+1)=NaN;
@@ -172,7 +176,7 @@ end
         seq.CrossPosition(isnan(seq.CrossPosition)) = seq_BalancedDist(ones(1,sum(isnan(seq.CrossPosition))),cross_direction);
         
         seq.CrossPosition = seq.CrossPosition + rand(1,length(seq.cond_id))*30-15;
-        seq.CrossPosition=[cosd(seq.CrossPosition')*radius+center(1) sind(seq.CrossPosition')*radius+center(2)];
+        seq.CrossPosition=round([cosd(seq.CrossPosition')*radius+center(1) sind(seq.CrossPosition')*radius+center(2)]);
         
     end
 
