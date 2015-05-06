@@ -10,9 +10,10 @@ if nargin ~= 5
     fprintf('Wrong number of inputs\n');
     keyboard;
 end
-
-csp =  csp;
-csn =  mod( csp(1) + 8/2-1, 8)+1;
+%change this if you like to use another sequence.
+seq_name = 'FeargenSequencer_130218_0343.mat'
+csp      =  csp;
+csn      =  mod( csp(1) + 8/2-1, 8)+1;
 
 % ListenChar(2);%disable pressed keys to be spitted around
 commandwindow;
@@ -389,7 +390,8 @@ cleanup;
         p.duration.keep_recording      = 0.25;%this is the time we will keep recording (eye data) after stim offset.
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %stimulus sequence
-        s                              = FeargenSequencer(0);
+        dummy = load([p.path.experiment 'sequence' filesep sequence_name]);
+        s                              = dummy.sub;
         %create the randomized design
         p.stim.cs_plus                 = s(NthSeq,csp).cs_plus;%index of cs stimulus, this is the one paired to shock
         p.stim.cs_neg                  = s(NthSeq,csp).cs_neg;
