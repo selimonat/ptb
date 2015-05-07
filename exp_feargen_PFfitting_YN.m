@@ -231,34 +231,40 @@ movefile(p.path.subject,p.path.finalsubject);
         StartEyelinkRecording(tt,phase,trial,fix);
         %pink_noise 1
         Screen('MakeTexture', p.ptb.w, pink_noise);
-        Screen('Flip',p.ptb.w,onsets(1),0);
         Eyelink('Message', 'Pink Noise 1 Onset');
+        Screen('Flip',p.ptb.w,onsets(1),0);
+        
         
         %fixation cross 1
+        
         Screen('DrawText', p.ptb.w, double('+'),fix(1),fix(2), p.stim.white);
-        Screen('Flip',p.ptb.w,onsets(2),0);
         Eyelink('Command', 'draw_cross %d %d',fix(1),fix(2));
         Eyelink('Message', 'FX 1 Onset at %d %d',fix(1),fix(2));
+        Screen('Flip',p.ptb.w,onsets(2),0);
+        
         %face trial(1)
         Screen('DrawTexture',p.ptb.w,p.ptb.stim_sprites(trial(1)));
-        Screen('Flip',p.ptb.w,onsets(3),0);
         Eyelink('Message', 'Stim 1 Onset');
         Eyelink('ImageTransfer',p.stim.files(trial(1),:),p.ptb.imrect(1),p.ptb.imrect(2),p.ptb.imrect(3),p.ptb.imrect(4),p.ptb.imrect(1),p.ptb.imrect(2));
+        Screen('Flip',p.ptb.w,onsets(3),0);
+       
         %fixation cross 1
         %pink_noise 2
         Screen('MakeTexture', p.ptb.w, pink_noise);
-        Screen('Flip',p.ptb.w,onsets(4),0);
         Eyelink('Message', 'Pink Noise 2 Onset');
+        Screen('Flip',p.ptb.w,onsets(4),0);
+        
         %fixation cross 2
         Screen('DrawText', p.ptb.w, double('+'), fix(3),fix(4), p.stim.white);
-        Screen('Flip',p.ptb.w,onsets(5),0);
         Eyelink('Message', 'FX Onset 2 at %d %d',fix(3),fix(4));
         Eyelink('Command', 'draw_cross %d %d 15',fix(3),fix(4));
+        Screen('Flip',p.ptb.w,onsets(5),0);
+       
         %face trial(2)
         Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(trial(2)));
-        Screen('Flip',p.ptb.w,onsets(6),0);
         Eyelink('Message', 'Stim 2 Onset');
         Eyelink('ImageTransfer',p.stim.files(trial(2),:),p.ptb.imrect(1),p.ptb.imrect(2),p.ptb.imrect(3),p.ptb.imrect(4),p.ptb.imrect(1),p.ptb.imrect(2));
+        Screen('Flip',p.ptb.w,onsets(6),0);
         WaitSecs(0.3);
         StopEyelinkRecording;
     end
@@ -291,6 +297,7 @@ movefile(p.path.subject,p.path.finalsubject);
         [p.ptb.width, p.ptb.height] = Screen('WindowSize', screenNumber);
         %find the mid position.
         p.ptb.midpoint              = [ p.ptb.width./2 p.ptb.height./2];
+        p.ptb.imrect                = [ p.ptb.midpoint(1)-p.stim.width/2 p.ptb.midpoint(2)-p.stim.height/2 p.stim.width p.stim.height];
         %area of the slider
         p.ptb.rect                  = [p.ptb.midpoint(1)*0.5  p.ptb.midpoint(2)*0.8 p.ptb.midpoint(1) p.ptb.midpoint(2)*0.2];
         %compute the cross position.
@@ -396,6 +403,7 @@ movefile(p.path.subject,p.path.finalsubject);
         %font size and background gray level
         p.text.fontname                = 'Times New Roman';
         p.text.fontsize                = 18;%30;
+        p.text.fixationsize            = 30;
         %rating business
         p.rating.division              = 2;%number of divisions for the rating slider
         %
@@ -754,6 +762,7 @@ function [t]=StopEyelinkRecording
         Eyelink('Command', 'set_idle_mode');
         WaitSecs(0.01);
         Eyelink('Command', 'clear_screen %d', 0);
+        Screen('Textsize', p.ptb.w,p.text.fontsize)
         Log(t,-8,NaN);
     end
 function [t]=StartEyelinkRecording(tt,phase,trial,fix)
@@ -784,6 +793,7 @@ function [t]=StartEyelinkRecording(tt,phase,trial,fix)
         Eyelink('Command', 'set_idle_mode');
         WaitSecs(0.01);
         Eyelink('StartRecording');
+        Screen('Textsize', p.ptb.w,p.text.fixationsize);
         t = GetSecs;
         Log(t,8,NaN);
     end
