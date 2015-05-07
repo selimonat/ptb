@@ -4,7 +4,7 @@ function [p]=FearGen_eyelab(subject,NthSeq,phase,csp,PainThreshold)
 %
 %   Feargen presentation outside of the scanner, meaning that pulse
 %   synchronisation feature is taken out. Eyetracker communication, pulse
-%   logging to physio computer are left intact. 
+%   logging to physio computer are left intact.
 
 if nargin ~= 5
     fprintf('Wrong number of inputs\n');
@@ -17,7 +17,7 @@ sequence_name = 'FeargenSequencer_130218_0343.mat';
 commandwindow;
 %clear everything
 clear mex global functions
-% cgshut;
+cgshut;
 global cogent;
 %%%%%%%%%%%load the GETSECS mex files so call them at least once
 GetSecs;
@@ -26,7 +26,7 @@ WaitSecs(0.001);
 el                        = [];
 p                         = [];
 SetParams;
-debug                     = 1;%debug mode
+debug                     = 0;%debug mode
 SetPTB;
 %
 %init variables
@@ -41,7 +41,7 @@ CalibrateEL;
 save(p.path.path_param,'p');
 %
 if phase == 1 %training part...
-        
+    
     p.var.ExpPhase  = phase;
     %
     ShowInstruction(4,1);
@@ -56,20 +56,20 @@ elseif phase == 2
     p.var.ExpPhase  = phase;
     ShowInstruction(5,1);%will wait for keypresses
     PresentStimuli;
-    AskStimRating;    
+    AskStimRating;
 elseif phase == 3
-    %    
+    %
     p.var.ExpPhase  = phase;
     ShowInstruction(6,1);%will not wait for keypresses
     PresentStimuli;
     AskStimRating;
-elseif phase == 4   
+elseif phase == 4
     p.var.ExpPhase  = phase;
     %
     ShowInstruction(6,1);%will not wait for keypresses
     PresentStimuli;
-    %     AskStimRating;    
-    AskWhichFace;
+ 	AskStimRating;
+%     AskWhichFace;
 end
 
 %get the eyelink file back to this computer
@@ -180,8 +180,7 @@ cleanup;
         
         %% Fixation Onset
         Screen('DrawText', p.ptb.w, double('+'), p.ptb.CrossPosition_x,pos1, p.stim.white);
-        TimeCrossOn  = Screen('Flip',p.ptb.w,TimeCrossOnset,0);
-        MarkCED(p.com.lpt.address,p.com.lpt.FixOnset);
+        TimeCrossOn  = Screen('Flip',p.ptb.w,TimeCrossOnset,0);        
         Eyelink('Message', 'FX Onset at %03d',pos1);
         Log(TimeCrossOn,1,stim_id);%cross onset.
         %turn the eye tracker on
@@ -221,7 +220,6 @@ cleanup;
         TimeCrossJumpTime = Screen('Flip', p.ptb.w, TimeCrossJumpTime , 0);
         
         %send eyelink and ced a marker
-        MarkCED(p.com.lpt.address,p.com.lpt.FixMove);
         Eyelink('Message', 'FX Moves to %03d' ,pos2);
         Log(TimeCrossJumpTime,3,NaN);%log the fixation cross move
         
@@ -242,7 +240,6 @@ cleanup;
         %% STIM OFF immediately
         TimeEndStim = Screen('Flip',p.ptb.w,TimeEndStim,0);
         %send eyelink and ced a marker
-        MarkCED(p.com.lpt.address,p.com.lpt.StimOffset);
         Eyelink('Message', 'Stim Offset');
         Eyelink('Message', 'BLANK_SCREEN');
         Log(TimeEndStim,-2,stim_id);%log the stimulus offset
@@ -273,15 +270,15 @@ cleanup;
         p.hostname                    = deblank(hostname);
         
         if strcmp(p.hostname,'etpc')
-            p.path.baselocation       = 'C:\Users\PsychToolbox\Documents\onat\Experiments\';
+            p.path.baselocation       = 'C:\Users\onat\Documents\Experiments\';
         elseif ismac
             p.path.baselocation       = '/Users/onat/Documents/BehavioralExperiments/';
         else
             p.path.baselocation       = 'C:\Users\onat\Documents\Experiments\';
         end
         p.path.experiment             = [p.path.baselocation '2015_05_feargen_revision' filesep];
-        p.path.stimfolder             = 'Circle11_08Face_Frontal_SkinModerated_Transparent_Normalized';
-        p.path.stim                   = fullfile(filesep,'Users','onat','Pictures','Stimuli','Gradients',p.path.stimfolder,filesep);
+        p.path.stimfolder             = ['stim' filesep 'Circle11_08Face_Frontal_SkinModerated_Transparent_Normalized'];
+        p.path.stim                   = fullfile(p.path.experiment,p.path.stimfolder,filesep);
         %
         p.subID                       = sprintf('sub%02d',subject);
         p.path.edf                    = sprintf([p.subID 'p%02d' ],phase);
@@ -295,7 +292,7 @@ cleanup;
         mkdir([p.path.subject 'triads']);
         mkdir([p.path.subject 'stimulation']);
         mkdir([p.path.subject 'midlevel']);
-        p.path.path_param             = sprintf([regexprep(p.path.subject,'\\','\\\') 'stimulation' filesep 'param_phase_%02d'],phase);
+        p.path.path_param             = sprintf([regexprep(p.path.subject,'\\','\\\') 'stimulation\\param_phase_%02d'],phase);
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
         %get stim files
@@ -353,15 +350,11 @@ cleanup;
         %Communication business
         %parallel port
         p.com.lpt.address              = 888;
-        %codes for different events
-        p.com.lpt.FixOnset             = 4;
+        %codes for different events        
         %2 is empty because
-        p.com.lpt.StimOnset            = 1;
-        p.com.lpt.FixMove              = 16;
-        p.com.lpt.UCS                  = 128;
-        p.com.lpt.StimOffset           = 32;
-        p.com.lpt.CS_plus              = 64;
-        p.com.lpt.CS_neg               = 128;
+        p.com.lpt.StimOnset            = 1;        
+        p.com.lpt.ShockOnset           = 4;        
+        p.com.lpt.digitimer            = 128;
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %timing business
@@ -412,7 +405,7 @@ cleanup;
         BG             = p.stim.bg;%
         p.stim.bg      = p.stim.bg_rating;
         nseq           = 0;
-        rating_seq     = [];        
+        rating_seq     = [];
         %
         while nseq < p.rating.repetition
             nseq            = nseq + 1;
@@ -436,9 +429,9 @@ cleanup;
             %
             %the variable that are used by Trial function
             stim_id          = rating_seq(nRatend);
-            pos2             = p.ptb.CrossPosition_y(2);
-            pos1             = p.ptb.CrossPosition_y(1);
-            %                        
+            pos1             = p.ptb.CrossPosition_y(2);
+            pos2             = p.ptb.CrossPosition_y(1);
+            %
             %We will turn on the fixation cross and start the tracker
             %for the first trial. These have to be done before the main
             %for loop.
@@ -447,8 +440,7 @@ cleanup;
             %
             StartEyelinkRecording(stim_id,p.var.ExpPhase,0,0);
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            %Mark the onset
-            MarkCED(p.com.lpt.address,p.com.lpt.FixOnset);
+            %Mark the onset            
             Eyelink('Message', 'FX Onset at %03d',pos1);
             Log(t,1,pos1);%log the mark onset...
             
@@ -737,7 +729,7 @@ cleanup;
         if strcmp(p.hostname,'etpc')
             p.ptb.oldres = Screen('resolution',p.ptb.screenNumber,1600,1200);
             %hide the cursor
-            HideCursor(p.ptb.screenNumber);
+% % % % % % % % % % % % % % % % % %             HideCursor(p.ptb.screenNumber);
         end
         
         %Open a graphics window using PTB
@@ -768,17 +760,6 @@ cleanup;
         %sound('Open')
         Beeper(5000)
         
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%
-        %set serial communication channels
-        %         IOPort('CloseAll');
-        %          p.com.serial = IOPort('OpenSerialPort', 'COM1', 'InputBufferSize=51840000 HardwareBufferSizes=32768,32768 Terminator=0 ReceiveLatency=0.0001 BaudRate=9600 ReceiveTimeout=7');
-        %         IOPort('ConfigureSerialPort', p.com.serial, 'BlockingBackgroundRead=1');
-        %because of the BlockingBackgroundRead=1, the flush and close all
-        %command will wait for the next byte to arrive...
-        %         IOPort('ConfigureSerialPort', p.com.serial, 'StartBackgroundRead=2');
-        %         IOPort('Flush', p.com.serial);
-        %2 is the granularity of the data, cogent box sends 2 bytes.
-        %IOPort('ConfigureSerialPort', p.com.serial, 'ReadTimeout=5');
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%Prepare the keypress queue listening.
         p.ptb.device        = -1;
@@ -788,21 +769,20 @@ cleanup;
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
-        %prepare parallel port communication. This relies on cogent i
-        %think. We could do it with PTB as well.
-        %         config_io;
-        %         outp(p.com.lpt.address,0);
-        %         if( cogent.io.status ~= 0 )
-        %             error('inp/outp installation failed');
-        %         end
-        %         %test whether CED receives the triggers correctly...
-        %         k = 0;
-        %         while k ~= 49;
-        %             outp(888,247);pause(0.1);outp(888,0);%247 means all but the UCS channel (so that we dont shock the subject during initialization).
-        %             fprintf('=================\nDid the trigger test work?\nPress 0 to send it again, 1 to continue...\n')
-        %             [~, k] = KbStrokeWait;
-        %             k = find(k);
-        %         end
+        
+        config_io;
+        outp(p.com.lpt.address,0);
+        if( cogent.io.status ~= 0 )
+            error('inp/outp installation failed');
+        end
+        %test whether CED receives the triggers correctly...
+        k = 0;
+        while k ~= 49;
+            outp(p.com.lpt.address,127);pause(0.1);outp(888,0);%247 means all but the UCS channel (so that we dont shock the subject during initialization).
+            fprintf('=================\nDid the trigger test work?\nPress 0 to send it again, 1 to continue...\n')
+            [~, k] = KbStrokeWait;
+            k = find(k);
+        end
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
         %load the pictures to the memory.
@@ -872,16 +852,16 @@ cleanup;
         shuffled        = shuffled(:);
     end
     function Buzz
-        %         outp(p.com.lpt.address, p.com.lpt.UCS );
+        outp(p.com.lpt.address, p.com.lpt.digitimer );
         WaitSecs(p.duration.shockpulse);
-        %         outp(p.com.lpt.address, 0);
+        outp(p.com.lpt.address, 0);
         WaitSecs(p.duration.intershockpulse);
     end
     function MarkCED(socket,port)
         %send pulse to SCR#
-        %         outp(socket,port);
+        outp(socket,port);
         WaitSecs(0.01);
-        %         outp(socket,0);
+        outp(socket,0);
     end
     function InitEyeLink
         %
