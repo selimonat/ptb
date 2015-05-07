@@ -409,8 +409,8 @@ cleanup;
         elseif phase == 4
             %seq = seq_feargen_eyelab(csp,'t');
         baseline=load(sprintf([regexprep(p.path.subject,'\\','\\\') 'stimulation\\param_phase_01.mat']),'p');
-        p.presentation=baseline.p.presentation;
-        p.presentation.stim_id(p.presentation.stim_id==9)=csp;
+        p.presentation = baseline.p.presentation;
+        p.presentation.stim_id(p.presentation.stim_id==9) = csp;
         end
         %create the randomized design
         p.stim.cs_plus                 = csp;%index of cs stimulus, this is the one paired to shock
@@ -894,7 +894,7 @@ cleanup;
         end
 %         Eyelink('Command', 'draw_cross %d %d 15',p_ptb_CrossPositionET_x(1),p_ptb_CrossPositionET_y(1) );
 %         Eyelink('Command', 'draw_cross %d %d 15',p_ptb_CrossPositionET_x(2),p_ptb_CrossPositionET_y(2) );
-        Eyelink('Command', 'draw_cross %d %d 15',fix(1),fix(2))
+        Eyelink('Command', 'draw_cross %d %d',fix(1),fix(2))
         %
         %drift correction
         %EyelinkDoDriftCorrection(el,crosspositionx,crosspositiony,0,0);
