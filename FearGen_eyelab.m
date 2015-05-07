@@ -217,8 +217,7 @@ cleanup;
          
          %% Fixation Onset
          Screen('DrawText', p.ptb.w, double('+'), fix(1),fix(2), p.stim.white);            
-         TimeCrossOn  = Screen('Flip',p.ptb.w,TimeCrossOnset,0);            
-         MarkCED(p.com.lpt.address,p.com.lpt.FixOnset);
+         TimeCrossOn  = Screen('Flip',p.ptb.w,TimeCrossOnset,0);                     
          Eyelink('Message', 'FX Onset at %d %d',fix(1),fix(2));
          Log(TimeCrossOn,1,stim_id);%cross onset.                     
          %turn the eye tracker on
@@ -256,6 +255,7 @@ cleanup;
             %Deliver shock and stim off immediately            
             TimeStartShock = WaitSecs('UntilTime',TimeStartShock);
             Eyelink('Message', 'UCS Onset');
+            MarkCED( p.com.lpt.address, p.com.lpt.UCS);   
             while GetSecs < TimeEndStim;
                 Buzz;%this is anyway sent to CED.
             end
@@ -264,8 +264,7 @@ cleanup;
         
         %% STIM OFF immediately
         TimeEndStim = Screen('Flip',p.ptb.w,TimeEndStim,0);
-        %send eyelink and ced a marker        
-        MarkCED(p.com.lpt.address,p.com.lpt.StimOffset);
+        %send eyelink and ced a marker                
         Eyelink('Message', 'Stim Offset');            
         Eyelink('Message', 'BLANK_SCREEN');
         Log(TimeEndStim,-2,stim_id);%log the stimulus offset
@@ -377,11 +376,11 @@ cleanup;
         %parallel port
         p.com.lpt.address              = 888;
         %codes for different events
-        p.com.lpt.FixOnset             = 4;
-        %2 is empty because
         p.com.lpt.StimOnset            = 1;
-        p.com.lpt.FixMove              = 16;
-        p.com.lpt.UCS                  = 128;
+        p.com.lpt.UCS                  = 4;
+        p.com.lpt.FixOnset             = 4;
+        %2 is empty because       
+        p.com.lpt.FixMove              = 16;        
         p.com.lpt.StimOffset           = 32;
         p.com.lpt.CS_plus              = 64;
         p.com.lpt.CS_neg               = 128;
@@ -481,8 +480,7 @@ cleanup;
             %
             StartEyelinkRecording(stim_id,p_var_ExpPhase,0,0,fix);
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            %Mark the onset
-            MarkCED(p.com.lpt.address,p.com.lpt.FixOnset);
+            %Mark the onset            
             Eyelink('Message', 'FX Onset at %d %d',fix(1),fix(2));
             Log(t,1,fix);%log the mark onset...
             
