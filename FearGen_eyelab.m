@@ -11,9 +11,7 @@ if nargin ~= 5
     keyboard;
 end
 %change this if you like to use another sequence.
-seq_name = 'FeargenSequencer_130218_0343.mat'
-csp      =  csp;
-csn      =  mod( csp(1) + 8/2-1, 8)+1;
+sequence_name = 'FeargenSequencer_130218_0343.mat';
 
 % ListenChar(2);%disable pressed keys to be spitted around
 commandwindow;
@@ -38,15 +36,12 @@ nTrial                    = 0;
 InitEyeLink;
 WaitSecs(2);
 %calibrate if we are at the scanner computer.
-if strcmp(p.hostname,'triostim1') || strcmp(p.hostname,'etpc') || strcmp(p.hostname,'ganglion');
-    CalibrateEL;
-end
+CalibrateEL;
 %save again the parameter file
 save(p.path.path_param,'p');
 %
 if phase == 1 %training part...
-    
-    p.mrt.LastScans = 0;%scanner is off here, otherwise we will wait forever
+        
     p.var.ExpPhase  = phase;
     %
     ShowInstruction(4,1);
@@ -63,14 +58,12 @@ elseif phase == 2
     PresentStimuli;
     AskStimRating;    
 elseif phase == 3
-    %
-    p_mrt_on        = 0;
+    %    
     p.var.ExpPhase  = phase;
     ShowInstruction(6,1);%will not wait for keypresses
     PresentStimuli;
     AskStimRating;
-elseif phase == 4
-    p_mrt_on        = 0;
+elseif phase == 4   
     p.var.ExpPhase  = phase;
     %
     ShowInstruction(6,1);%will not wait for keypresses
@@ -192,7 +185,7 @@ cleanup;
         Eyelink('Message', 'FX Onset at %03d',pos1);
         Log(TimeCrossOn,1,stim_id);%cross onset.
         %turn the eye tracker on
-        StartEyelinkRecording(stim_id,p.var.ExpPhase,oddball,ucs,pos1,p.ptb.CrossPosition_x);
+        StartEyelinkRecording(stim_id,p.var.ExpPhase,oddball,ucs);
         
         %% Draw the stimulus to the buffer
         Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(stim_id));
@@ -278,9 +271,8 @@ cleanup;
         %Path Business.
         [~, hostname] = system('hostname');
         p.hostname                    = deblank(hostname);
-        if strcmp(p.hostname,'triostim1')
-            p.path.baselocation       = 'C:\USER\onat\Experiments\';
-        elseif strcmp(p.hostname,'etpc')
+        
+        if strcmp(p.hostname,'etpc')
             p.path.baselocation       = 'C:\Users\PsychToolbox\Documents\onat\Experiments\';
         elseif ismac
             p.path.baselocation       = '/Users/onat/Documents/BehavioralExperiments/';
@@ -341,13 +333,8 @@ cleanup;
         p.stim.width                   = info.Width;
         p.stim.height                  = info.Height;
         
-        if strcmp(p.hostname,'triostim1')
-            p.keys.confirm                 = KbName('7');
-            p.keys.increase                = KbName('8');
-            p.keys.decrease                = KbName('6');
-            p.keys.space                   = KbName('space');
-            p.keys.esc                     = KbName('esc');
-        elseif ismac
+        
+        if ismac
             p.keys.confirm                 = KbName('UpArrow');
             p.keys.increase                = KbName('RightArrow');
             p.keys.decrease                = KbName('LeftArrow');
@@ -451,17 +438,14 @@ cleanup;
             stim_id          = rating_seq(nRatend);
             pos2             = p.ptb.CrossPosition_y(2);
             pos1             = p.ptb.CrossPosition_y(1);
-            %
-            next_stim_id = [];%this is a trick, otherwise a fixation cross appears right before the rating :(
-            next_pos1    = [];
-            
+            %                        
             %We will turn on the fixation cross and start the tracker
             %for the first trial. These have to be done before the main
             %for loop.
             Screen('DrawText', p.ptb.w, double('+'), p.ptb.CrossPosition_x, pos1, p.stim.white);
             t  = Screen('Flip',p.ptb.w);
             %
-            StartEyelinkRecording(stim_id,p.var.ExpPhase,0,0,pos1,p.ptb.CrossPosition_x);
+            StartEyelinkRecording(stim_id,p.var.ExpPhase,0,0);
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %Mark the onset
             MarkCED(p.com.lpt.address,p.com.lpt.FixOnset);
@@ -708,7 +692,7 @@ cleanup;
                 ];
             
         elseif nInstruct == 10%just before the shock
-            text = ['Reiz kommt...\n'];
+            text = 'Reiz kommt...\n';
         elseif nInstruct == 11%this is the rating question
             text = ['Wie wahrscheinlich ist es, bei dem gerade gesehenen Gesicht \n'...
                 'einen elektrischen Schock zu erhalten?“\n' ...
@@ -749,11 +733,8 @@ cleanup;
         Screen('Preference', 'SkipSyncTests', 1);
         Screen('Preference', 'SuppressAllWarnings', 1);
         %set the resolution correctly
-        if strcmp(p.hostname,'triostim1')
-            p.ptb.oldres = Screen('resolution',p.ptb.screenNumber,1280,960);
-            %hide the cursor
-            HideCursor(p.ptb.screenNumber);
-        elseif strcmp(p.hostname,'etpc')
+        
+        if strcmp(p.hostname,'etpc')
             p.ptb.oldres = Screen('resolution',p.ptb.screenNumber,1600,1200);
             %hide the cursor
             HideCursor(p.ptb.screenNumber);
@@ -849,7 +830,7 @@ cleanup;
         Eyelink('Command', 'clear_screen %d', 0);
         Log(t,-8,NaN);
     end
-    function [t]=StartEyelinkRecording(nStim,phase,oddball,ucs,crosspositiony,crosspositionx)
+    function [t]=StartEyelinkRecording(nStim,phase,oddball,ucs)
         t = [];
         nStim = double(nStim);
         Eyelink('Message', 'TRIALID: %03d, PHASE: %02d, ODDBALL: %02d, UCS: %02d', nStim, phase, double(oddball), double(ucs));
@@ -939,7 +920,7 @@ cleanup;
         %PsychEyelinkDispatchCallback(el)
         
         % open file.
-        res = Eyelink('Openfile', p.path.edf);
+        Eyelink('Openfile', p.path.edf);
         %
         Eyelink('command', 'add_file_preamble_text ''Recorded by EyelinkToolbox FearGen2 Experiment''');
         Eyelink('command', 'screen_pixel_coords = %ld %ld %ld %ld', 0, 0, p.ptb.width-1, p.ptb.height-1);
@@ -974,7 +955,7 @@ cleanup;
         % Close window:
         sca;
         %set back the old resolution
-        if strcmp(p.hostname,'triostim1')
+        if strcmp(p.hostname,'etpc')
             Screen('Resolution',p.ptb.screenNumber, p.ptb.oldres.width, p.ptb.oldres.height );
             %show the cursor
             ShowCursor(p.ptb.screenNumber);
