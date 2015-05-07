@@ -245,7 +245,7 @@ movefile(p.path.subject,p.path.finalsubject);
         %face trial(1)
         Screen('DrawTexture',p.ptb.w,p.ptb.stim_sprites(trial(1)));
         Eyelink('Message', 'Stim 1 Onset');
-        Eyelink('ImageTransfer',p.stim.files(trial(1),:),p.ptb.imrect(1),p.ptb.imrect(2),p.ptb.imrect(3),p.ptb.imrect(4),p.ptb.imrect(1),p.ptb.imrect(2));
+%         Eyelink('ImageTransfer',p.stim.files(trial(1),:),p.ptb.imrect(1),p.ptb.imrect(2),p.ptb.imrect(3),p.ptb.imrect(4),p.ptb.imrect(1),p.ptb.imrect(2));
         Screen('Flip',p.ptb.w,onsets(3),0);
        
         %fixation cross 1
@@ -263,7 +263,7 @@ movefile(p.path.subject,p.path.finalsubject);
         %face trial(2)
         Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(trial(2)));
         Eyelink('Message', 'Stim 2 Onset');
-        Eyelink('ImageTransfer',p.stim.files(trial(2),:),p.ptb.imrect(1),p.ptb.imrect(2),p.ptb.imrect(3),p.ptb.imrect(4),p.ptb.imrect(1),p.ptb.imrect(2));
+%         Eyelink('ImageTransfer',p.stim.files(trial(2),:),p.ptb.imrect(1),p.ptb.imrect(2),p.ptb.imrect(3),p.ptb.imrect(4),p.ptb.imrect(1),p.ptb.imrect(2));
         Screen('Flip',p.ptb.w,onsets(6),0);
         WaitSecs(0.3);
         StopEyelinkRecording;
@@ -353,14 +353,14 @@ movefile(p.path.subject,p.path.finalsubject);
         if strcmp(p.hostname,'triostim1')
             p.path.baselocation       = 'C:\USER\onat\Experiments\';
         elseif strcmp(p.hostname,'etpc')
-            p.path.baselocation       = 'C:\Users\PsychToolbox\Documents\onat\Experiments\';
+            p.path.baselocation       = 'C:\Users\onat\Documents\Experiments\';
         else
             p.path.baselocation       = 'C:\Users\onat\Documents\Experiments\';
         end
         
-        p.path.experiment             = [p.path.baselocation 'FearGeneralization_Ethnic\'];
-        p.path.stimfolder             = 'ethno_pilote\locals\32discrimination';
-        p.path.stim                   = [p.path.baselocation 'Stimuli\Gradients\' p.path.stimfolder '\'];
+        p.path.experiment             = [p.path.baselocation 'feargen_master\'];
+        p.path.stimfolder             = 'stim\32discrimination';
+        p.path.stim                   = [p.path.experiment  p.path.stimfolder '\'];
         %
         p.subID                       = sprintf('sub%02d',subject);
         p.path.edf                    = sprintf([p.subID 'p%02d' ],phase);
