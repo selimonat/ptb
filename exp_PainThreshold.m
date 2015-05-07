@@ -135,6 +135,7 @@ cleanup;
         %
         [secs, keyCode, deltaSecs] = KbStrokeWait;
         ShowInstruction(5);%shock is coming message...
+        MarkCED(p.lpt.address,p.lpt.ShockOnset)
         t = GetSecs + p.duration.shock;
         while GetSecs < t;
             Buzz;
@@ -192,11 +193,9 @@ cleanup;
         p.keys.space      = KbName('space');
         p.keys.esc        = KbName('esc');
         %parallel port
-        p.lpt.address = 888;
-        p.lpt.US      = 255;
-        p.lpt.shut  = 0;
-        p.lpt.stim  = 1;
-        p.lpt.fixation = 2;
+        p.lpt.address       = 888;
+        p.lpt.digitimer     = 128;                
+        p.lpt.ShockOnset    = 4;        
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %timing business
         p.duration.shock           = 0.1;%s;x
@@ -207,8 +206,6 @@ cleanup;
         %Save the stuff
         save(p.path.filename,'p');
     end
-
-
     function [rating]=RatingSlider(rect,tSection,position,up,down,confirm,labels,message,numbersOn)
         %
         %Detect the bounding boxes of the labels.
@@ -327,7 +324,7 @@ cleanup;
                 
                 text = ['Damit ist dieser Teil zu Ende.\n' ...
                     '\n'...
-                    'Wir machen nun mit der nächsten Phase weiter.\n'...                  
+                    'Wir machen nun mit der nächsten Phase weiter.\n'...
                     ];
                 
             else
@@ -338,7 +335,7 @@ cleanup;
     function SetPTB
         %Open a graphics window using PTB
         screens       =  Screen('Screens');
-        screenNumber  =  max(screens);
+        screenNumber  =  1;
         %make everything transparent for debuggin purposes.
         if debug
             commandwindow;
@@ -380,13 +377,17 @@ cleanup;
         shuffled        = vector(idx(1:N));
         shuffled        = shuffled(:);
     end
+    function MarkCED(socket,port)
+        %send pulse to SCR#
+        outp(socket,port);
+        WaitSecs(0.01);
+        outp(socket,0);
+    end
     function Buzz
-        
-        outp(p.lpt.address, p.lpt.US );
+        outp(p.lpt.address, p.lpt.digitimer );
         WaitSecs(p.duration.shockpulse);
         outp(p.lpt.address, 0);
         WaitSecs(p.duration.intershockpulse);
-        
     end
     function cleanup
         % Close window:
@@ -398,6 +399,6 @@ cleanup;
         fprintf([repmat('!',1,50) '\n']);
         fprintf([repmat('!',1,50) '\n']);
         fprintf('Did you TURN ON the SCR ????\n Press a key to continue...\n');
-        KbStrokeWait;        
+        KbStrokeWait;
     end
 end
