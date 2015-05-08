@@ -245,7 +245,7 @@ movefile(p.path.subject,p.path.finalsubject);
         %face trial(1)
         Screen('DrawTexture',p.ptb.w,p.ptb.stim_sprites(trial(1)));
         Eyelink('Message', 'Stim 1 Onset');
-%         Eyelink('ImageTransfer',p.stim.files(trial(1),:),p.ptb.imrect(1),p.ptb.imrect(2),p.ptb.imrect(3),p.ptb.imrect(4),p.ptb.imrect(1),p.ptb.imrect(2));
+        Eyelink('ImageTransfer','C:\Users\onat\Documents\Experiments\feargen_master\stim\32discrimination\24bits\01.bmp');
         Screen('Flip',p.ptb.w,onsets(3),0);
        
         %fixation cross 1
@@ -263,7 +263,7 @@ movefile(p.path.subject,p.path.finalsubject);
         %face trial(2)
         Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(trial(2)));
         Eyelink('Message', 'Stim 2 Onset');
-%         Eyelink('ImageTransfer',p.stim.files(trial(2),:),p.ptb.imrect(1),p.ptb.imrect(2),p.ptb.imrect(3),p.ptb.imrect(4),p.ptb.imrect(1),p.ptb.imrect(2));
+        Eyelink('ImageTransfer',p.stim.files24(trial(2),:),p.ptb.imrect(1),p.ptb.imrect(2),p.ptb.imrect(3),p.ptb.imrect(4),p.ptb.imrect(1),p.ptb.imrect(2));
         Screen('Flip',p.ptb.w,onsets(6),0);
         WaitSecs(0.3);
         StopEyelinkRecording;
@@ -361,13 +361,14 @@ movefile(p.path.subject,p.path.finalsubject);
         p.path.experiment             = [p.path.baselocation 'feargen_master\'];
         p.path.stimfolder             = 'stim\32discrimination';
         p.path.stim                   = [p.path.experiment  p.path.stimfolder '\'];
+        p.path.stim24                 = [p.path.experiment  p.path.stimfolder '\' '24bits' '\'];
         %
         p.subID                       = sprintf('sub%02d',subject);
         p.path.edf                    = sprintf([p.subID 'p%02d' ],phase);
         timestamp                     = datestr(now,30);
         p.path.subject                = [p.path.experiment 'data\tmp\' p.subID '_' timestamp '\'];
         p.path.finalsubject           = [p.path.experiment 'data\' p.subID '_' timestamp '\' ];
-        p.path.dropbox                = ['C:\Users\onat\Dropbox\feargen_lea\EthnoMaster\DiscriminationTask\pilotedata\data'];
+        p.path.dropbox                = 'C:\Users\onat\Dropbox\feargen_lea\EthnoMaster\DiscriminationTask\pilotedata\data';
         %create folder hierarchy
         mkdir(p.path.subject);
         mkdir([p.path.subject 'stimulation']);
@@ -517,7 +518,7 @@ movefile(p.path.subject,p.path.finalsubject);
         %
         %Detect the bounding boxes of the labels.
         for nlab = 1:2
-            [nx ny bb(nlab,:)]=DrawFormattedText(p.ptb.w,labels{nlab}, 'center', 'center',  p.stim.white,[],[],[],2);
+            [nx, ny, bb(nlab,:)]=DrawFormattedText(p.ptb.w,labels{nlab}, 'center', 'center',  p.stim.white,[],[],[],2);
             Screen('FillRect',p.ptb.w,p.stim.bg);
         end
         bb = max(bb);
@@ -652,7 +653,7 @@ movefile(p.path.subject,p.path.finalsubject);
                 '   to start the experiment!\n' ...
                 ];
         elseif nInstruct == 2%end
-            text = ['Experiment beendet!\n'];
+            text = 'Experiment beendet!\n';
             
         elseif nInstruct==4%break
             text = [sprintf('Du hast bereits %g von %g Durchgängen geschafft!\n',tt-1,p.psi.numtrials*tchain)...
@@ -762,7 +763,7 @@ function [t]=StopEyelinkRecording
         Eyelink('Command', 'set_idle_mode');
         WaitSecs(0.01);
         Eyelink('Command', 'clear_screen %d', 0);
-        Screen('Textsize', p.ptb.w,p.text.fontsize)
+        Screen('Textsize', p.ptb.w,p.text.fontsize);
         Log(t,-8,NaN);
     end
 function [t]=StartEyelinkRecording(tt,phase,trial,fix)
@@ -809,6 +810,15 @@ function InitEyeLink
         WaitSecs(0.5);
         [~, vs] = Eyelink('GetTrackerVersion');
         fprintf('=================\nRunning experiment on a ''%s'' tracker.\n', vs );
+        
+        %load 24bits pictures for eyelink...
+        dummy = dir([p.path.stim24 '*.bmp']);
+        p.stim.files24    = [repmat([fileparts(p.path.stim24) filesep],length(dummy),1) vertcat(dummy(:).name)];
+%         for i=1:32
+%         filename       = p.stim.files24(nStim,:);
+%                 [im , ~, ~]    = imread(filename);
+%         end
+%                           
         %
         el                          = EyelinkInitDefaults(p.ptb.w);
         %update the defaults of the eyelink tracker
@@ -840,7 +850,7 @@ function InitEyeLink
         Eyelink('command', 'screen_pixel_coords = %ld %ld %ld %ld', 0, 0, p.ptb.width-1, p.ptb.height-1);
         Eyelink('message', 'DISPLAY_COORDS %ld %ld %ld %ld', 0, 0, p.ptb.width-1, p.ptb.height-1);
         % set calibration type.
-        Eyelink('command', 'calibration_type = HV9');
+        Eyelink('command', 'calibration_type = HV13');
         Eyelink('command', 'select_parser_configuration = 1');
         %what do we want to record
         Eyelink('command', 'file_sample_data  = LEFT,RIGHT,GAZE,HREF,AREA,GAZERES,STATUS,INPUT,HTARGET');
