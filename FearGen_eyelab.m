@@ -255,7 +255,7 @@ cleanup;
             %Deliver shock and stim off immediately            
             TimeStartShock = WaitSecs('UntilTime',TimeStartShock);
             Eyelink('Message', 'UCS Onset');
-            MarkCED( p.com.lpt.address, p.com.lpt.UCS);   
+            
             while GetSecs < TimeEndStim;
                 Buzz;%this is anyway sent to CED.
             end
@@ -375,15 +375,8 @@ cleanup;
         %Communication business
         %parallel port
         p.com.lpt.address              = 888;
-        %codes for different events
-        p.com.lpt.StimOnset            = 1;
-        p.com.lpt.UCS                  = 4;
-        p.com.lpt.FixOnset             = 4;
-        %2 is empty because       
-        p.com.lpt.FixMove              = 16;        
-        p.com.lpt.StimOffset           = 32;
-        p.com.lpt.CS_plus              = 64;
-        p.com.lpt.CS_neg               = 128;
+        p.com.lpt.StimOnset            = 2;        
+        p.com.lpt.digitimer            = 129;
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %timing business
@@ -912,7 +905,7 @@ cleanup;
         shuffled        = shuffled(:);
     end
     function Buzz
-        outp(p.com.lpt.address, p.com.lpt.UCS );
+        outp(p.com.lpt.address, p.com.lpt.digitimer );
         WaitSecs(p.duration.shockpulse);
         outp(p.com.lpt.address, 0);
         WaitSecs(p.duration.intershockpulse);
@@ -966,7 +959,7 @@ cleanup;
         Eyelink('command', 'screen_pixel_coords = %ld %ld %ld %ld', 0, 0, p.ptb.width-1, p.ptb.height-1);
         Eyelink('message', 'DISPLAY_COORDS %ld %ld %ld %ld', 0, 0, p.ptb.width-1, p.ptb.height-1);
         % set calibration type.
-        Eyelink('command', 'calibration_type = HV9');
+        Eyelink('command', 'calibration_type = HV13');
         Eyelink('command', 'select_parser_configuration = 1');
         %what do we want to record
         Eyelink('command', 'file_sample_data  = LEFT,RIGHT,GAZE,HREF,AREA,GAZERES,STATUS,INPUT,HTARGET');
