@@ -12,11 +12,11 @@ function [seq]=seq_feargen_eyelab(condition,csp,balancing,isis)
 % isis=[2 3 4 5]; could be anything
 % balancing: 'quasiuniform' 'random' 'uniform' 'exponential'
 %
-%
+% Example: seq=seq_feargen_eyelab('tshort',1,'constant',[3]);
 
-trialduration      = .75;
+trialduration  = .75;
 % minimum ISI
-mini_isi       = 1.5;
+mini_isi       = 2.5;
 % minimum pre stimulus
 mini_ps        = 0.4;
 
@@ -29,22 +29,40 @@ seq.csp = csp;
 seq.csn = csn;
 %% SEQ is between 1:tCond ==> 1 2 3 3 1 2 1 2 1 3 3 4
 %% Stim ID = stimuli(SEQ)
-
+shift=0;
 if strcmp(condition,'c')
     rep_vec = [30 18 4 1];
     %for each entry in the sequence we assign a stimulus id so that
     %stimuli(sequence) gives us what we wnat to show on the screen
     stimuli = [csp csn csp oddball];%later oddball will be assigned randomly
-    valid_oddballs         = mod([csp csn]+2,8);
+    
     tface = 2;
-elseif strcmp(condition,'t') || strcmp(condition,'b')
+elseif strcmp(condition,'t') 
     rep_vec = [ones(1,8)*4 1 1];
     stimuli = [1:8 csp oddball];%ucs's are taken from the CSP indices
-    valid_oddballs         = mod([csp csn]+2,8);
+    
     tface = 8;
 elseif strcmp(condition,'b')
    % stimuli has to include stim_id=ucs==9, to keep the shock signal
-    stimuli = [1:8 ucs oddball];
+    stimuli = [1:8 ucs oddball];    rep_vec = [ones(1,8)*4 1 1];
+    
+    tface = 8;
+elseif strcmp(condition,'bshort')
+    stimuli = [0:8 ucs oddball];
+    %9 cond now to include zero trials
+    rep_vec = [ones(1,9)*2 1 1];
+    tface = 8;
+    shift = 1; 
+elseif strcmp(condition,'tshort')
+    stimuli = [0:8 csp oddball];
+    %9 cond now to include zero trials
+    rep_vec = [ones(1,9)*2 1 1];
+    tface = 8;
+    shift = 1;
+elseif strcmp(condition,'cshort')
+    stimuli = [csp csn csp oddball];
+    rep_vec = [30 30 18 4 1];
+    
 end
 
 
@@ -60,23 +78,34 @@ while ~OK
     
     %create the 2nd Order Balanced Sequence
     [seq.cond_id,ranks]= seq_SecondOrderBalancedSequence(rep_vec,1);
+   
+    
     %replace Conditions with real Stimuli numbers
-    seq.stim_id    = stimuli(seq.cond_id);
+%     i = seq.cond_id ~= 0;
+%     seq.stim_id(i)    = stimuli(seq.cond_id(i));
+    seq.stim_id = stimuli(seq.cond_id);
     
-    seq.oddball              = seq.cond_id == tface+2;
-    seq.stim_id(seq.oddball) = RandSample( valid_oddballs,[1 sum(seq.oddball)]);
     
-    seq.ucs     = seq.cond_id == (tface + 1);
-    tucs = sum(seq.ucs);
+    seq.oddball              = seq.cond_id == stimuli(end)+1;
+    %randomly assign oddbals
+    seq.stim_id(seq.oddball) = RandSample(1:tface,[1 sum(seq.oddball)]);
+    seq.ucs                = seq.cond_id == length(stimuli)-1;        
+    tucs                   = sum(seq.ucs);
     seq.tTrial             = length(seq.cond_id);
+    
+     if shift
+        seq.cond_id = seq.cond_id - 1;
+    end
+
         
 % % % % %         
-    if ExcludeEvents(seq.ucs,0.95) || ExcludeEvents(seq.oddball,0.95) || ExcludeEvents(seq.oddball,0.1)|| SlopeCheck(seq.ucs)  || LongestNoEventDistance(seq.ucs,40) || TucsTest(seq.ucs,tucs)
-    
+    if IsEventAfter(seq.ucs,0.95) || IsEventAfter(seq.oddball,0.95) || IsEventBefore(seq.oddball,0.1) || SlopeCheck(seq.ucs)  || IsEventTooFar(seq.ucs,40) || TucsTest(seq.ucs,tucs)    
         OK=0;        
     else
         OK=1;
         fprintf('Sanity Check: OK. \n')
+        computeEff;
+        computeEnt;
     end
         
 end
@@ -127,10 +156,13 @@ elseif strcmp(balancing,'quasiuniform')
     seq.isi(isnan(seq.isi)) = seq_BalancedDist(ones(1,sum(nanpos)),isis);
     seq.cond_id(end)        = [];
 elseif strcmp(balancing,'random')
-    seq.isi  = randsample(isis,seq.tTrial,1);    
+    seq.isi  = randsample(isis,seq.tTrial,1); 
+elseif strcmp(balancing,'constant')
+    seq.isi = repmat(isis,[1,seq.tTrial]);
 end
 
-duration = sum(seq.isi)+seq.tTrial*trialduration;
+% duration = sum(seq.isi)+seq.tTrial*trialduration;
+duration = sum(seq.isi);
 fprintf('Total duration is %02g minutes.\n',duration./60);
 
 FixationCrossSequence;
@@ -187,16 +219,21 @@ end
         out=sum(seq)~=reference;
     end
 
-    function [out]=ExcludeEvents(seq,part)
-        %returns TRUE if there is no event on the last percentage of the
-        %sequence.
-        out = sum(find(seq)>= part*length(seq)) ==0;
+    function [out]=IsEventAfter(seq,part)
+        %returns TRUE if there is any events after PART percentile of
+        %trials
+        out = sum(find(seq) > part*length(seq)) ~= 0;
     end
 
+    function [out]=IsEventBefore(seq,part)
+        %returns TRUE if there is any events before PART percentile of
+        %trials
+        out = sum(find(seq) < part*length(seq)) ~= 0;
+    end
 
-    function [out]=LongestNoEventDistance(seq,distance)
+    function [out]=IsEventTooFar(seq,distance)
         %the longest distance where nothing happens.
-        out = max(sort(diff(find(seq)))) < distance;
+        out = max(sort(diff(find(seq)))) > distance;
     end
 
     function [out]=SlopeCheck(seq)
@@ -211,5 +248,13 @@ end
         end
         
     end
-
+    function computeEff
+        seq.stats.eff= calc_meffdet(seq.cond_id,10,max(seq.cond_id)-1,3);
+    end
+    function computeEnt
+        seq.stats.ent_order =0:5;
+        for order = 0:5;
+            [seq.stats.ent(order+1),dummy,seq.stats.entmax] = calcent(seq.cond_id,order);
+        end        
+    end
 end
