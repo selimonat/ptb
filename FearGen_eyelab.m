@@ -217,7 +217,8 @@ cleanup;
          
          %% Fixation Onset
          Screen('DrawText', p.ptb.w, double('+'), fix(1),fix(2), p.stim.white);            
-         TimeCrossOn  = Screen('Flip',p.ptb.w,TimeCrossOnset,0);                     
+         TimeCrossOn  = Screen('Flip',p.ptb.w,TimeCrossOnset,0);
+         MarkCED( p.com.lpt.address, p.com.lpt.FixOnset );
          Eyelink('Message', 'FX Onset at %d %d',fix(1),fix(2));
          Log(TimeCrossOn,1,stim_id);%cross onset.                     
          %turn the eye tracker on
@@ -232,7 +233,7 @@ cleanup;
             x = randn(1,100)*35;
             y = randn(1,100)*10;
             s = rand(1,100);%[0 1]
-            Screen('DrawDots',p.ptb.w,[x;y],1+s.*1.5,[180 0 0 160],p.ptb.midpoint,1);
+            Screen('DrawDots',p.ptb.w,[x;y],1+s.*1.5,[100 100 100 160],p.ptb.midpoint,1);
             %the dots size
         end
         Screen('DrawingFinished',p.ptb.w,0);
@@ -246,7 +247,10 @@ cleanup;
         %send eyelink and ced a marker asap
         Eyelink('Message', 'Stim Onset');
         Eyelink('Message', 'SYNCTIME');
-        MarkCED( p.com.lpt.address, p.com.lpt.StimOnset );                
+        MarkCED( p.com.lpt.address, p.com.lpt.StimOnset ); 
+        if oddball
+            MarkCED( p.com.lpt.address, p.com.lpt.oddball );
+        end   
         Log(TimeStimOnset,2,stim_id);%log the stimulus onset
         
           
@@ -254,6 +258,7 @@ cleanup;
             %%%%%%%%%%%%%%%%%%%%%%%
             %Deliver shock and stim off immediately            
             TimeStartShock = WaitSecs('UntilTime',TimeStartShock);
+            MarkCED( p.com.lpt.address, p.com.lpt.shock );
             Eyelink('Message', 'UCS Onset');
             
             while GetSecs < TimeEndStim;
@@ -375,8 +380,13 @@ cleanup;
         %Communication business
         %parallel port
         p.com.lpt.address              = 888;
-        p.com.lpt.StimOnset            = 2;        
-        p.com.lpt.digitimer            = 129;
+        %codes for different events
+        p.com.lpt.InitExperiment       = 64;%which is 4+8+16+
+        p.com.lpt.FixOnset             = 4;
+        p.com.lpt.StimOnset            = 8;
+        p.com.lpt.shock                = 16;
+        p.com.lpt.oddball              = 32;
+        p.com.lpt.digitimer            = 128;
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %timing business
@@ -830,7 +840,7 @@ cleanup;
         %test whether CED receives the triggers correctly...
         k = 0;
         while k ~= 49;
-            outp(888,247);pause(0.1);outp(888,0);%247 means all but the UCS channel (so that we dont shock the subject during initialization).
+            outp(p.com.lpt.address,p.com.lpt.InitExperiment);pause(0.1);outp(p.com.lpt.address,0);%247 means all but the UCS channel (so that we dont shock the subject during initialization).
             fprintf('=================\nDid the trigger test work?\nPress 0 to send it again, 1 to continue...\n')
             [~, k] = KbStrokeWait;
             k = find(k);
