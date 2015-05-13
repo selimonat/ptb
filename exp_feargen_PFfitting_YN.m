@@ -224,19 +224,20 @@ movefile(p.path.subject,p.path.finalsubject);
         
         onsets     = p.trial.onsets + GetSecs;
         
-        %transform degrees to sprite indices:
-        pink_noise   = repmat(Image2PinkNoise(p.stim.stim(:,:,1)),[1 1 3])/255;
+        %create two pink noise textures
+        pink_noise   = repmat(Image2PinkNoise(p.stim.stim(:,:,1)),[1 1 3]);
+        p.ptb.stim_sprites(p.stim.tFile+1) = Screen('MakeTexture', p.ptb.w, pink_noise);
+        pink_noise   = repmat(Image2PinkNoise(p.stim.stim(:,:,1)),[1 1 3]);
+        p.ptb.stim_sprites(p.stim.tFile+2) = Screen('MakeTexture', p.ptb.w, pink_noise);
         %sprite_index = [pink_noise FixationCross trial(1) FixationCross pink_noise trial(2) NaN];
         
-        StartEyelinkRecording(tt,phase,trial,fix);
+        StartEyelinkRecording(tt,phase,trial(1),fix(1),fix(2));
         %pink_noise 1
-        Screen('MakeTexture', p.ptb.w, pink_noise);
+        Screen('DrawTexture', p.ptb.w,p.ptb.stim_sprites(p.stim.tFile+1));
         Eyelink('Message', 'Pink Noise 1 Onset');
         Screen('Flip',p.ptb.w,onsets(1),0);
         
-        
         %fixation cross 1
-        
         Screen('DrawText', p.ptb.w, double('+'),fix(1),fix(2), p.stim.white);
         Eyelink('Command', 'draw_cross %d %d',fix(1),fix(2));
         Eyelink('Message', 'FX 1 Onset at %d %d',fix(1),fix(2));
@@ -245,12 +246,13 @@ movefile(p.path.subject,p.path.finalsubject);
         %face trial(1)
         Screen('DrawTexture',p.ptb.w,p.ptb.stim_sprites(trial(1)));
         Eyelink('Message', 'Stim 1 Onset');
-        Eyelink('ImageTransfer','C:\Users\onat\Documents\Experiments\feargen_master\stim\32discrimination\24bits\01.bmp');
         Screen('Flip',p.ptb.w,onsets(3),0);
-       
-        %fixation cross 1
+        StopEyelinkRecording;
+        
+        %second face of the trial
+        StartEyelinkRecording(tt,phase,trial(2),fix(3),fix(4));
         %pink_noise 2
-        Screen('MakeTexture', p.ptb.w, pink_noise);
+        Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(p.stim.tFile+2));
         Eyelink('Message', 'Pink Noise 2 Onset');
         Screen('Flip',p.ptb.w,onsets(4),0);
         
@@ -263,9 +265,9 @@ movefile(p.path.subject,p.path.finalsubject);
         %face trial(2)
         Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(trial(2)));
         Eyelink('Message', 'Stim 2 Onset');
-        Eyelink('ImageTransfer',p.stim.files24(trial(2),:),p.ptb.imrect(1),p.ptb.imrect(2),p.ptb.imrect(3),p.ptb.imrect(4),p.ptb.imrect(1),p.ptb.imrect(2));
         Screen('Flip',p.ptb.w,onsets(6),0);
-        WaitSecs(0.3);
+        while GetSecs<onsets(7)
+        end
         StopEyelinkRecording;
     end
     
@@ -404,7 +406,7 @@ movefile(p.path.subject,p.path.finalsubject);
         %font size and background gray level
         p.text.fontname                = 'Times New Roman';
         p.text.fontsize                = 18;%30;
-        p.text.fixationsize            = 30;
+        p.text.fixationsize            = 45;
         %rating business
         p.rating.division              = 2;%number of divisions for the rating slider
         %
@@ -438,7 +440,7 @@ movefile(p.path.subject,p.path.finalsubject);
         %these (duration.BLA) are average duration values:
 %         1.5 0.5 0.5
         p.duration.stim                = 0.7;%s     
-        p.duration.pink                = .7;%0.2
+        p.duration.pink                = 0.7;%0.2
         p.duration.fix                 = 1.0;
         %p.duration.gray                = .1;
         if simulation_mode
@@ -751,6 +753,39 @@ movefile(p.path.subject,p.path.finalsubject);
 %             ylabel('xCurrent (Deg)');
 %             
 %         end
+
+function [t]=StartEyelinkRecording(tt,phase,trialface,fixx,fixy)
+        t = [];
+        
+        Eyelink('Message', 'Trial: %03d, Phase: %02d, Face: %d ,FX %d,%d', tt, phase, trialface, fixx,fixy);
+        % an integration message so that an image can be loaded as
+        % overlay background when performing Data Viewer analysis.
+        WaitSecs(0.01);
+        Eyelink('Message', '!V IMGLOAD CENTER %s %d %d', p.stim.files(trialface,:), p.ptb.midpoint(1), p.ptb.midpoint(2));
+        % This supplies the title at the bottom of the eyetracker display
+        Eyelink('Command', 'record_status_message "Stim: %d, Phase: %d"',trialface, phase);
+        %
+        %Put the tracker offline and draw the stimuli.
+        Eyelink('Command', 'set_idle_mode');
+        WaitSecs(0.01);
+        % clear tracker display and draw box at center
+        Eyelink('Command', 'clear_screen %d', 0);
+        %draw the image on the screen
+        Eyelink('ImageTransfer',p.stim.files24(trialface,:),p.ptb.imrect(1),p.ptb.imrect(2),p.ptb.imrect(3),p.ptb.imrect(4),p.ptb.imrect(1),p.ptb.imrect(2));
+      
+        %Eyelink('Command', 'draw_cross %d %d',fix(1),fix(2))
+        %
+        %drift correction
+        %EyelinkDoDriftCorrection(el,crosspositionx,crosspositiony,0,0);
+        %start recording following mode transition and a short pause.
+        Eyelink('Command', 'set_idle_mode');
+        WaitSecs(0.01);
+        Eyelink('StartRecording');
+        Screen('Textsize', p.ptb.w,p.text.fixationsize);
+        t = GetSecs;
+        Log(t,8,NaN);
+end
+
 function [t]=StopEyelinkRecording
         Eyelink('StopRecording');
         
@@ -765,39 +800,8 @@ function [t]=StopEyelinkRecording
         Eyelink('Command', 'clear_screen %d', 0);
         Screen('Textsize', p.ptb.w,p.text.fontsize);
         Log(t,-8,NaN);
-    end
-function [t]=StartEyelinkRecording(tt,phase,trial,fix)
-        t = [];
-        
-        Eyelink('Message', 'Trial: %03d, Phase: %02d, Faces: %d %d,FX %d,%d and %d,%d:', tt, phase, trial(1), trial(2),fix(1),fix(2),fix(3),fix(4));
-        % an integration message so that an image can be loaded as
-        % overlay background when performing Data Viewer analysis.
-        WaitSecs(0.01);
-        %return
-        % This supplies the title at the bottom of the eyetracker display
-        Eyelink('Command', 'record_status_message "Stim: %02d %02d, Phase: %d"',trial(1),trial(2), phase);
-        %
-        %Put the tracker offline and draw the stimuli.
-        Eyelink('Command', 'set_idle_mode');
-        WaitSecs(0.01);
-        % clear tracker display and draw box at center
-        Eyelink('Command', 'clear_screen %d', 0);
-        %draw the image on the screen but also the two crosses
-        %if nStim <= 16
-        %    Eyelink('ImageTransfer',p.stim.files(nStim,:),p.ptb.imrect(1),p.ptb.imrect(2),p.ptb.imrect(3),p.ptb.imrect(4),p.ptb.imrect(1),p.ptb.imrect(2));
-        %end
-        %Eyelink('Command', 'draw_cross %d %d',fix(1),fix(2))
-        %
-        %drift correction
-        %EyelinkDoDriftCorrection(el,crosspositionx,crosspositiony,0,0);
-        %start recording following mode transition and a short pause.
-        Eyelink('Command', 'set_idle_mode');
-        WaitSecs(0.01);
-        Eyelink('StartRecording');
-        Screen('Textsize', p.ptb.w,p.text.fixationsize);
-        t = GetSecs;
-        Log(t,8,NaN);
-    end
+end
+
 function InitEyeLink
         %
         if EyelinkInit(0)%use 0 to init normaly
