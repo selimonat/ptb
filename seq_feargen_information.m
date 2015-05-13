@@ -38,7 +38,7 @@ fprintf('Power: %g\n',dummy_det(1));
 fprintf('Normalized power: %g\n',dummy_det(1)/max_det(1)*100);
 figure(1000);
 fprintf('=====================================\n');
-for isis = [1 2.5 3.5]
+for isis = [2.5 3 3.5]
     fprintf('Expected duration: ISI of %g s -> %g minutes..\n',isis,isis*ttrial/60);
 end
 
@@ -48,10 +48,7 @@ imagesc(n);
 colorbar;
 subplot(2,1,2);
 plot(s,'o-');
-hold on;
-plot(find(s == tstimcond-1),s(s == tstimcond-1),'+r','markersize',10);
-plot(find(s == tstimcond),s(s == tstimcond),'sg','markersize',10);
-hold off;
+
 
 
 
