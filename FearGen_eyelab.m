@@ -68,7 +68,7 @@ elseif phase == 4
     %
     ShowInstruction(6,1);%will not wait for keypresses
     PresentStimuli;
- 	AskStimRating;
+% 	AskStimRating;
 %     AskWhichFace;
 end
 
@@ -181,6 +181,7 @@ cleanup;
         %% Fixation Onset
         Screen('DrawText', p.ptb.w, double('+'), p.ptb.CrossPosition_x,pos1, p.stim.white);
         TimeCrossOn  = Screen('Flip',p.ptb.w,TimeCrossOnset,0);        
+        MarkCED( p.com.lpt.address, p.com.lpt.FixOnset );
         Eyelink('Message', 'FX Onset at %03d',pos1);
         Log(TimeCrossOn,1,stim_id);%cross onset.
         %turn the eye tracker on
@@ -205,6 +206,9 @@ cleanup;
         Eyelink('Message', 'Stim Onset');
         Eyelink('Message', 'SYNCTIME');
         MarkCED( p.com.lpt.address, p.com.lpt.StimOnset );
+        if oddball
+            MarkCED( p.com.lpt.address, p.com.lpt.oddball );
+        end            
         Log(TimeStimOnset,2,stim_id);%log the stimulus onset
         
         
@@ -230,6 +234,7 @@ cleanup;
             %%%%%%%%%%%%%%%%%%%%%%%
             %Deliver shock and stim off immediately
             TimeStartShock = WaitSecs('UntilTime',TimeStartShock);
+            MarkCED( p.com.lpt.address, p.com.lpt.shock );            
             Eyelink('Message', 'UCS Onset');
             while GetSecs < TimeEndStim;
                 Buzz;%this is anyway sent to CED.
@@ -352,8 +357,11 @@ cleanup;
         p.com.lpt.address              = 888;
         %codes for different events        
         %2 is empty because
-        p.com.lpt.StimOnset            = 1;        
-        p.com.lpt.ShockOnset           = 4;        
+        p.com.lpt.InitExperiment       = 64;
+        p.com.lpt.FixOnset             = 4;
+        p.com.lpt.StimOnset            = 8;
+        p.com.lpt.shock                = 16;
+        p.com.lpt.oddball              = 32;
         p.com.lpt.digitimer            = 128;
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -778,7 +786,7 @@ cleanup;
         %test whether CED receives the triggers correctly...
         k = 0;
         while k ~= 49;
-            outp(p.com.lpt.address,127);pause(0.1);outp(888,0);%247 means all but the UCS channel (so that we dont shock the subject during initialization).
+            outp(p.com.lpt.address,p.com.lpt.InitExperiment);pause(0.1);outp(888,0);%247 means all but the UCS channel (so that we dont shock the subject during initialization).
             fprintf('=================\nDid the trigger test work?\nPress 0 to send it again, 1 to continue...\n')
             [~, k] = KbStrokeWait;
             k = find(k);
