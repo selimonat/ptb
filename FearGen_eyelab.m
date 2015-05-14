@@ -26,7 +26,7 @@ WaitSecs(0.001);
 el                        = [];
 p                         = [];
 SetParams;
-debug                     = 0;%debug mode
+debug                     = 1;%debug mode
 SetPTB;
 %
 %init variables
@@ -67,9 +67,7 @@ elseif phase == 4
     p.var.ExpPhase  = phase;
     %
     ShowInstruction(6,1);%will not wait for keypresses
-    PresentStimuli;
-% 	AskStimRating;
-%     AskWhichFace;
+	AskStimRating
 end
 
 %get the eyelink file back to this computer
@@ -149,7 +147,7 @@ cleanup;
             
             %             jetz = GetSecs;
             %             if mod(nTrial,100) == 0
-            %                ShowInstruction(14,1);
+            %                ShowInstruction(15,1);
             %                OnsetTime = OnsetTime + GetSecs - jetz;
             %             end
             
@@ -324,10 +322,18 @@ cleanup;
         %
         %font size and background gray level
         p.text.fontname                = 'Times New Roman';
-        p.text.fontsize                = 18;%30;
-        %rating business
-        p.rating.division              = 10;%number of divisions for the rating slider
-        p.rating.repetition            = 2;%how many times a given face has to be repeated...
+        if ismac
+            p.text.fontsize                = 30;
+        else
+            p.text.fontsize                = 18;
+        end
+        %rating business (each entry in the vector is for one rating type, e.g. there cd be many ratings)
+        
+        p.rating.division              = [2 4];%number of divisions for the rating slider
+        p.rating.repetition            = [2 2];%how many times a given face has to be repeated...
+        p.rating.message               = [11 12];
+        p.rating.slider_text           = [13 14];
+        p.rating.tRating               = length(p.rating.repetition);
         %
         p.stim.white                   = [255 255 255];
         %get the actual stim size (assumes all the same)
@@ -408,6 +414,8 @@ cleanup;
         end
     end
     function AskStimRating
+        
+        
         %
         p.var.ExpPhase = 5;
         BG             = p.stim.bg;%
@@ -418,10 +426,7 @@ cleanup;
         while nseq < p.rating.repetition
             nseq            = nseq + 1;
             rating_seq      = [ rating_seq     Shuffle(1:8)'];
-        end
-        message     = GetText(11);
-        SliderTextL = GetText(13);
-        SliderTextR = GetText(12);
+        end                
         %
         Screen('FillRect', p.ptb.w , p.stim.bg);
         Screen('Flip',p.ptb.w);
@@ -454,8 +459,13 @@ cleanup;
             
             %
             Trial(GetSecs+1,0.5,stim_id,0,pos1,pos2,0);
-            rate(nRatend,1)  = RatingSlider(rect, p.rating.division, Shuffle(1:p.rating.division,1), p.keys.increase, p.keys.decrease, p.keys.confirm, {SliderTextL{1} SliderTextR{1}},message,1);
-            
+            %run across ratings (for example 1/is it bla? 2/how sure are
+            %you?)
+            for rating_id = 1:p.rating.tRating
+                TopMessage  = GetText(p.rating.message(rating_id));
+                SliderTexts = GetText(p.rating.slider_text(rating_id));
+                rate(nRatend,rating_id)  = RatingSlider(rect, p.rating.division(rating_id), Shuffle(1:p.rating.division,1), p.keys.increase, p.keys.decrease, p.keys.confirm, SliderTexts,TopMessage,1);                
+            end
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %Verbose the rating of the subject
             fprintf('============\nRating Results %d (%d/%d):\n', stim_id, nRatend, tRatend);
@@ -473,10 +483,10 @@ cleanup;
             end
         end
         %sort the stim_ids and then sort the same the rates and make a
-        %matrix out of that to store
-        [~, i]       = sort(rating_seq);
-        rate         = reshape(rate(i),p.rating.repetition,8)';
-        p.out.rating = rate;
+        %matrix out of that to store                
+        for rating_id = 1:p.rating.tRating
+            p.out.rating{rating_id} = reshape(rate(i,rating_id),p.rating.repetition(rating_id),length(rating_seq)./p.rating.repetition(rating_id))';
+        end
         save(p.path.path_param,'p');
         Screen('FillRect',p.ptb.w,p.stim.bg);
         p.stim.bg = BG;
@@ -486,12 +496,14 @@ cleanup;
     function [rating] = RatingSlider(rect,tSection,position,up,down,confirm,labels,message,numbersOn)
         %
         %Detect the bounding boxes of the labels.
-        for nlab = 1:2
-            [~ , ~, bb(nlab,:)]=DrawFormattedText(p.ptb.w,labels{nlab}, 'center', 'center',  p.stim.white,[],[],[],2);
+        for nlab = 1:length(labels)
+            [~ , ~, bb(nlab,:)]  = DrawFormattedText(p.ptb.w,labels{nlab}, 'center', 'center',  p.stim.white,[],[],[],2);
+            bb_size_h(nlab)      = bb(nlab,3)-bb(nlab,1);%vertical size of the bb.
+            bb_size_v(nlab)      = bb(nlab,4)-bb(nlab,2);%vertical size of the bb.
             Screen('FillRect',p.ptb.w,p.stim.bg);
         end
-        bb = max(bb);
-        bb_size = bb(3)-bb(1);%vertical size of the bb.
+        bb_max = max(bb);
+        
         %
         DrawSkala;
         ok = 1;
@@ -516,7 +528,7 @@ cleanup;
             end
         end
         
-        function DrawSkala
+        function DrawSkala            
             %rating               = tSection - position + 1;
             rating               = position ;
             increment([up down]) = [1 -1];%delta
@@ -531,11 +543,10 @@ cleanup;
                     DrawFormattedText(p.ptb.w, mat2str(tick) , tick_x(tick)+ss/2, rect(2)+rect(4),  p.stim.white);
                     Screen('TextSize', p.ptb.w,p.text.fontsize);
                 end
-                if tick == 1
-                    DrawFormattedText(p.ptb.w, labels{1},tick_x(tick)-bb_size*1.4,rect(2), p.stim.white);
-                elseif tick == tSection+1
-                    DrawFormattedText(p.ptb.w, labels{2},tick_x(tick)+bb_size*0.4,rect(2), p.stim.white);
-                end
+                
+                if tick <= length(labels)
+                    DrawFormattedText(p.ptb.w, labels{tick}, tick_x(tick) - bb_size_h(tick)/2 + tick_size/2 , rect(2)-50, p.stim.white);
+                end                
             end
             %slider coordinates
             slider = [ tick_x(position)+tick_size*0.1 rect(2) tick_x(position)+tick_size*0.9 rect(2)+rect(4)];
@@ -668,16 +679,19 @@ cleanup;
                 'Die elektrischen Reize folgen jetzt auf bestimmte Gesichter. \n' ...
                 
                 ];
-            
-            
+                        
         elseif nInstruct == 7;%rating
-            text = ['In dieser Phase hätten wir gerne, dass Du die Gesichter\n'...
-                'im Hinblick auf folgende Frage bewertest:\n'...
-                '„Wie wahrscheinlich ist es, bei dem gerade gesehenen Gesicht \n'...
-                'einen elektrischen Schock zu erhalten?“\n'...
-                'Bewege den Zeiger mit der rechten und linken Pfeiltaste \n'...
-                'und bestätige Deine Einschätzung mit der oberen Pfeiltaste.\n'...
-                ];
+              text = ['Lea speaks very good German I am sure she will\n)'...
+                       'manage to find the good formulation here.\n'...
+                       'do you think you receive a shock after this face?' ...
+                       ];
+%             text = ['In dieser Phase hätten wir gerne, dass Du die Gesichter\n'...
+%                 'im Hinblick auf folgende Frage bewertest:\n'...
+%                 '„Wie wahrscheinlich ist es, bei dem gerade gesehenen Gesicht \n'...
+%                 'einen elektrischen Schock zu erhalten?“\n'...
+%                 'Bewege den Zeiger mit der rechten und linken Pfeiltaste \n'...
+%                 'und bestätige Deine Einschätzung mit der oberen Pfeiltaste.\n'...
+%                 ];
             
         elseif nInstruct == 8 %CS+ detection
             text = ['Du bekommst nun eine Reihe von Gesichtern gezeigt.\n' ...
@@ -699,11 +713,17 @@ cleanup;
                 'Bewege den "Zeiger" mit der rechten und linken Pfeiltaste\n' ...
                 'und bestaetige deine Einschaetzung mit der mit der oberen Pfeiltaste'...
                 ];
-        elseif nInstruct == 12 %These two below are the possible responses to the question in 11
-            text = {'Sehr\nwahrscheinlich'};
-        elseif nInstruct == 13
-            text = {'Überhaupt\nnicht\nwahrscheinlich'};
+        elseif nInstruct == 12%this is the rating question
+            text = ['hier also a text is neceessary \n'...
+                'lea lea“\n' ...
+                'lea lea lea lea\n' ...
+                'something like how sure are you blabla..'...
+                ];
+        elseif nInstruct == 13 %These two below are the possible responses to the question in 11
+            text = {'JA' 'NEIN' };
         elseif nInstruct == 14
+            text = {'LEA' 'PLEASE' 'CORRECT' 'THIS'};
+        elseif nInstruct == 15
             text = ['Pause.\n' ...
                 'Drücke die mittlere Taste um fortzufahren.\n'];
         else
@@ -737,7 +757,7 @@ cleanup;
         if strcmp(p.hostname,'etpc')
             p.ptb.oldres = Screen('resolution',p.ptb.screenNumber,1600,1200);
             %hide the cursor
-% % % % % % % % % % % % % % % % % %             HideCursor(p.ptb.screenNumber);
+% %             HideCursor(p.ptb.screenNumber);
         end
         
         %Open a graphics window using PTB
