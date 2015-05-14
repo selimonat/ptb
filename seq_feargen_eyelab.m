@@ -35,14 +35,15 @@ elseif strcmp(condition,'bshort')%with null events
     rep_vec = [ones(1,9)*2 1 1];
     null_events=1;%will shift everything so that null events are indexed as 0.
 elseif strcmp(condition,'tshort')
-    rep_vec = [ones(1,9)*2 1 1];
+    rep_vec = [ones(1,9)*3 1 1];
     null_events=1;
 elseif strcmp(condition,'cshort')
-    rep_vec = [30 30 18 4 1];
+    %rep_vec = [30 30 18 4 1];
+    rep_vec = [22 22 22 1];
+    rr = 0.275;
     null_events=1;
 end
-tcond = length(rep_vec);
-tface = tcond-2;
+
 %% create the block-wise structure of trials
 seq.CrossPosition   = [];
 OK                  = 0;
@@ -50,11 +51,28 @@ fprintf('Starting Constraint Check....\n')
 while ~OK
     %create the 2nd Order Balanced Sequence
     [seq.cond_id,ranks]    = seq_SecondOrderBalancedSequence(rep_vec,1);
-    %first and second from the last are special
-    seq.oddball            = seq.cond_id == tcond;
-    seq.ucs                = seq.cond_id == tcond-1;
+    
+    
+    condid_odd = max(unique(seq.cond_id));
+    %   
+    seq.oddball            = seq.cond_id == condid_odd;
+    
+    if strcmp(condition,'cshort')
+        seq.ucs    = zeros(1,length(seq.cond_id));
+        howmanyucs = round(rr*sum(seq.cond_id == 2));
+        seq.ucs(randsample(find(seq.cond_id == 2),howmanyucs)) = 1;
+        tface      = length(unique(seq.cond_id) > 0)-1;
+
+    else
+        tface      = length(unique(seq.cond_id) > 0)-2;
+        condid_ucs = condid_odd-1;
+        %first and second from the last are special  
+        seq.ucs                = seq.cond_id == condid_ucs;
+    end
     %check constraints.
-    if ~(IsEventAfter(seq.ucs,0.95) || IsEventAfter(seq.oddball,0.95) || IsEventBefore(seq.oddball,0.1) || SlopeCheck(seq.ucs)  || IsEventTooFar(seq.ucs,40))
+    
+    if ~(IsEventAfter(seq.ucs,0.95) || IsEventAfter(seq.oddball,0.95) || IsEventBefore(seq.oddball,0.1) || SlopeCheck(seq.ucs)   || IsEventTooFar(seq.ucs,50))
+        
         OK=1;
         tucs               = sum(seq.ucs);
         seq.tTrial         = length(seq.cond_id);
@@ -171,7 +189,7 @@ end
     function computeEnt
         seq.stats.ent_order =0:5;
         for order = 0:5;
-            [seq.stats.ent(order+1),dummy,seq.stats.entmax] = calcent(seq.cond_id,order);
+            [seq.stats.ent(order+1),seq.stats.entmax] = calcent(seq.cond_id,order);
         end
     end
 

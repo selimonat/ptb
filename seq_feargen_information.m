@@ -161,7 +161,3 @@ out.eff_contrasts = 1./effmat(tstimcond+2:end);
 out.eff_max       = tmaxeff;
 out.eff_norm      = out.eff_overall./out.eff_max*100;
 out.probability   = count./out.ttrial;
-
-
-
-

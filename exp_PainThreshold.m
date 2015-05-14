@@ -111,9 +111,9 @@ cleanup;
         fprintf('\n\n\nRESULT:\n');
         fprintf('The estimated pain threshold : %g mA\n',p.threshold.final.estimated);
         fprintf('Choose an intensity:\n');
-        fprintf('Intensity to be used for factor x 1.2): %g mA\n',exp(log_threshold.*p.threshold.final.factor(1)));
-        fprintf('Intensity to be used for factor x 1.3): %g mA\n',exp(log_threshold.*p.threshold.final.factor(2)));
-        fprintf('Intensity to be used for factor x 1.4): %g mA\n',exp(log_threshold.*p.threshold.final.factor(3)));
+        fprintf('Intensity to be used for factor x 1.5): %g mA\n',exp(log_threshold.*p.threshold.final.factor(1)));
+        fprintf('Intensity to be used for factor x 2.0): %g mA\n',exp(log_threshold.*p.threshold.final.factor(2)));
+        fprintf('Intensity to be used for factor x 2.5): %g mA\n',exp(log_threshold.*p.threshold.final.factor(3)));
         fprintf('We will now ask whether this is bearable...\n');                
     end
     function ConfirmIntensity(factor)
