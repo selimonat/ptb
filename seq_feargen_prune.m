@@ -1,5 +1,5 @@
-function [s]=seq_prune_any(s,rr,or)
-%[s]=seq_pruned_mseq(s,rr,or)
+function [s]=seq_feargen_prune(s,rr,or)
+%[s]=seq_feargen_prune(s,rr,or)
 %
 %   Prunes a balanced sequence for target UCS and oddball conditions so
 %   that the final sequence has a RR and OR occurence probability. RR and
@@ -12,7 +12,7 @@ ttrial          = length(s);
 %prune odds
 if ~isempty(or)    
     o_i             = s == max(conds);%oddball index
-    o_trial_current = sum(o_i);%number of current oddbalss
+    o_trial_current = sum(o_i);%number of current oddballs
     o_trial_target  = round(ttrial*or);%number of oddballs to have    
     s( randsample(find(s == max(conds)), o_trial_current - o_trial_target) ) = [];
     fprintf('%g oddbals are deleted...\n',o_trial_current - o_trial_target);   
