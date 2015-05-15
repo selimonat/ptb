@@ -37,11 +37,11 @@ for c = 1:tcond
 end
 
 ucs     = sum(s == tstimcond-1);
-csp     = sum(s == 1);
-out.rr      = ucs./(ucs+csp)*100;
+csp     = sum(s == 4);
+out.rr  = ucs./(ucs+csp)*100;
 
 odd     = sum(s == (tstimcond));
-out.or      = odd./out.ttrial*100;
+out.or  = odd./out.ttrial*100;
 if verbose
     fprintf('=====================================\n');
     fprintf('RRei: %g percent.\n',out.rr);
@@ -50,10 +50,10 @@ if verbose
     fprintf('=====================================\n');
     fprintf('Transition Check\n');
 end
-n       = hist3([s(1:end-1) s(2:end)],{conds conds});
+n                      = hist3([s(1:end-1) s(2:end)],{conds conds});
 [dummy_eff  dummy_det] = calc_meffdet(s, 10 , tstimcond, 3);
 [~,~,max_det,max_eff]  = tcurve(tstimcond,10,length(s));
-tmaxeff = out.ttrial/(2*(tcond)*10);
+tmaxeff                = out.ttrial/(2*(tcond)*10);
 eff_norm    = dummy_eff(1)./max_eff(1);
 if verbose
     fprintf('=====================================\n');
@@ -71,7 +71,7 @@ end
 [X,CX]          = seq_seq2fir(s,nummods);
 [effmat]        = calc_meffdet(s,nummods,tstimcond,eye(out.ttrial));
 [~,~,~,tmaxeff] = tcurve(tstimcond,nummods,out.ttrial,0);
-[~, v]           = eig(CX(1:(tstimcond-2)*nummods,1:(tstimcond-2)*nummods));
+[~, v]          = eig(CX(1:(tstimcond-2)*nummods,1:(tstimcond-2)*nummods));
 %% compute also the entropies
 out.ent_order = 1:5;
 for order = 1:5
@@ -113,7 +113,7 @@ if fig
     bar([1./mean(effmat(2:tstimcond)) ;1./effmat(2:tstimcond+1)],'k')
     hold on
     plot(xlim,[tmaxeff tmaxeff],'r--')
-    ylim([0 tmaxeff]*1.3);
+    ylim([0 tmaxeff]*1.5);
     xlim([0 tstimcond+1+1])
     box off
     xlabel('conditions');
@@ -129,7 +129,7 @@ if fig
     hold off
     title('Eff. of contrasts')
     axis tight;
-    ylim(ylim*1.2);
+    ylim(ylim*1.5);
     xlim([0 length(effmat)-tstimcond] );
     box off;
     %
@@ -143,6 +143,7 @@ if fig
     plot(xlim,[out.entmax out.entmax],'r--')
     ylim(ylim*1.2);
     title('entropy')
+    grid on;
     %
     subplot(nr,nc,9)
     imagesc(cov(X));
@@ -153,6 +154,12 @@ if fig
     plot(diag(v),'ok-')
     title('Eigenvalue spectrum')
     box off;
+    %
+    subplot(nr,nc,11)
+    hist(diff(find(s ~= 0)));
+    title('Distribution of ISIs')
+    xlabel('seconds');
+    box off;    
 end
 %% create output
 out.eff_overall   = 1./mean(effmat(2:tstimcond));
