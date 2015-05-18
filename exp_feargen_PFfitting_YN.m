@@ -219,34 +219,41 @@ movefile(p.path.subject,p.path.finalsubject);
         else
             signal = 1;
         end
-        %get fixation crosses and onsets from p parameter
-        fix        = round(p.ptb.CrossPositions(tt,:));
-        
-        onsets     = p.trial.onsets + GetSecs;
-        
+   
         %create two pink noise textures
-        pink_noise   = repmat(Image2PinkNoise(p.stim.stim(:,:,1)),[1 1 3]);
+        pink_noise   = Image2PinkNoise(p.stim.stim(:,:,trial(1)));
+        pink_noise   = repmat((pink_noise-mean(pink_noise(:))).*p.ptb.tw+mean(pink_noise(:)),[1 1 3]);
         p.ptb.stim_sprites(p.stim.tFile+1) = Screen('MakeTexture', p.ptb.w, pink_noise);
-        pink_noise   = repmat(Image2PinkNoise(p.stim.stim(:,:,1)),[1 1 3]);
+        pink_noise   = Image2PinkNoise(p.stim.stim(:,:,trial(2)));
+        pink_noise   = repmat((pink_noise-mean(pink_noise(:))).*p.ptb.tw+mean(pink_noise(:)),[1 1 3]);
         p.ptb.stim_sprites(p.stim.tFile+2) = Screen('MakeTexture', p.ptb.w, pink_noise);
         %sprite_index = [pink_noise FixationCross trial(1) FixationCross pink_noise trial(2) NaN];
         
+        %get fixation crosses and onsets from p parameter
+        fix        = round(p.ptb.CrossPositions(tt,:));
+        
         StartEyelinkRecording(tt,phase,trial(1),fix(1),fix(2));
+        
+        %GetSecs so that the onsets can be defined
+        onsets     = p.trial.onsets + GetSecs;
         %pink_noise 1
+        
         Screen('DrawTexture', p.ptb.w,p.ptb.stim_sprites(p.stim.tFile+1));
         Eyelink('Message', 'Pink Noise 1 Onset');
         Screen('Flip',p.ptb.w,onsets(1),0);
-        
+       
         %fixation cross 1
+        Screen('DrawTexture', p.ptb.w,p.ptb.stim_sprites(p.stim.tFile+1));
         Screen('DrawText', p.ptb.w, double('+'),fix(1),fix(2), p.stim.white);
         Eyelink('Command', 'draw_cross %d %d',fix(1),fix(2));
         Eyelink('Message', 'FX 1 Onset at %d %d',fix(1),fix(2));
         Screen('Flip',p.ptb.w,onsets(2),0);
-        
+       
         %face trial(1)
         Screen('DrawTexture',p.ptb.w,p.ptb.stim_sprites(trial(1)));
         Eyelink('Message', 'Stim 1 Onset');
         Screen('Flip',p.ptb.w,onsets(3),0);
+       
         StopEyelinkRecording;
         
         %second face of the trial
@@ -257,6 +264,7 @@ movefile(p.path.subject,p.path.finalsubject);
         Screen('Flip',p.ptb.w,onsets(4),0);
         
         %fixation cross 2
+        Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(p.stim.tFile+2));
         Screen('DrawText', p.ptb.w, double('+'), fix(3),fix(4), p.stim.white);
         Eyelink('Message', 'FX Onset 2 at %d %d',fix(3),fix(4));
         Eyelink('Command', 'draw_cross %d %d 15',fix(3),fix(4));
@@ -327,8 +335,13 @@ movefile(p.path.subject,p.path.finalsubject);
         end
         p.stim.delta = 720/p.stim.tFile;
         
+        %create tukeywindow for the pink noise fadeout
+        w  =.3;
+        p.ptb.tw = tukeywin(p.stim.height,w)*tukeywin(p.stim.height,w)';
+        
+        
         function  [cross_positions]=FixationCrossPool
-            radius   = 520; %in px (around 14 degrees (37 px/deg))
+            radius   = 590; %in px (around 14 degrees (37 px/deg))
             center   = [800 600];
             
             %setting up fixation cross pool vector of size
@@ -406,7 +419,7 @@ movefile(p.path.subject,p.path.finalsubject);
         %font size and background gray level
         p.text.fontname                = 'Times New Roman';
         p.text.fontsize                = 18;%30;
-        p.text.fixationsize            = 45;
+        p.text.fixationsize            = 60;
         %rating business
         p.rating.division              = 2;%number of divisions for the rating slider
         %
@@ -562,7 +575,7 @@ movefile(p.path.subject,p.path.finalsubject);
                     Screen('TextSize', p.ptb.w,p.text.fontsize);
                 end
                 if tick == 1
-                    DrawFormattedText(p.ptb.w, labels{1},tick_x(tick)-bb_size*1.2,rect(2), p.stim.white);
+                    DrawFormattedText(p.ptb.w, labels{1},tick_x(tick)-bb_size*1.6,rect(2), p.stim.white);
                 elseif tick == tSection+1
                     DrawFormattedText(p.ptb.w, labels{2},tick_x(tick)+bb_size*0.2,rect(2), p.stim.white);
                 end
