@@ -1,8 +1,7 @@
-function [X,CX,eff] = seq_seq2fir(s)
+function [X,CX,eff] = seq_seq2fir(s,nummods)
 
 %%
 s = s(:);
-nummods    = 10;
 baseveclen = length(s)+nummods;
 basevec    = s;
 nevents    = max(unique(s));
@@ -16,12 +15,8 @@ end
 %
 X = demean(X);
 %
-S  = legendremat(order,baseveclen );
-PS = eye(baseveclen)-S*pinv(S);
+% S  = legendremat(order,baseveclen );
+% PS = eye(baseveclen)-S*pinv(S);
 PS = eye(baseveclen);
 K  = X'*PS*X;
 CX = inv(K);
-figure(1);
-imagesc(K);colorbar
-eff = 1/trace(CX);
-fprintf('Eff: %g...\n',eff);
