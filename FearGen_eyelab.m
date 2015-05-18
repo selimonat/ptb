@@ -716,7 +716,7 @@ cleanup;
         elseif nInstruct == 13 %These two below are the possible responses to the question in 11
             text = {'JA' 'NEIN' };
         elseif nInstruct == 14
-            text = {'sehr sicher' 'eher sicher' 'eher unsicher' 'sehr unsicher'};
+            text = {'gar nicht' 'wenig' 'mittel' 'sehr'};
         elseif nInstruct == 15
             text = ['Pause.\n' ...
                 'Drücken Sie die mittlere Taste um fortzufahren.\n'];
