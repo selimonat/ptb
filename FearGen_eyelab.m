@@ -17,8 +17,8 @@ sequence_name = 'FeargenSequencer_130218_0343.mat';
 commandwindow;
 %clear everything
 clear mex global functions
-cgshut;
-global cogent;
+% % % % cgshut;
+% % % % global cogent;
 %%%%%%%%%%%load the GETSECS mex files so call them at least once
 GetSecs;
 WaitSecs(0.001);
@@ -33,10 +33,10 @@ SetPTB;
 t                         = [];
 nTrial                    = 0;
 %%
-InitEyeLink;
+% % % % InitEyeLink;
 WaitSecs(2);
 %calibrate if we are at the scanner computer.
-CalibrateEL;
+% % % % CalibrateEL;
 %save again the parameter file
 save(p.path.path_param,'p');
 %
@@ -66,12 +66,12 @@ elseif phase == 3
 elseif phase == 4
     p.var.ExpPhase  = phase;
     %
-    ShowInstruction(6,1);%will not wait for keypresses
+    ShowInstruction(6,1);%will not wait for keypresses    
 	AskStimRating
 end
 
 %get the eyelink file back to this computer
-StopEyelink(p.path.edf);
+% % % % StopEyelink(p.path.edf);
 %trim the log file and save
 p.out.log = p.out.log(sum(isnan(p.out.log),2) ~= size(p.out.log,2),:);
 %shift the time so that the first timestamp is equal to zero
@@ -180,10 +180,10 @@ cleanup;
         Screen('DrawText', p.ptb.w, double('+'), p.ptb.CrossPosition_x,pos1, p.stim.white);
         TimeCrossOn  = Screen('Flip',p.ptb.w,TimeCrossOnset,0);        
         MarkCED( p.com.lpt.address, p.com.lpt.FixOnset );
-        Eyelink('Message', 'FX Onset at %03d',pos1);
+% % % %         Eyelink('Message', 'FX Onset at %03d',pos1);
         Log(TimeCrossOn,1,stim_id);%cross onset.
         %turn the eye tracker on
-        StartEyelinkRecording(stim_id,p.var.ExpPhase,oddball,ucs);
+% % % %         StartEyelinkRecording(stim_id,p.var.ExpPhase,oddball,ucs);
         
         %% Draw the stimulus to the buffer
         Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(stim_id));
@@ -201,8 +201,8 @@ cleanup;
         
         TimeStimOnset  = Screen('Flip',p.ptb.w,TimeStimOnset,0);%asap and dont clear
         %send eyelink and ced a marker asap
-        Eyelink('Message', 'Stim Onset');
-        Eyelink('Message', 'SYNCTIME');
+% % % %         Eyelink('Message', 'Stim Onset');
+% % % %         Eyelink('Message', 'SYNCTIME');
         MarkCED( p.com.lpt.address, p.com.lpt.StimOnset );
         if oddball
             MarkCED( p.com.lpt.address, p.com.lpt.oddball );
@@ -222,7 +222,7 @@ cleanup;
         TimeCrossJumpTime = Screen('Flip', p.ptb.w, TimeCrossJumpTime , 0);
         
         %send eyelink and ced a marker
-        Eyelink('Message', 'FX Moves to %03d' ,pos2);
+% % % %         Eyelink('Message', 'FX Moves to %03d' ,pos2);
         Log(TimeCrossJumpTime,3,NaN);%log the fixation cross move
         
         %% UCS
@@ -233,23 +233,23 @@ cleanup;
             %Deliver shock and stim off immediately
             TimeStartShock = WaitSecs('UntilTime',TimeStartShock);
             MarkCED( p.com.lpt.address, p.com.lpt.shock );            
-            Eyelink('Message', 'UCS Onset');
+% % % %             Eyelink('Message', 'UCS Onset');
             while GetSecs < TimeEndStim;
                 Buzz;%this is anyway sent to CED.
             end
-            Eyelink('Message', 'UCS Offset');
+% % % %             Eyelink('Message', 'UCS Offset');
         end
         
         %% STIM OFF immediately
         TimeEndStim = Screen('Flip',p.ptb.w,TimeEndStim,0);
         %send eyelink and ced a marker
-        Eyelink('Message', 'Stim Offset');
-        Eyelink('Message', 'BLANK_SCREEN');
+% % % %         Eyelink('Message', 'Stim Offset');
+% % % %         Eyelink('Message', 'BLANK_SCREEN');
         Log(TimeEndStim,-2,stim_id);%log the stimulus offset
         %
         %% record some more eye data after stimulus offset.
         WaitSecs('UntilTime',TimeTrackerOff);
-        StopEyelinkRecording;
+% % % %         StopEyelinkRecording;
         
         if oddball == 1
             fprintf('This was an oddball trial!\n');
@@ -329,10 +329,10 @@ cleanup;
         end
         %rating business (each entry in the vector is for one rating type, e.g. there cd be many ratings)
         
-        p.rating.division              = [2 4];%number of divisions for the rating slider
-        p.rating.repetition            = [2 2];%how many times a given face has to be repeated...
-        p.rating.message               = [11 12];
-        p.rating.slider_text           = [13 14];
+        p.rating.division              = [4];%number of divisions for the rating slider
+        p.rating.repetition            = [2];%how many times a given face has to be repeated...
+        p.rating.message               = [12];
+        p.rating.slider_text           = [14];
         p.rating.tRating               = length(p.rating.repetition);
         %
         p.stim.white                   = [255 255 255];
@@ -439,12 +439,14 @@ cleanup;
         %save the rating sequence just for security
         p.out.rating_seq = rating_seq;
         
-        for nRatend = 1:tRatend;
+        for nRatend = 1:2%tRatend;
             %
             %the variable that are used by Trial function
             stim_id          = rating_seq(nRatend);
             pos1             = p.ptb.CrossPosition_y(2);
             pos2             = p.ptb.CrossPosition_y(1);
+            %
+            ShowInstruction(77,1);%prepare the subject, and ask for key press
             %
             %We will turn on the fixation cross and start the tracker
             %for the first trial. These have to be done before the main
@@ -452,19 +454,20 @@ cleanup;
             Screen('DrawText', p.ptb.w, double('+'), p.ptb.CrossPosition_x, pos1, p.stim.white);
             t  = Screen('Flip',p.ptb.w);
             %
-            StartEyelinkRecording(stim_id,p.var.ExpPhase,0,0);
+% % % %             StartEyelinkRecording(stim_id,p.var.ExpPhase,0,0);
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %Mark the onset            
-            Eyelink('Message', 'FX Onset at %03d',pos1);
-            Log(t,1,pos1);%log the mark onset...
-            
+% % % %             Eyelink('Message', 'FX Onset at %03d',pos1);
+            Log(t,1,pos1);%log the mark onset...            
             %
             Trial(GetSecs+1,0.5,stim_id,0,pos1,pos2,0);
-            %run across ratings (for example 1/is it bla? 2/how sure are
-            %you?)
+            %ask the question
+            YesNoQuestion(nRatend);                                    
+            ShowInstruction(12,1);
+            %run across ratings (this feature is added but not used here)...
             for rating_id = 1:p.rating.tRating
-                TopMessage  = GetText(p.rating.message(rating_id));
-                SliderTexts = GetText(p.rating.slider_text(rating_id));
+                TopMessage               = GetText(p.rating.message(rating_id));
+                SliderTexts              = GetText(p.rating.slider_text(rating_id));
                 rate(nRatend,rating_id)  = RatingSlider(rect, p.rating.division(rating_id), Shuffle(1:p.rating.division,1), p.keys.increase, p.keys.decrease, p.keys.confirm, SliderTexts,TopMessage,1);                
             end
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -486,13 +489,42 @@ cleanup;
         %sort the stim_ids and then sort the same the rates and make a
         %matrix out of that to store                
         for rating_id = 1:p.rating.tRating
-            p.out.rating{rating_id} = reshape(rate(i,rating_id),p.rating.repetition(rating_id),length(rating_seq)./p.rating.repetition(rating_id))';
+            p.out.rating{rating_id} = reshape(rate(:,rating_id),p.rating.repetition(rating_id),length(rating_seq)./p.rating.repetition(rating_id))';
         end
         save(p.path.path_param,'p');
         Screen('FillRect',p.ptb.w,p.stim.bg);
         p.stim.bg = BG;
         %
         save(p.path.path_param,'p');
+    end
+    function YesNoQuestion(nRatend)
+        %
+        %Draw the question and arrows
+        Screen('TextSize',p.ptb.w, 120);
+        unicodetext = double(['Ja']);
+        [nx ny] = DrawFormattedText(p.ptb.w, unicodetext, 320, 'center',p.stim.white,[],[],[],2,[]);
+        unicodetext = double(['Nein']);
+        [nx ny] = DrawFormattedText(p.ptb.w, unicodetext, p.ptb.width-430, 'center',p.stim.white,[],[],[],2,[]);
+        Screen('TextSize',p.ptb.w, 120);
+        unicodetext = double([8656 '       ' 8658])
+        [nx ny] = DrawFormattedText(p.ptb.w, unicodetext, 'center', 'center',p.stim.white,[],[],[],2,[]);
+        [nx ny] = DrawFormattedText(p.ptb.w, '|', 'center', 'center',p.stim.white,[],[],[],2,[]);
+        Screen('Flip',p.ptb.w);
+        Screen('TextSize',p.ptb.w, p.text.fontsize);
+        %Wait for key press in a tight loop        
+        while 1
+            [isDown, secs, keyCode, deltaSecs] = KbCheck;
+            if keyCode(p.keys.increase) || keyCode(p.keys.decrease)
+                break;
+            end
+        end        
+        code_binary([p.keys.decrease p.keys.increase]) = [1 0];
+        code_label{p.keys.decrease} = 'Ja';
+        code_label{p.keys.increase} = 'Nein';                
+        %store the data
+        p.out.yesno_label{nRatend}  = code_label{find(keyCode)};
+        p.out.yesno_binary(nRatend) = code_binary(find(keyCode));
+        fprintf('Subjects says %s...\n',p.out.yesno_label{nRatend});
     end
     function [rating] = RatingSlider(rect,tSection,position,up,down,confirm,labels,message,numbersOn)
         %
@@ -503,14 +535,13 @@ cleanup;
             bb_size_v(nlab)      = bb(nlab,4)-bb(nlab,2);%vertical size of the bb.
             Screen('FillRect',p.ptb.w,p.stim.bg);
         end
-        bb_max = max(bb);
-        
+        bb_max = max(bb);        
         %
         DrawSkala;
-        ok = 1;
+        ok = 1;        
         while ok == 1
             [secs, keyCode, ~] = KbStrokeWait;
-            keyCode = find(keyCode);
+            keyCode            = find(keyCode);
             Log(secs,7,keyCode);
             if length(keyCode) == 1%this loop avoids crashes to accidential presses of meta keys
                 if (keyCode == up) || (keyCode == down)
@@ -672,7 +703,7 @@ cleanup;
             %=================================================================================================================%
             text = ['Auch im nun folgenden Teil des Experiments \n' ...
                 'sollen Sie die Gesichter aufmerksam betrachten und \n' ...
-                'den mittleren Knopf drücken, sobald Sie einen Zielreiz sehen. \n' ...
+                'den oberen Knopf drücken, sobald Sie einen Zielreiz sehen. \n' ...
                 'Wie im ersten Teil des Experiments sollen Sie \n' ...
                 'das Fixationskreuz immer fixieren. \n' ...
                 'In dieser Phase des Experiments werden Sie\n' ...
@@ -680,7 +711,16 @@ cleanup;
                 'Die elektrischen Reize folgen jetzt auf bestimmte Gesichter. \n' ...
                 
                 ];
-                        
+        elseif nInstruct == 77;%Prepare for launch
+            
+            text = ['You will answer with left and right keys,\n' ...
+                    'prepare for your response and press any key when you are ready.'];
+
+        elseif nInstruct == 777;%Prepare for launch
+            
+            text = ['OK!!\n' ...
+                    'The next question doesn''t need to be answered quickly.'];
+                
         elseif nInstruct == 7;%rating
             text = ['In dieser Phase hätten wir gerne, dass Sie die Gesichter\n'...
                 'im Hinblick auf folgende Frage bewerten:\n'...
@@ -709,7 +749,9 @@ cleanup;
                 'und bestätigen Sie Ihre Einschaetzung mit der mit der oberen Pfeiltaste'...
                 ];
         elseif nInstruct == 12%this is the rating question
-            text = ['Wie sicher sind Sie sich? \n' ...
+            text = [' OK !!!\n'...
+                'The next question doesnt need to be answered quickly, so be as precise as possible...\n'...
+                'Wie sicher sind Sie sich? \n' ...
                 'Bewegen Sie den "Zeiger" mit der rechten und linken Pfeiltaste\n' ...
                 'und bestätigen Sie Ihre Einschaetzung mit der mit der oberen Pfeiltaste'...
                 ];
@@ -792,19 +834,19 @@ cleanup;
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
         
-        config_io;
-        outp(p.com.lpt.address,0);
-        if( cogent.io.status ~= 0 )
-            error('inp/outp installation failed');
-        end
+% % % %         config_io;
+% % % %         outp(p.com.lpt.address,0);
+% % % %         if( cogent.io.status ~= 0 )
+% % % %             error('inp/outp installation failed');
+% % % %         end
         %test whether CED receives the triggers correctly...
-        k = 0;
-        while k ~= 49;
-            outp(p.com.lpt.address,p.com.lpt.InitExperiment);pause(0.1);outp(888,0);%247 means all but the UCS channel (so that we dont shock the subject during initialization).
-            fprintf('=================\nDid the trigger test work?\nPress 0 to send it again, 1 to continue...\n')
-            [~, k] = KbStrokeWait;
-            k = find(k);
-        end
+% % % %         k = 0;
+% % % %         while k ~= 49;
+% % % %             outp(p.com.lpt.address,p.com.lpt.InitExperiment);pause(0.1);outp(888,0);%247 means all but the UCS channel (so that we dont shock the subject during initialization).
+% % % %             fprintf('=================\nDid the trigger test work?\nPress 0 to send it again, 1 to continue...\n')
+% % % %             [~, k] = KbStrokeWait;
+% % % %             k = find(k);
+% % % %         end
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
         %load the pictures to the memory.
@@ -874,16 +916,16 @@ cleanup;
         shuffled        = shuffled(:);
     end
     function Buzz
-        outp(p.com.lpt.address, p.com.lpt.digitimer );
+% % % %         outp(p.com.lpt.address, p.com.lpt.digitimer );
         WaitSecs(p.duration.shockpulse);
-        outp(p.com.lpt.address, 0);
+% % % %         outp(p.com.lpt.address, 0);
         WaitSecs(p.duration.intershockpulse);
     end
     function MarkCED(socket,port)
         %send pulse to SCR#
-        outp(socket,port);
+% % % %         outp(socket,port);
         WaitSecs(0.01);
-        outp(socket,0);
+% % % %         outp(socket,0);
     end
     function InitEyeLink
         %
