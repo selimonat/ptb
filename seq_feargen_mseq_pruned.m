@@ -1,4 +1,4 @@
-function seq_feargen_mseq_pruned(method,pr,po)
+function [s]=seq_feargen_mseq_pruned(method,pr,po)
 %1: concat power 2 and then prune
 %2: same as 1 but null it instead of pruning
 %3: generate power 3 and the prune

@@ -4,12 +4,12 @@
 
 %% test how duration influences efficiency on a random sequence.
 clear i;
-for t = 20:10:1000;
+for t = 50:10:1000;
     s = seq_feargen_FirstOrderBalanced(t,.5,.5);%create a sequence
     i(t/10-1)=seq_feargen_information(s);%get the efficiency.
 end
 figure(1001);
-plot(20:10:1000,[i(:).eff_norm],'o-')
+plot(50:10:1000,[i(:).eff_norm],'o-')
 xlabel('#trial')
 ylabel('normalized efficiency')
 % Conclusion: Efficiency increases initially very fast but then slows
@@ -27,7 +27,7 @@ rep_vec = [ones(1,9)*3 1 1];
 dummy_seq = seq_SecondOrderBalancedSequence(rep_vec,1)-1;
 ttrial    = length(dummy_seq);
 n    = 1;
-while n <= 1000
+while n <= 100
     s         = seq_feargen_FirstOrderBalanced(ttrial,pr,po);
     info(1,n) = seq_feargen_information(s,[0 0]);%[0 0] no visuals, no verbose
     %    
