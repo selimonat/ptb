@@ -66,8 +66,8 @@ elseif phase == 3
 elseif phase == 4
     p.var.ExpPhase  = phase;
     %
-ShowInstruction(6,1);%will not wait for keypresses    
-% PresentStimuli;
+    ShowInstruction(6,1);%will not wait for keypresses    
+    PresentStimuli;
 
 	AskStimRating
 end
@@ -370,7 +370,7 @@ cleanup;
         p.com.lpt.StimOnset            = 8;
         p.com.lpt.shock                = 16;
         p.com.lpt.oddball              = 32;
-        p.com.lpt.keypress             = 2;
+        p.com.lpt.keypress             = 1;
         p.com.lpt.digitimer            = 128;
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -396,9 +396,19 @@ cleanup;
         p.stim.phase                   = phase;
         %this will deal all the presentation sequence related information
         p.presentation                 = s(NthSeq,csp).phase(phase).presentation;
+        %make the baseline shorter
+        if phase == 2
+            p.presentation.cond_id = p.presentation.cond_id(1:65);
+            p.presentation.stim_id = p.presentation.stim_id(1:65);
+            p.presentation.isi =  p.presentation.isi(1:65);
+            p.presentation.prestim_duration = p.presentation.prestim_duration(1:65);
+            p.presentation.cross_position = p.presentation.cross_position(1:65);
+            p.presentation.oddball = p.presentation.oddball(1:65);
+            p.presentation.ucs = p.presentation.ucs(1:65);                        
+        end
         p.presentation.ucs             = double(p.presentation.ucs);
         p.presentation.oddball         = double(p.presentation.oddball);
-        p.presentation.tTrial          = length(p.presentation.stim_id);
+        p.presentation.tTrial          = length(p.presentation.stim_id);         
         %
         p.out.rating                  = [];
         p.out.log                     = zeros(1000000,4).*NaN;
@@ -512,6 +522,7 @@ cleanup;
         while 1
             [isDown, secs, keyCode, deltaSecs] = KbCheck;
             if keyCode(p.keys.increase) || keyCode(p.keys.decrease)
+                MarkCED( p.com.lpt.address, p.com.lpt.keypress );
                 break;
             end
         end        
@@ -549,7 +560,6 @@ cleanup;
                     end
                     DrawSkala;
                 elseif keyCode == confirm
-                    MarkCED( p.com.lpt.address, p.com.lpt.keypress );
                     WaitSecs(0.1);
                     ok = 0;
                     Screen('FillRect',p.ptb.w,p.stim.bg);
@@ -767,7 +777,7 @@ cleanup;
         %fontsizes, font names.
         %Find the number of the screen to be opened
         screens                     =  Screen('Screens');
-        p.ptb.screenNumber          =  2;%the maximum is the second monitor
+        p.ptb.screenNumber          =  1;%the maximum is the second monitor
         if ismac%for laptop with single monitor
             p.ptb.screenNumber      =0;
         end
