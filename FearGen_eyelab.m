@@ -386,6 +386,7 @@ cleanup;
         p.com.lpt.StimOnset            = 8;
         p.com.lpt.shock                = 16;
         p.com.lpt.oddball              = 32;
+        p.com.lpt.keypress             = 2;
         p.com.lpt.digitimer            = 128;
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -439,6 +440,8 @@ cleanup;
         end
     end
     function AskStimRating
+        
+        MarkCED( p.com.lpt.address, p.com.lpt.InitExperiment);
         %       
         p_var_ExpPhase = 5;
         BG             = p.stim.bg;%
@@ -543,6 +546,7 @@ cleanup;
                     end
                     DrawSkala;
                 elseif keyCode == confirm
+                    MarkCED( p.com.lpt.address, p.com.lpt.keypress);
                     WaitSecs(0.1);
                     ok = 0;
                     Screen('FillRect',p.ptb.w,p.stim.bg);
