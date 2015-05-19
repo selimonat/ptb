@@ -66,8 +66,9 @@ elseif phase == 3
 elseif phase == 4
     p.var.ExpPhase  = phase;
     %
-%     PresentStimuli;
-%     ShowInstruction(6,1);%will not wait for keypresses    
+ShowInstruction(6,1);%will not wait for keypresses    
+% PresentStimuli;
+
 	AskStimRating
 end
 
@@ -130,7 +131,7 @@ cleanup;
         %arrive.
         %
         TimeEndStim                 = GetSecs;
-        for nTrial  = 1:p.presentation.tTrial;
+        for nTrial  = 1:3%p.presentation.tTrial;
             %
             %Get the variables that Trial function needs.
             stim_id      = p.presentation.stim_id(nTrial);
@@ -387,7 +388,7 @@ cleanup;
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %stimulus sequence
         dummy = load([p.path.experiment 'sequence' filesep sequence_name]);
-        s                              = dummy.sub;
+        s                              = dummy.s;
         %create the randomized design
         p.stim.cs_plus                 = s(NthSeq,csp).cs_plus;%index of cs stimulus, this is the one paired to shock
         p.stim.cs_neg                  = s(NthSeq,csp).cs_neg;
@@ -459,7 +460,9 @@ cleanup;
             Eyelink('Message', 'FX Onset at %03d',pos1);
             Log(t,1,pos1);%log the mark onset...            
             %
-            ShowInstruction(77,1);
+            if nRatend ~=1 
+                ShowInstruction(77,1);
+            end
             Trial(GetSecs+1,0.5,stim_id,0,pos1,pos2,0);
             %ask the question
             YesNoQuestion(nRatend);
@@ -500,16 +503,8 @@ cleanup;
         %
         %% Draw the question and arrows
         Screen('TextSize',p.ptb.w, 120);
-        unicodetext = double(['Ja']);
-        [nx ny]     = DrawFormattedText(p.ptb.w, unicodetext, 320, 'center',p.stim.white,[],[],[],2,[]);
-        unicodetext = double(['Nein']);
-        [nx ny]     = DrawFormattedText(p.ptb.w, unicodetext, p.ptb.width-430, 'center',p.stim.white,[],[],[],2,[]);
-        Screen('TextSize',p.ptb.w, 120);
-        unicodetext = double([8656 '       ' 8658])
+        unicodetext = double(['Ja | Nein']);
         [nx ny]     = DrawFormattedText(p.ptb.w, unicodetext, 'center', 'center',p.stim.white,[],[],[],2,[]);
-        %to draw a rectangle
-%         Screen('FrameRect', p.ptb.w,250,[nx-125 ny+10 nx-5 ny+135;nx-450 ny+10 nx-345+15 ny+135]');
-        DrawFormattedText(p.ptb.w, '|', 'center', 'center',p.stim.white,[],[],[],2,[]);
         Screen('Flip',p.ptb.w);
         %
         Screen('TextSize',p.ptb.w, p.text.fontsize);
@@ -587,9 +582,7 @@ cleanup;
             slider = [ tick_x(position)+tick_size*0.1 rect(2) tick_x(position)+tick_size*0.9 rect(2)+rect(4)];
             %draw the slider
             Screen('FillRect',p.ptb.w, p.stim.white, round(slider));
-            Screen('TextSize', p.ptb.w,p.text.fontsize./2);
             DrawFormattedText(p.ptb.w,message, 'center', p.ptb.midpoint(2)*0.2,  p.stim.white,[],[],[],2);
-            Screen('TextSize', p.ptb.w,p.text.fontsize);
             t = Screen('Flip',p.ptb.w);
             Log(t,6,NaN);
         end
@@ -646,7 +639,7 @@ cleanup;
                 'Dazu zeigen wir Ihnen einige Punkte auf dem Bildschirm, \n' ...
                 'bei denen Sie sich wie folgt verhalten:\n' ...
                 'Bitte fixieren Sie den kleinen weißen Kreis und \n' ...
-                'bleiben Sie so lange darauf, wie es zu sehen ist.\n' ...
+                'bleiben Sie so lange darauf, wie er zu sehen ist.\n' ...
                 'Bitte drücken Sie jetzt den mittleren Knopf, \n' ...
                 'um mit der Kalibrierung weiterzumachen.\n' ...
                 ];
@@ -697,7 +690,6 @@ cleanup;
                 'Die Reize erfolgen aber nur bei diesem Symbol, nicht bei den Gesichtern! \n' ...
                 'Bei Gesichtern können Sie sich also sicher fühlen.\n' ...
                 'Bitte denken Sie daran: 1. Folgen Sie immer den Fixationskreuz und 2. nicht bewegen!\n\n' ...
-                
                 'Drücken Sie die mittlere Taste, um zu starten. \n' ...
                 ];
             
@@ -717,18 +709,19 @@ cleanup;
             
         elseif nInstruct == 7;%rating
             text = ['In dieser Phase hätten wir gerne, dass Sie die Gesichter\n'...
-                'im Hinblick auf folgende Frage bewerten:\n'...
-                'There will be NO SHOCKS DELIVERED\n'...
-                '"Erhalten Sie bei diesem Gesicht einen elektrischen Schock?"\n'...
-                'Bewegen Sie den Zeiger mit der rechten und linken Pfeiltaste \n'...
-                'und bestätigen Sie Ihre Einschätzung mit der oberen Pfeiltaste.\n'...
+                'im Hinblick auf folgende Frage bewerten:\n\n'...
+                '"Haben Sie bei diesem Gesicht elektrische Schocks erhalten?"\n\n'...
+                'In diesem Teil werden Sie KEINE Schocks mehr bekommen! \n\n'...
+                'Antworten Sie mit links für JA und mit rechts für NEIN.\n'...
+                'Bitte folgen Sie auch hier dem Fixationskreuz.\n'...
+                'Drücken Sie die obere Taste um zu starten.\n'...
                 ];
             
         elseif nInstruct == 77;%rating
-            text = ['Please answer:\n'...
-                'Is the following face followed by an electric shock?\n'...                
-                'Press any key to see the face...'...
-                'Don''t forget to follow the fixation cross.\n' ...
+            text = ['Bitte beantworten Sie die folgende Frage:\n'...
+                'Haben Sie bei diesem Gesicht Schocks erhalten?\n\n'...                
+                'Beliebige Taste drücken, um das Gesicht zu sehen...\n'...
+                'Bitte folgen Sie auch hier dem Fixationskreuz.\n' ...
                 ];
             
             
@@ -748,13 +741,13 @@ cleanup;
             text = 'Reiz kommt...\n';
         elseif nInstruct == 11%this is the rating question
             text = ['Erhalten Sie bei diesem Gesicht einen elektrischen Schock?\n' ...
-                'Bewegen Sie den "Zeiger" mit der rechten und linken Pfeiltaste\n' ...
-                'und bestätigen Sie Ihre Einschaetzung mit der mit der oberen Pfeiltaste'...
+                'Antworten Sie mit links für JA und mit rechts für NEIN.\n' ...
+                
                 ];
         elseif nInstruct == 12%this is the rating question
-            text = [' OK !!!\n'...
-                'The next question doesnt need to be answered quickly, so be as precise as possible...\n'...
-                'Wie sicher sind Sie sich? \n' ...
+            text = [' OK !\n'...
+                'Bitte beantworten Sie als nächstes:\n\n'...
+                'Wie sicher sind Sie sich? \n\n' ...
                 'Bewegen Sie den "Zeiger" mit der rechten und linken Pfeiltaste\n' ...
                 'und bestätigen Sie Ihre Einschaetzung mit der mit der oberen Pfeiltaste'...
                 ];
@@ -774,7 +767,7 @@ cleanup;
         %fontsizes, font names.
         %Find the number of the screen to be opened
         screens                     =  Screen('Screens');
-        p.ptb.screenNumber          =  1;%the maximum is the second monitor
+        p.ptb.screenNumber          =  2;%the maximum is the second monitor
         if ismac%for laptop with single monitor
             p.ptb.screenNumber      =0;
         end
@@ -1012,7 +1005,9 @@ cleanup;
         %         IOPort('Close',p.com.serial);
         commandwindow;
         ListenChar(0);
-        KbQueueRelease(p.ptb.device);
+        try
+         KbQueueRelease(p.ptb.device);
+        end
     end
     function CalibrateEL
         fprintf('=================\n=================\nEntering Eyelink Calibration\n')
