@@ -66,8 +66,8 @@ elseif phase == 3
 elseif phase == 4
     p.var.ExpPhase  = phase;
     %
-    PresentStimuli;
-    ShowInstruction(6,1);%will not wait for keypresses    
+%     PresentStimuli;
+%     ShowInstruction(6,1);%will not wait for keypresses    
 	AskStimRating
 end
 
@@ -447,8 +447,6 @@ cleanup;
             pos1             = p.ptb.CrossPosition_y(2);
             pos2             = p.ptb.CrossPosition_y(1);
             %
-            ShowInstruction(77,1);%prepare the subject, and ask for key press
-            %
             %We will turn on the fixation cross and start the tracker
             %for the first trial. These have to be done before the main
             %for loop.
@@ -461,10 +459,10 @@ cleanup;
             Eyelink('Message', 'FX Onset at %03d',pos1);
             Log(t,1,pos1);%log the mark onset...            
             %
+            ShowInstruction(77,1);
             Trial(GetSecs+1,0.5,stim_id,0,pos1,pos2,0);
             %ask the question
-            YesNoQuestion(nRatend);                                    
-            ShowInstruction(12,1);
+            YesNoQuestion(nRatend);
             %run across ratings (this feature is added but not used here)...
             for rating_id = 1:p.rating.tRating
                 TopMessage               = GetText(p.rating.message(rating_id));
@@ -503,17 +501,17 @@ cleanup;
         %% Draw the question and arrows
         Screen('TextSize',p.ptb.w, 120);
         unicodetext = double(['Ja']);
-        [nx ny] = DrawFormattedText(p.ptb.w, unicodetext, 320, 'center',p.stim.white,[],[],[],2,[]);
+        [nx ny]     = DrawFormattedText(p.ptb.w, unicodetext, 320, 'center',p.stim.white,[],[],[],2,[]);
         unicodetext = double(['Nein']);
-        [nx ny] = DrawFormattedText(p.ptb.w, unicodetext, p.ptb.width-430, 'center',p.stim.white,[],[],[],2,[]);
+        [nx ny]     = DrawFormattedText(p.ptb.w, unicodetext, p.ptb.width-430, 'center',p.stim.white,[],[],[],2,[]);
         Screen('TextSize',p.ptb.w, 120);
         unicodetext = double([8656 '       ' 8658])
-        [nx ny] = DrawFormattedText(p.ptb.w, unicodetext, 'center', 'center',p.stim.white,[],[],[],2,[]);
+        [nx ny]     = DrawFormattedText(p.ptb.w, unicodetext, 'center', 'center',p.stim.white,[],[],[],2,[]);
         %to draw a rectangle
 %         Screen('FrameRect', p.ptb.w,250,[nx-125 ny+10 nx-5 ny+135;nx-450 ny+10 nx-345+15 ny+135]');
         DrawFormattedText(p.ptb.w, '|', 'center', 'center',p.stim.white,[],[],[],2,[]);
         Screen('Flip',p.ptb.w);
-        %%
+        %
         Screen('TextSize',p.ptb.w, p.text.fontsize);
         %Wait for key press in a tight loop        
         while 1
@@ -714,24 +712,25 @@ cleanup;
                 'gelegentlich elektrische Reize bekommen.\n\n' ...
                 'Die elektrischen Reize folgen jetzt auf bestimmte Gesichter. \n' ...
                 
-                ];
-        elseif nInstruct == 77;%Prepare for launch
+                ];        
+        
             
-            text = double(['You will answer with \n' 8656 ' (JA) and ' 8658 ' (NEIN)\n keys.\n'... 
-                'To be as fastest as possible please get ready, and press any key\n' ]);
-
-        elseif nInstruct == 777;%Prepare for launch
-            
-            text = ['OK!!\n' ...
-                    'The next question doesn''t need to be answered quickly.'];
-                
         elseif nInstruct == 7;%rating
             text = ['In dieser Phase hätten wir gerne, dass Sie die Gesichter\n'...
                 'im Hinblick auf folgende Frage bewerten:\n'...
+                'There will be NO SHOCKS DELIVERED\n'...
                 '"Erhalten Sie bei diesem Gesicht einen elektrischen Schock?"\n'...
                 'Bewegen Sie den Zeiger mit der rechten und linken Pfeiltaste \n'...
                 'und bestätigen Sie Ihre Einschätzung mit der oberen Pfeiltaste.\n'...
                 ];
+            
+        elseif nInstruct == 77;%rating
+            text = ['Please answer:\n'...
+                'Is the following face followed by an electric shock?\n'...                
+                'Press any key to see the face...'...
+                'Don''t forget to follow the fixation cross.\n' ...
+                ];
+            
             
         elseif nInstruct == 8 %CS+ detection
             text = ['Sie bekommen nun eine Reihe von Gesichtern gezeigt.\n' ...
