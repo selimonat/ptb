@@ -26,7 +26,7 @@ WaitSecs(0.001);
 el                        = [];
 p                         = [];
 SetParams;
-debug                     = 1;%debug mode
+debug                     = 0;%debug mode
 SetPTB;
 %
 %init variables
@@ -104,6 +104,7 @@ cleanup;
         KbStrokeWait;
         ShowInstruction(10,0);%shock is coming message...
         t = GetSecs + p.duration.shock;
+        MarkCED( p.com.lpt.address, p.com.lpt.shock )
         while GetSecs < t;
             Buzz;
         end
@@ -131,7 +132,7 @@ cleanup;
         %arrive.
         %
         TimeEndStim                 = GetSecs;
-        for nTrial  = 1:3%p.presentation.tTrial;
+        for nTrial  = 1:p.presentation.tTrial;
             %
             %Get the variables that Trial function needs.
             stim_id      = p.presentation.stim_id(nTrial);
@@ -286,7 +287,7 @@ cleanup;
         p.path.stim                   = fullfile(p.path.experiment,p.path.stimfolder,filesep);
         %
         p.subID                       = sprintf('sub%02d',subject);
-        p.path.edf                    = sprintf([p.subID 'p%02d' ],phase);
+        p.path.edf                    = char(sprintf([p.subID 'p%02d' ],phase));
         timestamp                     = datestr(now,30);
         p.path.subject                = [p.path.experiment 'data' filesep 'tmp' filesep p.subID '_' timestamp filesep];
         p.path.finalsubject           = [p.path.experiment 'data' filesep p.subID '_' timestamp filesep ];
@@ -414,7 +415,7 @@ cleanup;
         p.out.log                     = zeros(1000000,4).*NaN;
         p.out.response                = zeros(p.presentation.tTrial,1);
         p.out.PainThreshold           = PainThreshold;
-        p.out.ShockFactor             = 2;
+        p.out.ShockFactor             = 1.5;
         %Save the stuff
         save(p.path.path_param,'p');
         %
@@ -473,6 +474,7 @@ cleanup;
             if nRatend ~=1 
                 ShowInstruction(77,1);
             end
+            fprintf('============\nSubject is rating face %d \n', stim_id);
             Trial(GetSecs+1,0.5,stim_id,0,pos1,pos2,0);
             %ask the question
             YesNoQuestion(nRatend);
@@ -486,7 +488,7 @@ cleanup;
             %Verbose the rating of the subject
             fprintf('============\nRating Results %d (%d/%d):\n', stim_id, nRatend, tRatend);
             dummy = rating_seq(1:nRatend);%trials shown so far
-            for iii = 1:p.stim.tFile
+            for iii = 1:p.stim.tFile-1
                 r = round(mean(rate(dummy == iii)));
                 if isnan(r)
                     r = 0;
