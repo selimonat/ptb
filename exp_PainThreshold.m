@@ -15,6 +15,7 @@ log_threshold =[];
 SetParams;
 SetPTB;
 SCRCheck;
+MarkCED(p.lpt.address,p.lpt.InitExperiment);
 GetThreshold;
 save(p.path.filename,'p');
 %%now give the subject a final shock with the "tobeused level" and ask
@@ -74,6 +75,7 @@ cleanup;
             else
                 ShowInstruction(5);%shock is coming message, stays ~2 sec...
                 %prepare for the shock
+                MarkCED(p.lpt.address,p.lpt.ShockOnset)
                 t = GetSecs + p.duration.shock;
                 while GetSecs < t;
                     Buzz;
@@ -111,9 +113,9 @@ cleanup;
         fprintf('\n\n\nRESULT:\n');
         fprintf('The estimated pain threshold : %g mA\n',p.threshold.final.estimated);
         fprintf('Choose an intensity:\n');
-        fprintf('Intensity to be used for factor x 1.5): %g mA\n',exp(log_threshold.*p.threshold.final.factor(1)));
-        fprintf('Intensity to be used for factor x 2.0): %g mA\n',exp(log_threshold.*p.threshold.final.factor(2)));
-        fprintf('Intensity to be used for factor x 2.5): %g mA\n',exp(log_threshold.*p.threshold.final.factor(3)));
+        fprintf('Intensity to be used for factor x 1.2): %g mA\n',exp(log_threshold.*p.threshold.final.factor(1)));
+        fprintf('Intensity to be used for factor x 1.3): %g mA\n',exp(log_threshold.*p.threshold.final.factor(2)));
+        fprintf('Intensity to be used for factor x 1.4): %g mA\n',exp(log_threshold.*p.threshold.final.factor(3)));
         fprintf('We will now ask whether this is bearable...\n');                
     end
     function ConfirmIntensity(factor)
@@ -195,7 +197,8 @@ cleanup;
         %parallel port
         p.lpt.address       = 888;
         p.lpt.digitimer     = 128;                
-        p.lpt.ShockOnset    = 4;        
+        p.lpt.ShockOnset    = 16;   
+        p.lpt.InitExperiment = 64;
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %timing business
         p.duration.shock           = 0.1;%s;x

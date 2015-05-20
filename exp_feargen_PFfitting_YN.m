@@ -59,7 +59,7 @@ end
 SetupLog(nc);
 end
 
-ShowInstruction(3);
+ShowInstruction(1);
 
 OK = 1;
 while OK
@@ -379,7 +379,7 @@ movefile(p.path.subject,p.path.finalsubject);
         p.path.stim24                 = [p.path.experiment  p.path.stimfolder '\' '24bits' '\'];
         %
         p.subID                       = sprintf('sub%02d',subject);
-        p.path.edf                    = sprintf([p.subID 'p%02d' ],phase);
+        p.path.edf                    = char(sprintf([p.subID 'p%02d' ],phase));
         timestamp                     = datestr(now,30);
         p.path.subject                = [p.path.experiment 'data\tmp\' p.subID '_' timestamp '\'];
         p.path.finalsubject           = [p.path.experiment 'data\' p.subID '_' timestamp '\' ];
@@ -503,7 +503,7 @@ movefile(p.path.subject,p.path.finalsubject);
         p.psi.PFfit = @PAL_CumulativeNormal;    %Shape to be assumed
         
         %Termination after n Trials
-        p.psi.numtrials      = 10;
+        p.psi.numtrials      = 50;
         % percentage of obligatory x=0 trials
         p.psi.p0  = .2;
         
