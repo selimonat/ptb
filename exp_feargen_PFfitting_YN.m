@@ -71,8 +71,8 @@ while OK
         tt=tt+1;
         % enter in break loop
             if (tt~=1 && mod(tt,breakpoint)==1 && simulation_mode==0);
+                save(p.path.path_param,'p');
                 ShowInstruction(4);
-                ShowInstruction(1);
                 CalibrateEL;
             end
         cc(current_chain)=cc(current_chain)+1;
@@ -111,7 +111,7 @@ while OK
         % fprintf('Chain: %03d\nxCurrent: %6.2f\nDirection:%6.2f\n %6.2f -> %6.2f vs. %6.2f\n',current_chain,PM{current_chain}.xCurrent,direction,dummy,test,ref);
         % start Trial
         fprintf('Starting Trial %03d/%03d.\n',tt,tchain*p.psi.numtrials)
-      
+        memory
         [test_face, ref_face, signal] = Trial_YN(ref,test,circle_id(current_chain),tt);
       
         fprintf('Rating.\n')
@@ -120,24 +120,24 @@ while OK
         message1 = 'Waren die Gesichter unterschiedlich oder gleich?\n';
         message2 = 'Bewege den "Zeiger" mit der rechten und linken Pfeiltaste\n und bestätige deine Einschätzung mit der oberen Pfeiltaste.';
         if ~simulation_mode
-            [response_subj]      = RatingSlider(p.ptb.rect,2,Shuffle(1:2,1),p.keys.increase,p.keys.decrease,p.keys.confirm,{ 'unterschiedlich' 'gleich'},message1,message2,0);
+           [response_subj]      = RatingSlider(p.ptb.rect,2,Shuffle(1:2,1),p.keys.increase,p.keys.decrease,p.keys.confirm,{ 'unterschiedlich' 'gleich'},message1,message2,0);
             
             % see if subject found the different pair of faces...
             % buttonpress left (Yes) is response_subj=2, right alternative (No) outputs a 1.
             if (response_subj == 2 && signal == 1)
                 response=1;
-%                 fprintf('...Hit. \n')
+                fprintf('...Hit. \n')
             elseif (response_subj==1 && signal == 1)
                 response=0;
-%                 fprintf('...Miss. \n')
+                fprintf('...Miss. \n')
             elseif (response_subj == 2 && signal==0)
                 response=1;
-%                 fprintf('...False Alarm. \n')
+                fprintf('...False Alarm. \n')
             elseif (response_subj == 1 && signal == 0)
                 response=0;
-%                 fprintf('...Correct Rejection. \n')
+                fprintf('...Correct Rejection. \n')
             else
-%                 fprintf('error in the answer algorithm! \n')
+                fprintf('error in the answer algorithm! \n')
             end
             
         else
@@ -220,15 +220,15 @@ movefile(p.path.subject,p.path.finalsubject);
             signal = 1;
         end
    
-        %create two pink noise textures
-        pink_noise   = Image2PinkNoise(p.stim.stim(:,:,trial(1)));
-        pink_noise   = repmat((pink_noise-mean(pink_noise(:))).*p.ptb.tw+mean(pink_noise(:)),[1 1 3]);
-        p.ptb.stim_sprites(p.stim.tFile+1) = Screen('MakeTexture', p.ptb.w, pink_noise);
-        pink_noise   = Image2PinkNoise(p.stim.stim(:,:,trial(2)));
-        pink_noise   = repmat((pink_noise-mean(pink_noise(:))).*p.ptb.tw+mean(pink_noise(:)),[1 1 3]);
-        p.ptb.stim_sprites(p.stim.tFile+2) = Screen('MakeTexture', p.ptb.w, pink_noise);
-        %sprite_index = [pink_noise FixationCross trial(1) FixationCross pink_noise trial(2) NaN];
-        
+%         %create two pink noise textures
+%         pink_noise   = Image2PinkNoise(p.stim.stim(:,:,trial(1)));
+%         pink_noise   = repmat((pink_noise-mean(pink_noise(:))).*p.ptb.tw+mean(pink_noise(:)),[1 1 3]);
+%         p.ptb.stim_sprites(p.stim.tFile+1) = Screen('MakeTexture', p.ptb.w, pink_noise);
+%         pink_noise   = Image2PinkNoise(p.stim.stim(:,:,trial(2)));
+%         pink_noise   = repmat((pink_noise-mean(pink_noise(:))).*p.ptb.tw+mean(pink_noise(:)),[1 1 3]);
+%         p.ptb.stim_sprites(p.stim.tFile+2) = Screen('MakeTexture', p.ptb.w, pink_noise);
+%         %sprite_index = [pink_noise FixationCross trial(1) FixationCross pink_noise trial(2) NaN];
+%         
         %get fixation crosses and onsets from p parameter
         fix        = round(p.ptb.CrossPositions(tt,:));
         
@@ -237,46 +237,56 @@ movefile(p.path.subject,p.path.finalsubject);
         %GetSecs so that the onsets can be defined
         onsets     = p.trial.onsets + GetSecs;
         %pink_noise 1
-        
-        Screen('DrawTexture', p.ptb.w,p.ptb.stim_sprites(p.stim.tFile+1));
-        Eyelink('Message', 'Pink Noise 1 Onset');
-        Screen('Flip',p.ptb.w,onsets(1),0);
-       
+%         
+%         %Screen('DrawTexture', p.ptb.w,p.ptb.stim_sprites(p.stim.tFile+1));
+%         Screen('DrawText', p.ptb.w, double('+'),fix(1),fix(2), p.stim.white);
+%         Eyelink('Message', 'Pink Noise 1 Onset');
+%         Eyelink('Message', 'FX 1 Onset at %d %d',fix(1),fix(2));
+%         Screen('Flip',p.ptb.w,onsets(1),0);
+%        
         %fixation cross 1
-        Screen('DrawTexture', p.ptb.w,p.ptb.stim_sprites(p.stim.tFile+1));
+%         Screen('DrawTexture', p.ptb.w,p.ptb.stim_sprites(p.stim.tFile+1));
         Screen('DrawText', p.ptb.w, double('+'),fix(1),fix(2), p.stim.white);
         Eyelink('Command', 'draw_cross %d %d',fix(1),fix(2));
         Eyelink('Message', 'FX 1 Onset at %d %d',fix(1),fix(2));
-        Screen('Flip',p.ptb.w,onsets(2),0);
-       
+        Screen('Flip',p.ptb.w,onsets(1),0);
+
         %face trial(1)
         Screen('DrawTexture',p.ptb.w,p.ptb.stim_sprites(trial(1)));
         Eyelink('Message', 'Stim 1 Onset');
-        Screen('Flip',p.ptb.w,onsets(3),0);
-       
+        Screen('Flip',p.ptb.w,onsets(2),0);
+
         StopEyelinkRecording;
         
-        %second face of the trial
+
+%second face of the trial
         StartEyelinkRecording(tt,phase,trial(2),fix(3),fix(4));
         %pink_noise 2
-        Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(p.stim.tFile+2));
-        Eyelink('Message', 'Pink Noise 2 Onset');
-        Screen('Flip',p.ptb.w,onsets(4),0);
-        
+        %Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(p.stim.tFile+2));
+%        %Screen('DrawText', p.ptb.w, double('+'), fix(3),fix(4), p.stim.white);
+%         Eyelink('Message', 'Pink Noise 2 Onset');
+%         Eyelink('Message', 'FX Onset 2 at %d %d',fix(3),fix(4));
+%         Screen('Flip',p.ptb.w,onsets(3),0);
+%         
         %fixation cross 2
-        Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(p.stim.tFile+2));
+        %Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(p.stim.tFile+2));
         Screen('DrawText', p.ptb.w, double('+'), fix(3),fix(4), p.stim.white);
         Eyelink('Message', 'FX Onset 2 at %d %d',fix(3),fix(4));
         Eyelink('Command', 'draw_cross %d %d 15',fix(3),fix(4));
-        Screen('Flip',p.ptb.w,onsets(5),0);
-       
+        Screen('Flip',p.ptb.w,onsets(3),0);
+
         %face trial(2)
         Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(trial(2)));
         Eyelink('Message', 'Stim 2 Onset');
-        Screen('Flip',p.ptb.w,onsets(6),0);
-        while GetSecs<onsets(7)
+        Screen('Flip',p.ptb.w,onsets(4),0);
+
+        while GetSecs<onsets(5)
         end
+
+
         StopEyelinkRecording;
+
+
     end
     
 
@@ -452,10 +462,10 @@ movefile(p.path.subject,p.path.finalsubject);
         %time2fixationcross->cross2onset->onset2shock->shock2offset
         %these (duration.BLA) are average duration values:
 %         1.5 0.5 0.5
-        p.duration.stim                = 0.7;%s     
-        p.duration.pink                = 0.7;%0.2
-        p.duration.fix                 = 1.0;
-        %p.duration.gray                = .1;
+        p.duration.stim                = 1.5;%s     
+        %p.duration.pink                = 0.7;%0.7
+        p.duration.fix                 = 0.85;%1.0
+        %p.duration.gray                = 0;
         if simulation_mode
             p.duration.stim                = .001;%s
             p.duration.pink                = .001;
@@ -468,16 +478,24 @@ movefile(p.path.subject,p.path.finalsubject);
         p.stim.cs_plus                 = csp_degree;%index of cs stimulus, this is the one paired to shock
         %p.stim.cs_neg                  = csn;
       
+% 
+%         event_onsets = 0.15;
+%         event_onsets = [event_onsets event_onsets(end)+p.duration.pink];
+%         event_onsets = [event_onsets event_onsets(end)+p.duration.fix];
+%         event_onsets = [event_onsets event_onsets(end)+p.duration.stim];
+%         event_onsets = [event_onsets event_onsets(end)+p.duration.pink];
+%         event_onsets = [event_onsets event_onsets(end)+p.duration.fix];
+%         event_onsets = [event_onsets event_onsets(end)+p.duration.stim];
+%         %event_onsets = [event_onsets event_onsets(end)+p.duration.gray];
 
+%this is the version without pink noise, just fix-stim-fix-stim
         event_onsets = 0.15;
-        event_onsets = [event_onsets event_onsets(end)+p.duration.pink];
+      
         event_onsets = [event_onsets event_onsets(end)+p.duration.fix];
         event_onsets = [event_onsets event_onsets(end)+p.duration.stim];
-        event_onsets = [event_onsets event_onsets(end)+p.duration.pink];
         event_onsets = [event_onsets event_onsets(end)+p.duration.fix];
         event_onsets = [event_onsets event_onsets(end)+p.duration.stim];
-        %event_onsets = [event_onsets event_onsets(end)+p.duration.gray];
-
+        
         p.trial.onsets = event_onsets;
 %         p.out.rating                  = [];
 %         p.out.log                     = zeros(p.psi.numtrials*4,4).*NaN;
@@ -785,8 +803,7 @@ function [t]=StartEyelinkRecording(tt,phase,trialface,fixx,fixy)
         Eyelink('Command', 'clear_screen %d', 0);
         %draw the image on the screen
         Eyelink('ImageTransfer',p.stim.files24(trialface,:),p.ptb.imrect(1),p.ptb.imrect(2),p.ptb.imrect(3),p.ptb.imrect(4),p.ptb.imrect(1),p.ptb.imrect(2));
-      
-        %Eyelink('Command', 'draw_cross %d %d',fix(1),fix(2))
+        Eyelink('Command', 'draw_cross %d %d 15',fixx,fixy);
         %
         %drift correction
         %EyelinkDoDriftCorrection(el,crosspositionx,crosspositiony,0,0);
