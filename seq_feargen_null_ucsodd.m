@@ -24,12 +24,12 @@ if ~isempty(or)
     %collects indices of transitions from oddball to cond=i and builts a
     %vector out of it
     for i=1:max(conds)
-        trans_i(i,:)=shuffle(strfind(s', [max(conds) i]));
+        trans_i(i,:)=Shuffle(strfind(s', [max(conds) i]));
     end
     
     %now i just take the first column completely and set it to
     %zero/varargin
-    while length(find(s==max(conds)) ~= o_trial_target
+    while length(find(s==max(conds))) ~= o_trial_target
         if remove
             s(trans_i(:,1)) = [];
             trans_i(:,1)=[];
