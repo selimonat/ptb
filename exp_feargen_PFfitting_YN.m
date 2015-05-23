@@ -5,6 +5,7 @@ function [p]=exp_feargen_PFfitting_YN(subject,phase,csp_degree)
 % Enter the subject Number as well as the CS+ Face in Degrees (where 00 is
 % 1st face, and so)
 simulation_mode = 0;
+ncircle=1;
 
 ListenChar(2);%disable pressed keys to be spitted around
 commandwindow;
@@ -72,6 +73,7 @@ while OK
         % enter in break loop
             if (tt~=1 && mod(tt,breakpoint)==1 && simulation_mode==0);
                 save(p.path.path_param,'p');
+                memory
                 ShowInstruction(4);
                 CalibrateEL;
             end
@@ -111,7 +113,7 @@ while OK
         % fprintf('Chain: %03d\nxCurrent: %6.2f\nDirection:%6.2f\n %6.2f -> %6.2f vs. %6.2f\n',current_chain,PM{current_chain}.xCurrent,direction,dummy,test,ref);
         % start Trial
         fprintf('Starting Trial %03d/%03d.\n',tt,tchain*p.psi.numtrials)
-        memory
+        
         [test_face, ref_face, signal] = Trial_YN(ref,test,circle_id(current_chain),tt);
       
         fprintf('Rating.\n')
@@ -124,6 +126,7 @@ while OK
             
             % see if subject found the different pair of faces...
             % buttonpress left (Yes) is response_subj=2, right alternative (No) outputs a 1.
+            % note that response=1 only means "yes", and not correct or anything
             if (response_subj == 2 && signal == 1)
                 response=1;
                 fprintf('...Hit. \n')
@@ -343,7 +346,7 @@ movefile(p.path.subject,p.path.finalsubject);
                 end
                 p.ptb.stim_sprites(nStim)     = Screen('MakeTexture', p.ptb.w, im );
         end
-        p.stim.delta = 720/p.stim.tFile;
+        p.stim.delta = ncircle*360/p.stim.tFile;
         
         %create tukeywindow for the pink noise fadeout
         w  =.3;
@@ -389,7 +392,7 @@ movefile(p.path.subject,p.path.finalsubject);
         p.path.stim24                 = [p.path.experiment  p.path.stimfolder '\' '24bits' '\'];
         %
         p.subID                       = sprintf('sub%02d',subject);
-        p.path.edf                    = char(sprintf([p.subID 'p%02d' ],phase));
+        p.path.edf                    = sprintf(['s%03dp%02d' ],subject,phase);
         timestamp                     = datestr(now,30);
         p.path.subject                = [p.path.experiment 'data\tmp\' p.subID '_' timestamp '\'];
         p.path.finalsubject           = [p.path.experiment 'data\' p.subID '_' timestamp '\' ];
@@ -521,7 +524,7 @@ movefile(p.path.subject,p.path.finalsubject);
         p.psi.PFfit = @PAL_CumulativeNormal;    %Shape to be assumed
         
         %Termination after n Trials
-        p.psi.numtrials      = 50;
+        p.psi.numtrials      = 100;
         % percentage of obligatory x=0 trials
         p.psi.p0  = .2;
         
@@ -879,6 +882,10 @@ function InitEyeLink
                             
         % open file.
         res = Eyelink('Openfile', p.path.edf);
+        if res == -3
+            fprintf('File cannot be created!!!!\n');
+            return;
+        end
         %
         Eyelink('command', 'add_file_preamble_text ''Recorded by EyelinkToolbox FearGen2 Experiment''');
         Eyelink('command', 'screen_pixel_coords = %ld %ld %ld %ld', 0, 0, p.ptb.width-1, p.ptb.height-1);
