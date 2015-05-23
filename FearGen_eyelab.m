@@ -187,7 +187,7 @@ function [TimeEndStim]=Trial2(TimeStimOnset , prestimdur, stim_id , pos1 )
         
         %% Draw the stimulus to the buffer
         Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(stim_id));
-        Screen('DrawText'   , p.ptb.w, double('+'), p.ptb.CrossPosition_x,pos1, p.stim.white);        
+%         Screen('DrawText'   , p.ptb.w, double('+'), p.ptb.CrossPosition_x,pos1, p.stim.white);        
         Screen('DrawingFinished',p.ptb.w,0);
         
         %% STIMULUS ONSET        
@@ -198,7 +198,7 @@ function [TimeEndStim]=Trial2(TimeStimOnset , prestimdur, stim_id , pos1 )
         
         
         %% CROSS JUMPS        
-        Log(TimeCrossJumpTime,3,NaN);%log the fixation cross move
+%         Log(TimeCrossJumpTime,3,NaN);%log the fixation cross move
         
         %% UCS
         Screen('DrawingFinished',p.ptb.w,0);                
@@ -325,7 +325,7 @@ function [TimeEndStim]=Trial2(TimeStimOnset , prestimdur, stim_id , pos1 )
         p.path.stim                   = fullfile(p.path.experiment,p.path.stimfolder,filesep);
         %
         p.subID                       = sprintf('sub%02d',subject);
-        p.path.edf                    = char(sprintf([p.subID 'p%02d' ],phase));
+        p.path.edf                    = sprintf(['s%03dp%02d' ],subject,phase);
         timestamp                     = datestr(now,30);
         p.path.subject                = [p.path.experiment 'data' filesep 'tmp' filesep p.subID '_' timestamp filesep];
         p.path.finalsubject           = [p.path.experiment 'data' filesep p.subID '_' timestamp filesep ];
@@ -496,6 +496,7 @@ function [TimeEndStim]=Trial2(TimeStimOnset , prestimdur, stim_id , pos1 )
             stim_id          = rating_seq(nRatend);
             pos1             = p.ptb.CrossPosition_y(2);
             pos2             = p.ptb.CrossPosition_y(1);
+            pos1             = round((pos1+pos2)./2);
             %
             %We will turn on the fixation cross and start the tracker
             %for the first trial. These have to be done before the main
@@ -757,20 +758,19 @@ function [TimeEndStim]=Trial2(TimeStimOnset , prestimdur, stim_id , pos1 )
         
             
         elseif nInstruct == 7;%rating
-            text = ['In dieser Phase hätten wir gerne, dass Sie die Gesichter\n'...
+            text = ['In diesem Teil werden Sie KEINE Schocks mehr bekommen! \n\n'...
+                'Nun hätten wir gerne, dass Sie die Gesichter\n'...
                 'im Hinblick auf folgende Frage bewerten:\n\n'...
                 '"Haben Sie bei diesem Gesicht elektrische Schocks erhalten?"\n\n'...
-                'In diesem Teil werden Sie KEINE Schocks mehr bekommen! \n\n'...
                 'Antworten Sie mit links für JA und mit rechts für NEIN.\n'...
-                'Bitte folgen Sie auch hier dem Fixationskreuz.\n'...
+                'Es ist wichtig, dass Sie so SCHNELL WIE MÖGLICH antworten. \n\n'...
                 'Drücken Sie die obere Taste um zu starten.\n'...
                 ];
             
         elseif nInstruct == 77;%rating
-            text = ['Bitte beantworten Sie die folgende Frage:\n'...
-                'Haben Sie bei diesem Gesicht Schocks erhalten?\n\n'...                
+            text = ['Haben Sie bei diesem Gesicht Schocks erhalten?\n\n'...                
+                'Es ist wichtig, dass Sie so SCHNELL WIE MÖGLICH antworten. \n\n'...
                 'Beliebige Taste drücken, um das Gesicht zu sehen...\n'...
-                'Bitte folgen Sie auch hier dem Fixationskreuz.\n' ...
                 ];
             
             
@@ -797,6 +797,7 @@ function [TimeEndStim]=Trial2(TimeStimOnset , prestimdur, stim_id , pos1 )
             text = [' OK !\n'...
                 'Bitte beantworten Sie als nächstes:\n\n'...
                 'Wie sicher sind Sie sich? \n\n' ...
+                'Nehmen Sie sich Zeit, um so genau wie möglich zu antworten. \n\n' ...
                 'Bewegen Sie den "Zeiger" mit der rechten und linken Pfeiltaste\n' ...
                 'und bestätigen Sie Ihre Einschaetzung mit der mit der oberen Pfeiltaste'...
                 ];
@@ -1010,6 +1011,10 @@ function [TimeEndStim]=Trial2(TimeStimOnset , prestimdur, stim_id , pos1 )
         
         % open file.
         Eyelink('Openfile', p.path.edf);
+        if res == -3
+            fprintf('File cannot be created!!!!\n');
+            return;
+        end
         %
         Eyelink('command', 'add_file_preamble_text ''Recorded by EyelinkToolbox FearGen2 Experiment''');
         Eyelink('command', 'screen_pixel_coords = %ld %ld %ld %ld', 0, 0, p.ptb.width-1, p.ptb.height-1);
