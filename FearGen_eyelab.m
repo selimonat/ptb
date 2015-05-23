@@ -171,6 +171,44 @@ cleanup;
             
         end
     end
+function [TimeEndStim]=Trial2(TimeStimOnset , prestimdur, stim_id , pos1 )
+        %For the ratings, shorter presentation
+        
+        %get all the times
+        TimeCrossOnset     = TimeStimOnset  - prestimdur;
+        TimeEndStim        = TimeStimOnset  + .5;
+        
+        %% Fixation Onset
+        Screen('DrawText', p.ptb.w, double('+'), p.ptb.CrossPosition_x,pos1, p.stim.white);
+        TimeCrossOn  = Screen('Flip',p.ptb.w,TimeCrossOnset,0);        
+        MarkCED( p.com.lpt.address, p.com.lpt.FixOnset );
+        Eyelink('Message', 'FX Onset at %03d',pos1);
+        Log(TimeCrossOn,1,stim_id);%cross onset.        
+        
+        %% Draw the stimulus to the buffer
+        Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(stim_id));
+        Screen('DrawText'   , p.ptb.w, double('+'), p.ptb.CrossPosition_x,pos1, p.stim.white);        
+        Screen('DrawingFinished',p.ptb.w,0);
+        
+        %% STIMULUS ONSET        
+        TimeStimOnset  = Screen('Flip',p.ptb.w,TimeStimOnset,0);%asap and dont clear
+        %send eyelink and ced a marker asap        
+        MarkCED( p.com.lpt.address, p.com.lpt.StimOnset );        
+        Log(TimeStimOnset,2,stim_id);%log the stimulus onset
+        
+        
+        %% CROSS JUMPS        
+        Log(TimeCrossJumpTime,3,NaN);%log the fixation cross move
+        
+        %% UCS
+        Screen('DrawingFinished',p.ptb.w,0);                
+        
+        %% STIM OFF immediately
+        TimeEndStim = Screen('Flip',p.ptb.w,TimeEndStim,0);                
+        Log(TimeEndStim,-2,stim_id);%log the stimulus offset        
+    end
+
+
     function [TimeEndStim]=Trial(TimeStimOnset , prestimdur, stim_id , ucs  , pos1 , pos2, oddball )
         %get all the times
         TimeCrossOnset     = TimeStimOnset  - prestimdur;
@@ -464,8 +502,7 @@ cleanup;
             %for loop.
             Screen('DrawText', p.ptb.w, double('+'), p.ptb.CrossPosition_x, pos1, p.stim.white);
             t  = Screen('Flip',p.ptb.w);
-            %
-            StartEyelinkRecording(stim_id,p.var.ExpPhase,0,0);
+            %            
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %Mark the onset            
             Eyelink('Message', 'FX Onset at %03d',pos1);
@@ -475,7 +512,7 @@ cleanup;
                 ShowInstruction(77,1);
             end
             fprintf('============\nSubject is rating face %d \n', stim_id);
-            Trial(GetSecs+1,0.5,stim_id,0,pos1,pos2,0);
+            Trial2(GetSecs+rand(1)*4,0.5,stim_id,pos1);
             %ask the question
             YesNoQuestion(nRatend);
             %run across ratings (this feature is added but not used here)...
