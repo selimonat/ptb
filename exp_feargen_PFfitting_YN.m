@@ -127,18 +127,23 @@ while OK
             % see if subject found the different pair of faces...
             % buttonpress left (Yes) is response_subj=2, right alternative (No) outputs a 1.
             % note that response=1 only means "yes", and not correct or anything
+            hit=0;miss=0;cr=0;fa=0;
             if (response_subj == 2 && signal == 1)
                 response=1;
                 fprintf('...Hit. \n')
+                hit=1;
             elseif (response_subj==1 && signal == 1)
                 response=0;
                 fprintf('...Miss. \n')
+                miss=1;
             elseif (response_subj == 2 && signal==0)
                 response=1;
                 fprintf('...False Alarm. \n')
+                fa=1;
             elseif (response_subj == 1 && signal == 0)
                 response=0;
                 fprintf('...Correct Rejection. \n')
+                cr=1;
             else
                 fprintf('error in the answer algorithm! \n')
             end
@@ -235,7 +240,7 @@ movefile(p.path.subject,p.path.finalsubject);
         %get fixation crosses and onsets from p parameter
         fix        = round(p.ptb.CrossPositions(tt,:));
         
-        StartEyelinkRecording(tt,phase,trial(1),fix(1),fix(2));
+        StartEyelinkRecording(1,phase,trial(1),fix(1),fix(2));
         
         %GetSecs so that the onsets can be defined
         onsets     = p.trial.onsets + GetSecs;
@@ -258,12 +263,14 @@ movefile(p.path.subject,p.path.finalsubject);
         Screen('DrawTexture',p.ptb.w,p.ptb.stim_sprites(trial(1)));
         Eyelink('Message', 'Stim 1 Onset');
         Screen('Flip',p.ptb.w,onsets(2),0);
+        Eyelink('Message', 'Stim Onset');
+        Eyelink('Message', 'SYNCTIME');
 
         StopEyelinkRecording;
         
 
 %second face of the trial
-        StartEyelinkRecording(tt,phase,trial(2),fix(3),fix(4));
+        StartEyelinkRecording(2,phase,trial(2),fix(3),fix(4));
         %pink_noise 2
         %Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(p.stim.tFile+2));
 %        %Screen('DrawText', p.ptb.w, double('+'), fix(3),fix(4), p.stim.white);
@@ -282,10 +289,14 @@ movefile(p.path.subject,p.path.finalsubject);
         Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(trial(2)));
         Eyelink('Message', 'Stim 2 Onset');
         Screen('Flip',p.ptb.w,onsets(4),0);
+        Eyelink('Message', 'Stim Onset');
+        Eyelink('Message', 'SYNCTIME');
 
         while GetSecs<onsets(5)
         end
-
+        Screen('Flip',p.ptb.w,onsets(5),0);
+        Eyelink('Message', 'Stim Offset');            
+        Eyelink('Message', 'BLANK_SCREEN');
 
         StopEyelinkRecording;
 
@@ -524,7 +535,7 @@ movefile(p.path.subject,p.path.finalsubject);
         p.psi.PFfit = @PAL_CumulativeNormal;    %Shape to be assumed
         
         %Termination after n Trials
-        p.psi.numtrials      = 100;
+        p.psi.numtrials      = 3;
         % percentage of obligatory x=0 trials
         p.psi.p0  = .2;
         
@@ -717,6 +728,10 @@ movefile(p.path.subject,p.path.finalsubject);
         p.psi.log.lambda     = NaN(nc,p.psi.numtrials);
         p.psi.log.seLambda   = NaN(nc,p.psi.numtrials);
         p.psi.log.xrounded   = NaN(p.stim.tFace/tchain+1,p.psi.numtrials,nc);
+        p.psi.log.hit        = NaN(nc,p.psi.numtrials);
+        p.psi.log.cr         = NaN(nc,p.psi.numtrials);
+        p.psi.log.fa         = NaN(nc,p.psi.numtrials);
+        p.psi.log.miss       = NaN(nc,p.psi.numtrials);
         p.psi.log.trial_counter  = zeros(p.stim.tFace/tchain+1,nc);
         
     end
@@ -738,7 +753,10 @@ movefile(p.path.subject,p.path.finalsubject);
         p.psi.log.seGamma(current_chain,cc(current_chain))    = PM{current_chain}.seGuess(end);
         p.psi.log.lambda(current_chain,cc(current_chain))     = PM{current_chain}.lapse(end);
         p.psi.log.seLambda(current_chain,cc(current_chain))   = PM{current_chain}.seLapse(end);
-        
+        p.psi.log.hit(current_chain,cc(current_chain))        = hit;
+        p.psi.log.cr(current_chain,cc(current_chain))         = cr;
+        p.psi.log.fa(current_chain,cc(current_chain))         = fa;
+        p.psi.log.miss(current_chain,cc(current_chain))       = miss;
         
     end
 %     function PlotProcedure
@@ -788,10 +806,10 @@ movefile(p.path.subject,p.path.finalsubject);
 %             
 %         end
 
-function [t]=StartEyelinkRecording(tt,phase,trialface,fixx,fixy)
+function [t]=StartEyelinkRecording(trialnum,phase,trialface,fixx,fixy)
         t = [];
-        
-        Eyelink('Message', 'Trial: %03d, Phase: %02d, Face: %d ,FX %d,%d', tt, phase, trialface, fixx,fixy);
+        trialid=trialnum*100+trialface;
+        Eyelink('Message', 'TRIALID: %03d, PHASE: %02d, FX %d,%d', trialid, phase, fixx,fixy);
         % an integration message so that an image can be loaded as
         % overlay background when performing Data Viewer analysis.
         WaitSecs(0.01);
@@ -887,7 +905,7 @@ function InitEyeLink
             return;
         end
         %
-        Eyelink('command', 'add_file_preamble_text ''Recorded by EyelinkToolbox FearGen2 Experiment''');
+        Eyelink('command', 'add_file_preamble_text ''Recorded by EyelinkToolbox FearCloud Experiment''');
         Eyelink('command', 'screen_pixel_coords = %ld %ld %ld %ld', 0, 0, p.ptb.width-1, p.ptb.height-1);
         Eyelink('message', 'DISPLAY_COORDS %ld %ld %ld %ld', 0, 0, p.ptb.width-1, p.ptb.height-1);
         % set calibration type.
