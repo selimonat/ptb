@@ -19,7 +19,7 @@ function [seq]=seq_feargen_eyelab(condition,balancing,isis)
 
 trialduration  = .75;
 % minimum ISI
-mini_isi       = 2.5;
+mini_isi       = 3;
 % minimum pre stimulus
 mini_ps        = 0.4;
 %% SEQ is between 1:tCond ==> 1 2 3 3 1 2 1 2 1 3 3 4
@@ -46,9 +46,9 @@ end
 
 %% create the block-wise structure of trials
 seq.CrossPosition   = [];
-OK                  = 0;
+ok                  = 0;
 fprintf('Starting Constraint Check....\n')
-while ~OK
+while ~ok
     %create the 2nd Order Balanced Sequence
     [seq.cond_id,ranks]    = seq_SecondOrderBalancedSequence(rep_vec,1);
     
@@ -70,10 +70,10 @@ while ~OK
         seq.ucs                = seq.cond_id == condid_ucs;
     end
     %check constraints.
+    %inputs after seq are: IsEventAfter(seq.ucs,0.95), IsEventAfter(seq.oddball,0.95), IsEventBefore(seq.oddball,0.1), SlopeCheck(seq.ucs), IsEventTooFar(seq.ucs,50)
+    ok=seq_feargen_constraints(seq,1,1,1,1,1);
     
-    if ~(IsEventAfter(seq.ucs,0.95) || IsEventAfter(seq.oddball,0.95) || IsEventBefore(seq.oddball,0.1) || SlopeCheck(seq.ucs)   || IsEventTooFar(seq.ucs,50))
-        
-        OK=1;
+    if ok
         tucs               = sum(seq.ucs);
         seq.tTrial         = length(seq.cond_id);
         if null_events
@@ -149,35 +149,7 @@ end
     end
 
 
-    function [out]=IsEventAfter(seq,part)
-        %returns TRUE if there is any events after PART percentile of
-        %trials
-        out = sum(find(seq) > part*length(seq)) ~= 0;
-    end
-
-    function [out]=IsEventBefore(seq,part)
-        %returns TRUE if there is any events before PART percentile of
-        %trials
-        out = sum(find(seq) < part*length(seq)) ~= 0;
-    end
-
-    function [out]=IsEventTooFar(seq,distance)
-        %the longest distance where nothing happens.
-        out = max(sort(diff(find(seq)))) > distance;
-    end
-
-    function [out]=SlopeCheck(seq)
-        
-        rate     = conv(double(seq),ones(1,30),'valid');
-        X        = [(1:length(rate))' ones(length(rate),1)];
-        [b bint] = regress( rate(:), X );
-        if bint(1) <=0 && bint(1,2)>=0
-            out = false;
-        else
-            out=true;
-        end
-        
-    end
+ 
     function computeEff
         Q = max(seq.cond_id);
         [dummy_eff  dummy_det]  = calc_meffdet(seq.cond_id , 10 , Q , 3 );
