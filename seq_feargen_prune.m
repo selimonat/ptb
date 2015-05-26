@@ -29,7 +29,9 @@ end
 
 %prune ucs
 if ~isempty(rr)
-    nucs = round(sum(s == 4)*(rr./(1-rr)));%how many do we need to have?
+    %nucs = round(sum(s == 4)*(rr./(1-rr)));%4 gives a problem when @
+    %conditioning...
+    nucs = round(sum(s == 2)*(rr./(1-rr)));%how many do we need to have?
     tucs = sum(s == (max(conds)-1));
     if remove
         s(randsample(find(s == (max(conds)-1)),tucs-nucs)) = [];
