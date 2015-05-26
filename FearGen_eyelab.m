@@ -170,7 +170,7 @@ cleanup;
             %Get the variables that Trial function needs.
             stim_id      = p.presentation.stim_id(nTrial);
             %
-            fix         = p.presentation.CrossPosition(nTrial,:);
+            fix          = p.presentation.CrossPosition(nTrial,:);
            
             ISI          = p.presentation.isi(nTrial);
             ucs          = p.presentation.ucs(nTrial);
@@ -204,8 +204,11 @@ cleanup;
                 Log(firstPress(p_keys_confirm),7,NaN);%log the key press for hit detection.
                 fprintf('Subject Pressed the Hit Key!!\n');
             end
-            
+        if (phase > 2 && nTrial == ceil(p.presentation.tTrial/2))
+            ShowInstruction(14,1)
+            CalibrateEL;
         end
+        
     end
     function [TimeEndStim]=Trial(TimeStimOnset , prestimdur, stim_id , ucs  , fix , oddball )
         %get all the times
@@ -405,16 +408,13 @@ cleanup;
         p.duration.prestim             = 2-p.duration.prestim_ori;%that is 0.95 seconds
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
          %stimulus sequence
-        if phase == 1
-            seq = seq_feargen_eyelab('b',1,'quasiuniform',[2 3 4 5]);
+        if phase == 2
+            seq = seq_feargen_cloudseq(csp,'baseline')%only 1 short seq
         elseif phase == 3%conditioning
-            seq = seq_feargen_eyelab('c',1,'quasiuniform',[2 3 4 5]);
+            seq = seq_feargen_cloudseq(csp,'cond')%gets 2 short seqs
         elseif phase == 4
-            %seq = seq_feargen_eyelab(csp,'t');
-        baseline=load(sprintf([regexprep(p.path.subject,'\\','\\\') 'stimulation\\param_phase_01.mat']),'p');
-        p.presentation = baseline.p.presentation;
-        p.presentation.stim_id(p.presentation.stim_id==9) = csp;
-        end
+            seq = seq_feargen_cloudseq(csp,'test')%gets 2 short seqs
+         end
         %create the randomized design
         p.stim.cs_plus                 = csp;%index of cs stimulus, this is the one paired to shock
         p.stim.cs_neg                  = csn;
@@ -742,8 +742,10 @@ cleanup;
             elseif nInstruct == 13
                 text = {'Überhaupt\nnicht\nwahrscheinlich'};
              elseif nInstruct == 14
-                 text = ['Pause.\n' ...
-                         'Drücken Sie die mittlere Taste um fortzufahren.\n'];
+                 text = ['Bitte machen Sie eine kurze Pause.\n' ...
+                         'Sie können hierbei gern die Augen einen Moment schließen.\n'...
+                         'Drücken Sie anschließend die mittlere Taste um fortzufahren.\n'
+                         'Wir werden dann den Eyetracker noch einmal kalibrieren.\n'];
             else
                 text = {''};
             end
