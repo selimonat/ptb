@@ -19,8 +19,8 @@ end
 
 nummods = 10;%number of time bin in the FIR matrix
 s = s(:);
-tcond     = 11;%with the null event
-tstimcond = 10;
+tcond     = max(s)+1;%with the null event
+tstimcond = max(s);
 conds     = 0:tstimcond;
 out.ttrial    = length(s);
 if verbose
@@ -37,7 +37,7 @@ for c = 1:tcond
 end
 
 ucs     = sum(s == tstimcond-1);
-csp     = sum(s == 4);
+csp     = sum(s == 2);
 out.rr  = ucs./(ucs+csp)*100;
 
 odd     = sum(s == (tstimcond));
