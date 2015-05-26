@@ -1,6 +1,7 @@
 function [s]=seq_feargen_mseq_pruned(method,pr,po)
 %1: concat power 2 and then prune
 %2: same as 1 but null it instead of pruning
+%22: same for conditioning
 %3: generate power 3 and the prune
 %4: same as 3 but null it instead of pruning
 
@@ -16,12 +17,22 @@ if method == 1
 elseif method == 2
     %% will zero all the unnecessary trials, the result is 240 trial long and extremely efficient. 
     %% maybe this is the one I am looking since ages now ;)
-    s = [];
-    for n = 1:2
-        s = [s; mseq2(11,2,randsample(1:100,1),randsample(1:18,1))];
-    end                    
-    [s]  = seq_feargen_prune(s,pr,po,0);        
-    seq_feargen_information([s]);
+    
+    %%use this if you want to combine two shorter seqs into one
+    %     s = [];
+    %     for n = 1:2
+    %         s = [s; mseq2(11,2,randsample(1:100,1),randsample(1:18,1))];
+    %     end
+    [s]    = mseq2(11,2,randsample(1:100,1),randsample(1:18,1));
+    [s]  = seq_feargen_prune(s,pr,po,0);
+    seq_feargen_information(s);
+    
+elseif method ==22;
+    %this is for conditioning
+     [s]  = mseq2(5,3,randsample(1:100,1),randsample(1:18,1));
+     [s]  = seq_feargen_prune(s,pr,po,0);
+     seq_feargen_information(s);
+     
 elseif method == 3
     %WORK to be done: GET AN M-sequence and equalize the transition to UCS
     %and ODDBALL trials that is it.
