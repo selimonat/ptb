@@ -38,7 +38,10 @@ breakpoint=50;
 
 % counter for within chain trials (cc) and global trials (tt)
 cc=zeros(1,tchain);
-tt=0; 
+tt=0;
+%trialID is counting every single face (2 per Trial_YN), need that for
+%Eyelink
+trialID=0;
 
 
 for nc = 1:tchain
@@ -89,17 +92,19 @@ while OK
             
            end
         end
-        fprintf('PM.x is now %4.2f \n',PM{current_chain}.x(cc(current_chain)))
+        
        
         %Present trial here at stimulus intensity PM.xCurrent and collect
         %response
         direction = RandSample([-1 1],[1 1]);
+        fprintf('PM.x is now %4.2f \n',direction*PM{current_chain}.x(cc(current_chain)))
         test      = PM{current_chain}.xCurrent * direction + PM{current_chain}.reference_face + csp_degree + PM{current_chain}.reference_circle;
         dummy = test;
         % the computed degree has to stay in the same circle:
         % whenever it goes left from the 00 degrees (360 at foreign),
         % there's a problem
-        % for chain 1 and 2, values below 0  have to be shifted 360 degrees,
+        % for chain 1 and 2, values below 0  have to be shifted 360
+        % degrees,
         % for chain 3 and 4, values below 360 have to be shifted 360 degrees
         % e.g., -45 has to be 315 in chain 1; 315 has to be 675 in chain 3
         % was done using mod... adding (0 0 360 360) (this is the last part)
@@ -114,7 +119,7 @@ while OK
         % start Trial
         fprintf('Starting Trial %03d/%03d.\n',tt,tchain*p.psi.numtrials)
         
-        [test_face, ref_face, signal] = Trial_YN(ref,test,circle_id(current_chain),tt);
+        [test_face, ref_face, signal,trialID] = Trial_YN(trialID,ref,test,circle_id(current_chain),tt);
       
         fprintf('Rating.\n')
         %Rating Slider
@@ -127,23 +132,23 @@ while OK
             % see if subject found the different pair of faces...
             % buttonpress left (Yes) is response_subj=2, right alternative (No) outputs a 1.
             % note that response=1 only means "yes", and not correct or anything
-            hit=0;miss=0;cr=0;fa=0;
+            sdt=NaN;
             if (response_subj == 2 && signal == 1)
                 response=1;
                 fprintf('...Hit. \n')
-                hit=1;
+                sdt=1;
             elseif (response_subj==1 && signal == 1)
                 response=0;
                 fprintf('...Miss. \n')
-                miss=1;
+                sdt=3;
             elseif (response_subj == 2 && signal==0)
                 response=1;
                 fprintf('...False Alarm. \n')
-                fa=1;
+                sdt=2;
             elseif (response_subj == 1 && signal == 0)
                 response=0;
                 fprintf('...Correct Rejection. \n')
-                cr=1;
+                sdt=4;
             else
                 fprintf('error in the answer algorithm! \n')
             end
@@ -184,6 +189,7 @@ while OK
     save(p.path.path_param,'p');
 
 end
+%end of Experiment, shown to subject
 ShowInstruction(2);
 %Print summary of results to screen
 for chain=1:tchain
@@ -208,7 +214,7 @@ movefile(p.path.subject,p.path.finalsubject);
 
     
 
-    function  [test_face, ref_face, signal] = Trial_YN(ref_stim,test_stim,last_face_of_circle,tt)
+    function  [test_face,ref_face,signal,trialID] = Trial_YN(trialID,ref_stim,test_stim,last_face_of_circle,tt)
         % computes the trial FACES, using the test/ref information input
         % values (in Deg)
         
@@ -217,7 +223,8 @@ movefile(p.path.subject,p.path.finalsubject);
         trial      = mod(round(trial),last_face_of_circle)+1;
         ref_face   = trial(1);
         test_face  = trial(2);
-        trial      = Shuffle(trial);
+        [trial,idx]= Shuffle(trial);
+        fprintf('Faces: %d %d \n',trial(1),trial(2));
         %compute if trial had different faces or not
         %if trial(1)=trial(2), they were the same and subject has to
         %answer with 'no' (right option, is 1), else means correct hit
@@ -227,6 +234,16 @@ movefile(p.path.subject,p.path.finalsubject);
         else
             signal = 1;
         end
+       
+        
+       trial_deg = [ref_stim test_stim];
+       isref=double(trial==ref_face) ;
+       delta_ref   = MinimumAngleQuartile([trial_deg(idx(1)) trial_deg(idx(2))],ref);
+       delta_csp   = MinimumAngleQuartile([trial_deg(idx(1)) trial_deg(idx(2))],csp_degree); % ...
+       abs_FGangle = [trial_deg(idx(1)) trial_deg(idx(2))];
+       
+       
+    
    
 %         %create two pink noise textures
 %         pink_noise   = Image2PinkNoise(p.stim.stim(:,:,trial(1)));
@@ -240,7 +257,8 @@ movefile(p.path.subject,p.path.finalsubject);
         %get fixation crosses and onsets from p parameter
         fix        = round(p.ptb.CrossPositions(tt,:));
         
-        StartEyelinkRecording(1,phase,trial(1),fix(1),fix(2));
+        trialID=trialID+1;
+        StartEyelinkRecording(trialID,phase,cc(current_chain),tt,current_chain,isref(1),trial(1),delta_ref(1),delta_csp(1),abs_FGangle(1),fix(1),fix(2));
         
         %GetSecs so that the onsets can be defined
         onsets     = p.trial.onsets + GetSecs;
@@ -268,9 +286,10 @@ movefile(p.path.subject,p.path.finalsubject);
 
         StopEyelinkRecording;
         
-
-%second face of the trial
-        StartEyelinkRecording(2,phase,trial(2),fix(3),fix(4));
+        
+        %second face of the trial
+        trialID=trialID+1;
+        StartEyelinkRecording(trialID,phase,cc(current_chain),tt,current_chain,isref(2),trial(2),delta_ref(2),delta_csp(2),abs_FGangle(2),fix(3),fix(4));
         %pink_noise 2
         %Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(p.stim.tFile+2));
 %        %Screen('DrawText', p.ptb.w, double('+'), fix(3),fix(4), p.stim.white);
@@ -299,6 +318,7 @@ movefile(p.path.subject,p.path.finalsubject);
         Eyelink('Message', 'BLANK_SCREEN');
 
         StopEyelinkRecording;
+        
 
 
     end
@@ -535,7 +555,7 @@ movefile(p.path.subject,p.path.finalsubject);
         p.psi.PFfit = @PAL_CumulativeNormal;    %Shape to be assumed
         
         %Termination after n Trials
-        p.psi.numtrials      = 3;
+        p.psi.numtrials      = 100;
         % percentage of obligatory x=0 trials
         p.psi.p0  = .2;
         
@@ -543,7 +563,8 @@ movefile(p.path.subject,p.path.finalsubject);
         PM = [];
         face_shift   = [0 180 0 180];
         circle_shift = [0 0 360 360];
-        circle_id    = [1 1 2 2]*p.stim.tFace/2;
+        circle_id = [1 1]*p.stim.tFace;
+        %circle_id    = [1 1 2 2]*p.stim.tFace/2 % for 2 circles;
         tchain = 2;
 
         
@@ -625,13 +646,32 @@ movefile(p.path.subject,p.path.finalsubject);
         end
     end
 
-    function shuffled = Shuffle(vector,N)
+    function [shuffled,idx] = Shuffle(vector,N)
         %takes first N from the SHUFFLED before outputting. This function
         %could be used as a replacement for randsample
         if nargin < 2;N = length(vector);end
         [dummy, idx]    = sort(rand([1 length(vector)]));
         shuffled        = vector(idx(1:N));
         shuffled        = shuffled(:);
+    end
+
+    function [a]=MinimumAngleQuartile(y,x)
+        %[a]=MinimumAngle(x,y);
+        %
+        %finds the minimum angle between two angles given in degrees, the answer is
+        %also in degrees. The clockwise distances from Y to X are considered as
+        %positive. Opposite angles are considered as positive 180.
+        
+        x  = deg2rad(x);
+        y  = deg2rad(y);
+        
+        a  = atan2(sin(x-y), cos(x-y));
+        
+        a  = -round(((180/pi)*a)*4)/4;
+        
+        if any(abs(a) == 180);
+            a(abs(a) == 180) = 180;
+        end
     end
 
     function ShowInstruction(nInstruct)
@@ -728,11 +768,9 @@ movefile(p.path.subject,p.path.finalsubject);
         p.psi.log.lambda     = NaN(nc,p.psi.numtrials);
         p.psi.log.seLambda   = NaN(nc,p.psi.numtrials);
         p.psi.log.xrounded   = NaN(p.stim.tFace/tchain+1,p.psi.numtrials,nc);
-        p.psi.log.hit        = NaN(nc,p.psi.numtrials);
-        p.psi.log.cr         = NaN(nc,p.psi.numtrials);
-        p.psi.log.fa         = NaN(nc,p.psi.numtrials);
-        p.psi.log.miss       = NaN(nc,p.psi.numtrials);
+        p.psi.log.sdt        = NaN(nc,p.psi.numtrials);  
         p.psi.log.trial_counter  = zeros(p.stim.tFace/tchain+1,nc);
+   
         
     end
 
@@ -753,10 +791,8 @@ movefile(p.path.subject,p.path.finalsubject);
         p.psi.log.seGamma(current_chain,cc(current_chain))    = PM{current_chain}.seGuess(end);
         p.psi.log.lambda(current_chain,cc(current_chain))     = PM{current_chain}.lapse(end);
         p.psi.log.seLambda(current_chain,cc(current_chain))   = PM{current_chain}.seLapse(end);
-        p.psi.log.hit(current_chain,cc(current_chain))        = hit;
-        p.psi.log.cr(current_chain,cc(current_chain))         = cr;
-        p.psi.log.fa(current_chain,cc(current_chain))         = fa;
-        p.psi.log.miss(current_chain,cc(current_chain))       = miss;
+        p.psi.log.sdt(current_chain,cc(current_chain))        = sdt;%1=hit 2=FA 3=miss 4=CR
+ 
         
     end
 %     function PlotProcedure
@@ -806,16 +842,19 @@ movefile(p.path.subject,p.path.finalsubject);
 %             
 %         end
 
-function [t]=StartEyelinkRecording(trialnum,phase,trialface,fixx,fixy)
+function [t]=StartEyelinkRecording(trialID,phase,cc,tt,current_chain,isref,file,delta_ref,delta_csp,abs_FGangle,fixx,fixy)
+    
         t = [];
-        trialid=trialnum*100+trialface;
-        Eyelink('Message', 'TRIALID: %03d, PHASE: %02d, FX %d,%d', trialid, phase, fixx,fixy);
+        
+        
+        Eyelink('Message', 'TRIALID:%04d, PHASE:%04d, CHAIN:%04d, CHAINTRIAL:%04d, TTRIAL:%04d, ISREF:%04d, FILE:%04d, DELTAREF:%04d, DELTACSP:%04d, FGDEG:%04d, FXX:%04d, FXY:%04d',trialID, phase,...
+            current_chain, cc, tt, isref, file, delta_ref*100, delta_csp*100, abs_FGangle*100,fixx,fixy);
         % an integration message so that an image can be loaded as
         % overlay background when performing Data Viewer analysis.
         WaitSecs(0.01);
-        Eyelink('Message', '!V IMGLOAD CENTER %s %d %d', p.stim.files(trialface,:), p.ptb.midpoint(1), p.ptb.midpoint(2));
+        Eyelink('Message', '!V IMGLOAD CENTER %s %d %d', p.stim.files(file,:), p.ptb.midpoint(1), p.ptb.midpoint(2));
         % This supplies the title at the bottom of the eyetracker display
-        Eyelink('Command', 'record_status_message "Stim: %d, Phase: %d"',trialface, phase);
+        Eyelink('Command', 'record_status_message "Stim: %d, Phase: %d"',file, phase);
         %
         %Put the tracker offline and draw the stimuli.
         Eyelink('Command', 'set_idle_mode');
@@ -823,7 +862,7 @@ function [t]=StartEyelinkRecording(trialnum,phase,trialface,fixx,fixy)
         % clear tracker display and draw box at center
         Eyelink('Command', 'clear_screen %d', 0);
         %draw the image on the screen
-        Eyelink('ImageTransfer',p.stim.files24(trialface,:),p.ptb.imrect(1),p.ptb.imrect(2),p.ptb.imrect(3),p.ptb.imrect(4),p.ptb.imrect(1),p.ptb.imrect(2));
+        Eyelink('ImageTransfer',p.stim.files24(file,:),p.ptb.imrect(1),p.ptb.imrect(2),p.ptb.imrect(3),p.ptb.imrect(4),p.ptb.imrect(1),p.ptb.imrect(2));
         Eyelink('Command', 'draw_cross %d %d 15',fixx,fixy);
         %
         %drift correction
@@ -945,6 +984,7 @@ function CalibrateEL
         fprintf('=================\n=================\nNow we are done with the calibration\n')
 end
 
+        
 
 function Log(ptb_time, event_type, event_info)
         %Phases:
