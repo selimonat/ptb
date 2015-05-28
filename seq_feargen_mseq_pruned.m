@@ -25,13 +25,13 @@ elseif method == 2
     %     end
     [s]    = mseq2(11,2,randsample(1:100,1),randsample(1:18,1));
     [s]  = seq_feargen_prune(s,pr,po,0);
-    seq_feargen_information(s);
+    %seq_feargen_information(s);
     
 elseif method ==22;
     %this is for conditioning
      [s]  = mseq2(5,3,randsample(1:100,1),randsample(1:18,1));
      [s]  = seq_feargen_prune(s,pr,po,0);
-     seq_feargen_information(s);
+     %seq_feargen_information(s);
      
 elseif method == 3
     %WORK to be done: GET AN M-sequence and equalize the transition to UCS
