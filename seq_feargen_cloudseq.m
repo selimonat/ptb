@@ -35,25 +35,58 @@ end
 
 %assign isis (uniform so far)
 s.isi = ones(1,length(s.cond_id))*3;
-%assign csp face to ucs 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%phase specific cond2stim assignments
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 s.stim_id = s.cond_id;
+%ucs condition is csp face (cond+test)
+if ~strcmp(phase,'baseline')
 s.stim_id(s.stim_id==(max(s.cond_id)-1))=csp;
+end
+%cond 2 means csn in conditioning, 1 and 3 csp
+if strcmp(phase,'cond')
+    s.stim_id(s.stim_id==2)=mod( csp + 8/2-1, 8)+1;
+    s.stim_id(s.stim_id==1)=csp;
+end
 
 s.tTrial     = length(s.cond_id);
 s.tFacetrial = sum(s.stim_id~=0);
 
 %we want an index that gives us the distance from the csp face, e.g. for
 %plotting it later
-s.dist = s.stim_id-csp;
+s.dist = MinimumAngle((s.stim_id-1)*45,(csp-1)*45);
 s.dist(s.cond_id==0)=NaN;
-s.dist(s.cond_id==max(s.cond_id))=NaN;
-%for baseline, face - shock symbol should also be NaN
-if strcmp(phase,'baseline')
-    s.dist(s.cond_id==max(s.cond_id)-1)=NaN;
-end
+%oddball=1000
+s.dist(s.cond_id==max(s.cond_id))=1000;
+%ucs=500
+s.dist(s.cond_id==max(s.cond_id)-1)=500;
+
 %get fixation crosses from that function
 fprintf('Balancing fixation cross positions....\n')
 s.CrossPosition = seq_feargen_fixcross(s);
+
+
+
+
+    function [a]=MinimumAngle(y,x)
+        %[a]=MinimumAngle(x,y);
+        %
+        %finds the minimum angle between two angles given in degrees, the answer is
+        %also in degrees. The clockwise distances from Y to X are considered as
+        %positive. Opposite angles are considered as positive 180.
+        
+        x  = deg2rad(x);
+        y  = deg2rad(y);
+        
+        a  = atan2(sin(x-y), cos(x-y));
+        
+        a  = -round(rad2deg(a));
+        
+        if any(abs(a) == 180);
+            a(abs(a) == 180) = 180;
+        end
+    end
 
 
 end
