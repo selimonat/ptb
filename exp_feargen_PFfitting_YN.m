@@ -463,7 +463,7 @@ movefile(p.path.subject,p.path.finalsubject);
         %font size and background gray level
         p.text.fontname                = 'Times New Roman';
         p.text.fontsize                = 18;%30;
-        p.text.fixationsize            = 60;
+        p.text.fixsize                 = 60;
         %rating business
         p.rating.division              = 2;%number of divisions for the rating slider
         %
@@ -871,7 +871,7 @@ function [t]=StartEyelinkRecording(trialID,phase,cc,tt,current_chain,isref,file,
         Eyelink('Command', 'set_idle_mode');
         WaitSecs(0.01);
         Eyelink('StartRecording');
-        Screen('Textsize', p.ptb.w,p.text.fixationsize);
+        Screen('Textsize', p.ptb.w,p.text.fixsize);
         t = GetSecs;
         Log(t,8,NaN);
 end
