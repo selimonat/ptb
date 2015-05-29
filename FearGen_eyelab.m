@@ -127,6 +127,7 @@ cleanup;
         [secs, keyCode, deltaSecs] = KbStrokeWait;
         ShowInstruction(10,0);%shock is coming message...
         t = GetSecs + p.duration.shock;
+        MarkCED( p.com.lpt.address, p.com.lpt.shock );
         while GetSecs < t;
             Buzz;
         end
