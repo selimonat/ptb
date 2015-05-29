@@ -34,7 +34,7 @@ ok=seq_feargen_constraints(s,1,1,1,1,1);
 end
 
 %assign isis (uniform so far)
-s.isi = ones(1,length(s.cond_id))*3;
+s.isi = ones(length(s.cond_id),1)*3;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %phase specific cond2stim assignments
