@@ -1,4 +1,4 @@
-function [p]=FearGen_eyelab(subject,phase,csp,PainThreshold)
+function [p]=FearGen_eyelab(subject,phase,csp,PainThreshold,nth)
 %[p]=Conditioning(subject,NthSeq,CSpface,phase,PainThreshold)
 %
 %Used for the last recording (3rd Scan Request) sessions of the Feargen
@@ -6,7 +6,7 @@ function [p]=FearGen_eyelab(subject,phase,csp,PainThreshold)
 % 
 % 
 
-if nargin ~= 4
+if nargin ~= 5
     fprintf('Wrong number of inputs\n');
     keyboard;
 end
@@ -160,7 +160,7 @@ cleanup;
         %
         
         TimeEndStim                 = GetSecs;
-        for nTrial  = 1:5%p.presentation.tTrial;
+        for nTrial  = 1:p.presentation.tTrial;
             %
             %Get the variables that Trial function needs.
             stim_id      = p.presentation.stim_id(nTrial);
@@ -195,9 +195,9 @@ cleanup;
             [keypressed, firstPress]=KbQueueCheck(p.ptb.device);
             %if the press was after stimulus onset and before stimulus
             %offset
-            if keypressed && (firstPress(p_keys_confirm) > OnsetTime) && (firstPress(p_keys_confirm) < TimeEndStim)
+            if keypressed && (firstPress(p.keys.confirm) > OnsetTime) && (firstPress(p.keys.confirm) < TimeEndStim)
                 p.out.response(nTrial) = 1;
-                Log(firstPress(p_keys_confirm),7,NaN);%log the key press for hit detection.
+                Log(firstPress(p.keys.confirm),7,NaN);%log the key press for hit detection.
                 fprintf('Subject Pressed the Hit Key!!\n');
             end
             if (phase > 2 && nTrial == ceil(p.presentation.tTrial/2))
@@ -305,15 +305,15 @@ cleanup;
         if strcmp(p.hostname,'triostim1')
             p.path.baselocation       = 'C:\USER\onat\Experiments\';
         elseif strcmp(p.hostname,'etpc')
-            p.path.baselocation       = 'C:\Users\PsychToolbox\Documents\onat\Experiments\';
+            p.path.baselocation       = 'C:\Users\onat\Documents\Experiments\';
         else
             p.path.baselocation       = 'C:\Users\onat\Documents\Experiments\';
         end
         
-        p.path.experiment             = [p.path.baselocation 'FearGeneralization_Ethnic\'];
+        p.path.experiment             = [p.path.baselocation 'feargen_master' filesep];
         p.path.stimfolder             = 'ethno_pilote\locals';
-        p.path.stim                   = [p.path.baselocation 'Stimuli\Gradients\' p.path.stimfolder '\'];
-        p.path.stim24                 = [p.path.stim '24bits' '\'];
+        p.path.stim                   = 'C:\Users\onat\Documents\Experiments\feargen_master\stim\';
+        p.path.stim24                 = [p.path.stim '24bit8' '\'];
         %
         p.subID                       = sprintf('sub%02d',subject);
         p.path.edf                    = sprintf([p.subID 'p%02d' ],phase);
@@ -410,13 +410,15 @@ cleanup;
         p.duration.prestim             = 2-p.duration.prestim_ori;%that is 0.95 seconds
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
          %stimulus sequence
-        if phase == 2
-            seq = seq_feargen_cloudseq(csp,'baseline')%only 1 short seq
-        elseif phase == 3%conditioning
-            seq = seq_feargen_cloudseq(csp,'cond')%gets 2 short seqs
-        elseif phase == 4
-            seq = seq_feargen_cloudseq(csp,'test')%gets 2 short seqs
-         end
+         seqpool = load('C:\Users\onat\Documents\Experiments\feargen_master\seq\seq.mat');
+         seq = seqpool.s(nth);
+%         if phase == 2
+%             seq = seq_feargen_cloudseq(csp,'baseline')%only 1 short seq
+%         elseif phase == 3%conditioning
+%             seq = seq_feargen_cloudseq(csp,'cond')%gets 2 short seqs
+%         elseif phase == 4
+%             seq = seq_feargen_cloudseq(csp,'test')%gets 2 short seqs
+%          end
         %create the randomized design
         p.stim.cs_plus                 = csp;%index of cs stimulus, this is the one paired to shock
         p.stim.cs_neg                  = csn;
@@ -454,7 +456,7 @@ cleanup;
         %
         while nseq < p.rating.repetition
             nseq            = nseq + 1;
-            rating_seq      = [ rating_seq     Shuffle(1:p.stim.tFile)'];
+            rating_seq      = [ rating_seq     Shuffle(1:p.stim.tFile-2)'];
         end
         message     = GetText(11);
         SliderTextL = GetText(13);
@@ -506,7 +508,7 @@ cleanup;
             %Verbose the rating of the subject
             fprintf('============\nRating Results %d (%d/%d):\n', stim_id, nRatend, tRatend);
             dummy = rating_seq(1:nRatend);%trials shown so far
-            for iii = 1:p.stim.tFile
+            for iii = 1:p.stim.tFile-2
                 r = round(mean(rate(dummy == iii)));
                 if isnan(r)
                     r = 0;
@@ -521,7 +523,7 @@ cleanup;
         %sort the stim_ids and then sort the same the rates and make a
         %matrix out of that to store
         [~, i]       = sort(rating_seq);
-        rate         = reshape(rate(i),p.rating.repetition,p.stim.tFile)';
+        rate         = reshape(rate(i),p.rating.repetition,p.stim.tFile-2)';
         p.out.rating = rate;
         save(p.path.path_param,'p');
         Screen('FillRect',p.ptb.w,p.stim.bg);
@@ -770,7 +772,7 @@ cleanup;
         %fontsizes, font names.
         %Find the number of the screen to be opened        
         screens                     =  Screen('Screens');
-        p.ptb.screenNumber          =  max(screens);%1;%the maximum is the second monitor        
+        p.ptb.screenNumber          =  1;%the maximum is the second monitor        
         %Make everything transparent for debugging purposes.
         if debug
             commandwindow;
@@ -896,6 +898,9 @@ cleanup;
 
     function [t]=StartEyelinkRecording(nTrial,nStim,phase,dist,oddball,ucs,fix)
         t = [];
+        if isnan(dist)
+            dist=3000;
+        end
         nStim = double(nStim);
         Eyelink('Message', 'TRIALID: %04d, PHASE: %04d, FILE: %04d, DELTACSP: %04d, ODDBALL: %04d, UCS: %04d, FIXX: %04d, FIXY %04d', nTrial, phase, nStim, dist, double(oddball), double(ucs),fix(1),fix(2));
         % an integration message so that an image can be loaded as
@@ -920,7 +925,7 @@ cleanup;
         end
 %         Eyelink('Command', 'draw_cross %d %d 15',p_ptb_CrossPositionET_x(1),p_ptb_CrossPositionET_y(1) );
 %         Eyelink('Command', 'draw_cross %d %d 15',p_ptb_CrossPositionET_x(2),p_ptb_CrossPositionET_y(2) );
-        Eyelink('Command', 'draw_cross %d %d',fix(1),fix(2));
+        Eyelink('Command', 'draw_cross %d %d 15',fix(1),fix(2));
         
         %
         %drift correction
