@@ -171,7 +171,7 @@ cleanup;
             ISI          = p.presentation.isi(nTrial);
             ucs          = p.presentation.ucs(nTrial);
             oddball      = p.presentation.oddball(nTrial);
-            prestimdur   = p.duration.prestim;
+            prestimdur   = p.duration.prestim+rand(1)*.25;
             dist         = p.presentation.dist(nTrial);
             %prestimdur   = p_presentation_prestim_dur(nTrial);
             
@@ -179,7 +179,7 @@ cleanup;
             fprintf('%d of %d, S: %d, ISI: %d, UCS: %d, ODD: %d.\n',nTrial,p.presentation.tTrial,stim_id,ISI,ucs,oddball);
             %
             
-            OnsetTime     = TimeEndStim + ISI;
+            OnsetTime     = TimeEndStim + ISI-p.duration.stim ;
             
             %             jetz = GetSecs;
             %             if mod(nTrial,100) == 0
@@ -210,7 +210,6 @@ cleanup;
     function [TimeEndStim]=Trial(nTrial,TimeStimOnset , prestimdur, stim_id , ucs  , fix , oddball, dist )
         %get all the times
          TimeCrossOnset     = TimeStimOnset  - prestimdur;
-         %TimeCrossJumpTime  = TimeStimOnset  + p.duration.crossmoves - p.ptb.slack;
          TimeEndStim        = TimeStimOnset  + p.duration.stim;                
          TimeStartShock     = TimeStimOnset  + p.duration.onset2shock;
          TimeTrackerOff     = TimeStimOnset  + p.duration.keep_recording;                
@@ -312,20 +311,18 @@ cleanup;
         end
         
         p.path.experiment             = [p.path.baselocation 'feargen_master' filesep];
-        p.path.stimfolder             = 'ethno_pilote\locals';
         p.path.stim                   = 'C:\Users\onat\Documents\Experiments\feargen_master\stim\';
         p.path.stim24                 = [p.path.stim '24bit8' '\'];
         %
         p.subID                       = sprintf('sub%02d',subject);
         p.path.edf                    = sprintf([p.subID 'p%02d' ],phase);
-        %timestamp                     = datestr(now,30);
-        p.path.subject                = [p.path.experiment 'data\tmp\' p.subID '\'];
-        p.path.finalsubject           = [p.path.experiment 'data\' p.subID '\' ];
+        timestamp                     = datestr(now,30);
+        p.path.subject                = [p.path.experiment 'data\tmp\' p.subID '_' timestamp '\'];
+        p.path.finalsubject           = [p.path.experiment 'data\' p.subID '_' timestamp '\' ];
         %create folder hierarchy
         mkdir(p.path.subject);
         mkdir([p.path.subject 'scr']);
         mkdir([p.path.subject 'eye']);
-        mkdir([p.path.subject 'triads']);
         mkdir([p.path.subject 'stimulation']);
         mkdir([p.path.subject 'midlevel']);
         p.path.path_param             = sprintf([regexprep(p.path.subject,'\\','\\\') 'stimulation\\param_phase_%02d'],phase);
@@ -408,7 +405,8 @@ cleanup;
         p.duration.crossmoves          = p.duration.stim./2;        
         p.duration.keep_recording      = 0.25;%this is the time we will keep recording (eye data) after stim offset.
         p.duration.prestim_ori         = .95;
-        p.duration.prestim             = 2-p.duration.prestim_ori;%that is 0.95 seconds
+        %p.duration.prestim             = 2-p.duration.prestim_ori;%that is 0.95 seconds
+        p.duration.prestim             = .85;
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
          %stimulus sequence
          seqpool = load('C:\Users\onat\Documents\Experiments\feargen_master\seq\seq.mat');
@@ -494,7 +492,7 @@ cleanup;
              t  = Screen('Flip',p.ptb.w);
              Screen('Textsize', p.ptb.w,p.text.fontsize);
             %
-            StartEyelinkRecording(nRatend+1000,stim_id,p_var_ExpPhase,dist,0,0,fix);
+            
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %Mark the onset            
             Eyelink('Message', 'FX Onset at %d %d',fix(1),fix(2));
@@ -683,10 +681,6 @@ cleanup;
                 text = ['Es ist sehr wichtig, dass Sie Ihren Kopf während \n' ...
                     'des Experiments nicht bewegen. \n' ...
                     'Das ist besonders wichtig für die Qualität der Messung.\n' ...
-                    'Daher sollte Ihre Kopfhaltung so bequem wie möglich sein.\n' ... 
-                    'Wenn es sich jetzt gerade nicht bequem anfühlt oder \n' ...
-                    'Sie das Bedürfnis haben, Ihre Position noch zu verändern, \n' ...
-                    'ist jetzt der Moment, in dem Sie das tun können.\n' ...
                     ];
             elseif nInstruct == 4%third Instr. of the training phase.
                 text = ['Vor dem Experiment legen wir nun \n' ...
@@ -699,7 +693,7 @@ cleanup;
                 %
                 %=================================================================================================================%
                 text = ['Jetzt geht es mit dem Experiment los.\n' ...
-                        'Ihre Aufgabe ist es jetzt, genauso wie im Training die Gesichter, \n' ...
+                        'Ihre Aufgabe ist es jetzt, die Gesichter, \n' ...
                         'die Ihnen gezeigt werden aufmerksam zu betrachten und \n' ...
                         'den mittleren Knopf zu drücken, sobald Sie einen Zielreiz sehen.\n' ...
                         '\n'...
