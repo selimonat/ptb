@@ -120,8 +120,9 @@ while OK
         fprintf('Starting Trial %03d/%03d.\n',tt,tchain*p.psi.numtrials)
         
         [test_face, ref_face, signal,trialID] = Trial_YN(trialID,ref,test,circle_id(current_chain),tt);
-      
+        
         fprintf('Rating.\n')
+        Screen('Textsize', p.ptb.w,p.text.fontsize);
         %Rating Slider
         %
         message1 = 'Waren die Gesichter unterschiedlich oder gleich?\n';
@@ -215,6 +216,7 @@ movefile(p.path.subject,p.path.finalsubject);
     
 
     function  [test_face,ref_face,signal,trialID] = Trial_YN(trialID,ref_stim,test_stim,last_face_of_circle,tt)
+        Screen('Textsize', p.ptb.w,p.text.fixsize);
         % computes the trial FACES, using the test/ref information input
         % values (in Deg)
         
@@ -258,68 +260,61 @@ movefile(p.path.subject,p.path.finalsubject);
         fix        = round(p.ptb.CrossPositions(tt,:));
         
         trialID=trialID+1;
-        StartEyelinkRecording(trialID,phase,cc(current_chain),tt,current_chain,isref(1),trial(1),delta_ref(1),delta_csp(1),abs_FGangle(1),fix(1),fix(2));
+       
         
         %GetSecs so that the onsets can be defined
-        onsets     = p.trial.onsets + GetSecs;
-        %pink_noise 1
-%         
-%         %Screen('DrawTexture', p.ptb.w,p.ptb.stim_sprites(p.stim.tFile+1));
-%         Screen('DrawText', p.ptb.w, double('+'),fix(1),fix(2), p.stim.white);
-%         Eyelink('Message', 'Pink Noise 1 Onset');
-%         Eyelink('Message', 'FX 1 Onset at %d %d',fix(1),fix(2));
-%         Screen('Flip',p.ptb.w,onsets(1),0);
-%        
-        %fixation cross 1
-%         Screen('DrawTexture', p.ptb.w,p.ptb.stim_sprites(p.stim.tFile+1));
-        Screen('DrawText', p.ptb.w, double('+'),fix(1),fix(2), p.stim.white);
-        Eyelink('Command', 'draw_cross %d %d',fix(1),fix(2));
-        Eyelink('Message', 'FX 1 Onset at %d %d',fix(1),fix(2));
-        Screen('Flip',p.ptb.w,onsets(1),0);
+        
+        onsets = 0.25+GetSecs;%fix1 onset
+        onsets = [onsets onsets(end)+p.duration.fix+rand(1)*.25];%stim1 onset
+        onsets = [onsets onsets(end)+p.duration.stim];%stim1 offset
+        fixdelta=p.duration.fix+rand(1)*.25;
+        onsets = [onsets onsets(end)+1.5-fixdelta];%fix2 onset
+        onsets = [onsets onsets(end)+fixdelta];%stim2 onset
+        onsets = [onsets onsets(end)+p.duration.stim];%stim2 offset
 
+        
+       
+        
+        %fixation cross 1
+        Screen('DrawText', p.ptb.w, double('+'),fix(1),fix(2), p.stim.white);
+        Eyelink('Message', 'FX Onset at %d %d',fix(1),fix(2));
+        Screen('Flip',p.ptb.w,onsets(1),0);
+        StartEyelinkRecording(trialID,phase,cc(current_chain),tt,current_chain,isref(1),trial(1),delta_ref(1),delta_csp(1),abs_FGangle(1),fix(1),fix(2));
+      
         %face trial(1)
         Screen('DrawTexture',p.ptb.w,p.ptb.stim_sprites(trial(1)));
-        Eyelink('Message', 'Stim 1 Onset');
         Screen('Flip',p.ptb.w,onsets(2),0);
+       
         Eyelink('Message', 'Stim Onset');
         Eyelink('Message', 'SYNCTIME');
-
+        while GetSecs < onsets(3)
+        end
+        Screen('Flip',p.ptb.w,onsets(3),0);
+        
         StopEyelinkRecording;
-        
-        
         %second face of the trial
         trialID=trialID+1;
-        StartEyelinkRecording(trialID,phase,cc(current_chain),tt,current_chain,isref(2),trial(2),delta_ref(2),delta_csp(2),abs_FGangle(2),fix(3),fix(4));
-        %pink_noise 2
-        %Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(p.stim.tFile+2));
-%        %Screen('DrawText', p.ptb.w, double('+'), fix(3),fix(4), p.stim.white);
-%         Eyelink('Message', 'Pink Noise 2 Onset');
-%         Eyelink('Message', 'FX Onset 2 at %d %d',fix(3),fix(4));
-%         Screen('Flip',p.ptb.w,onsets(3),0);
-%         
-        %fixation cross 2
-        %Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(p.stim.tFile+2));
-        Screen('DrawText', p.ptb.w, double('+'), fix(3),fix(4), p.stim.white);
-        Eyelink('Message', 'FX Onset 2 at %d %d',fix(3),fix(4));
-        Eyelink('Command', 'draw_cross %d %d 15',fix(3),fix(4));
-        Screen('Flip',p.ptb.w,onsets(3),0);
+       
 
+        
+        %fixation cross 2
+        Screen('DrawText', p.ptb.w, double('+'), fix(3),fix(4), p.stim.white);
+        Eyelink('Message', 'FX Onset at %d %d',fix(3),fix(4));
+        Screen('Flip',p.ptb.w,onsets(4),0);
+        StartEyelinkRecording(trialID,phase,cc(current_chain),tt,current_chain,isref(2),trial(2),delta_ref(2),delta_csp(2),abs_FGangle(2),fix(3),fix(4));
+       
         %face trial(2)
         Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(trial(2)));
-        Eyelink('Message', 'Stim 2 Onset');
-        Screen('Flip',p.ptb.w,onsets(4),0);
+        Screen('Flip',p.ptb.w,onsets(5),0);
+        
         Eyelink('Message', 'Stim Onset');
         Eyelink('Message', 'SYNCTIME');
 
-        while GetSecs<onsets(5)
+        while GetSecs<onsets(6)
         end
-        Screen('Flip',p.ptb.w,onsets(5),0);
-        Eyelink('Message', 'Stim Offset');            
-        Eyelink('Message', 'BLANK_SCREEN');
-
+        Screen('Flip',p.ptb.w,onsets(6),0);
         StopEyelinkRecording;
-        
-
+       
 
     end
     
@@ -498,7 +493,7 @@ movefile(p.path.subject,p.path.finalsubject);
 %         1.5 0.5 0.5
         p.duration.stim                = 1.5;%s     
         %p.duration.pink                = 0.7;%0.7
-        p.duration.fix                 = 0.85;%1.0
+        p.duration.fix                 = .85;
         %p.duration.gray                = 0;
         if simulation_mode
             p.duration.stim                = .001;%s
@@ -512,31 +507,7 @@ movefile(p.path.subject,p.path.finalsubject);
         p.stim.cs_plus                 = csp_degree;%index of cs stimulus, this is the one paired to shock
         %p.stim.cs_neg                  = csn;
       
-% 
-%         event_onsets = 0.15;
-%         event_onsets = [event_onsets event_onsets(end)+p.duration.pink];
-%         event_onsets = [event_onsets event_onsets(end)+p.duration.fix];
-%         event_onsets = [event_onsets event_onsets(end)+p.duration.stim];
-%         event_onsets = [event_onsets event_onsets(end)+p.duration.pink];
-%         event_onsets = [event_onsets event_onsets(end)+p.duration.fix];
-%         event_onsets = [event_onsets event_onsets(end)+p.duration.stim];
-%         %event_onsets = [event_onsets event_onsets(end)+p.duration.gray];
 
-%this is the version without pink noise, just fix-stim-fix-stim
-        event_onsets = 0.15;
-      
-        event_onsets = [event_onsets event_onsets(end)+p.duration.fix];
-        event_onsets = [event_onsets event_onsets(end)+p.duration.stim];
-        event_onsets = [event_onsets event_onsets(end)+p.duration.fix];
-        event_onsets = [event_onsets event_onsets(end)+p.duration.stim];
-        
-        p.trial.onsets = event_onsets;
-%         p.out.rating                  = [];
-%         p.out.log                     = zeros(p.psi.numtrials*4,4).*NaN;
-
-
-        
-        
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %priors for the PSI fitting structure PM
         
@@ -871,14 +842,16 @@ function [t]=StartEyelinkRecording(trialID,phase,cc,tt,current_chain,isref,file,
         Eyelink('Command', 'set_idle_mode');
         WaitSecs(0.01);
         Eyelink('StartRecording');
-        Screen('Textsize', p.ptb.w,p.text.fixsize);
+        
         t = GetSecs;
         Log(t,8,NaN);
 end
 
 function [t]=StopEyelinkRecording
-        Eyelink('StopRecording');
         
+        Eyelink('Message', 'Stim Offset');            
+        Eyelink('Message', 'BLANK_SCREEN');
+        Eyelink('StopRecording');
         t = GetSecs;
         %this is the end of the trial scope.
         WaitSecs(0.01);
@@ -888,7 +861,7 @@ function [t]=StopEyelinkRecording
         Eyelink('Command', 'set_idle_mode');
         WaitSecs(0.01);
         Eyelink('Command', 'clear_screen %d', 0);
-        Screen('Textsize', p.ptb.w,p.text.fontsize);
+        
         Log(t,-8,NaN);
 end
 
