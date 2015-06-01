@@ -10,10 +10,7 @@ fprintf('Starting Constraint Check....\n')
 if strcmp(phase,'baseline')
     [s]=seq_feargen_mseq_pruned(2,0.3,0.01);
 elseif strcmp(phase,'cond')
-    s=[];
-    for n=1:2
-    [s]=[s; seq_feargen_mseq_pruned(22,0.3,0.01)];
-    end
+    [s]=seq_feargen_mseq_pruned(22,0.3,0.01);
 elseif strcmp(phase,'test')
     s=[];
     for n=1:2
