@@ -39,13 +39,15 @@ s.isi = ones(length(s.cond_id),1)*3;
 s.stim_id = s.cond_id;
 %ucs condition is csp face (cond+test)
 if ~strcmp(phase,'baseline')
-s.stim_id(s.stim_id==(max(s.cond_id)-1))=csp;
+s.stim_id(s.cond_id==(max(s.cond_id)-1))=csp;
 end
 %cond 2 means csn in conditioning, 1 and 3 csp
 if strcmp(phase,'cond')
-    s.stim_id(s.stim_id==2)=mod( csp + 8/2-1, 8)+1;
-    s.stim_id(s.stim_id==1)=csp;
+    s.stim_id(s.cond_id==2)=mod( csp + 8/2-1, 8)+1;
+    s.stim_id(s.cond_id==1)=csp;
+    s.stim_id(s.cond_id==4)=10;
 end
+
 
 s.tTrial     = length(s.cond_id);
 s.tFacetrial = sum(s.stim_id~=0);
