@@ -281,6 +281,7 @@ movefile(p.path.subject,p.path.finalsubject);
         Screen('Flip',p.ptb.w,onsets(1),0);
         StartEyelinkRecording(trialID,phase,cc(current_chain),tt,current_chain,isref(1),trial(1),delta_ref(1),delta_csp(1),abs_FGangle(1),fix(1),fix(2));
       
+       
         %face trial(1)
         Screen('DrawTexture',p.ptb.w,p.ptb.stim_sprites(trial(1)));
         Screen('Flip',p.ptb.w,onsets(2),0);
@@ -924,6 +925,7 @@ function InitEyeLink
         Eyelink('message', 'DISPLAY_COORDS %ld %ld %ld %ld', 0, 0, p.ptb.width-1, p.ptb.height-1);
         % set calibration type.
         Eyelink('command', 'calibration_type = HV13');
+        Eyelink('command','auto_calibration_messages = YES');
         Eyelink('command', 'select_parser_configuration = 1');
         %what do we want to record
         Eyelink('command', 'file_sample_data  = LEFT,RIGHT,GAZE,HREF,AREA,GAZERES,STATUS,INPUT,HTARGET');
