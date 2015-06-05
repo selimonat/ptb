@@ -25,6 +25,10 @@ WaitSecs(0.001);
 el                        = [];
 p                         = [];
 SetParams;
+fprintf('length: %d',length(p.presentation.cond_id))
+[p.presentation.cond_id'; p.presentation.stim_id'; p.presentation.ucs';p.presentation.oddball']
+unique(p.presentation.stim_id)
+pause(5);
 debug = 0;%debug mode
 SetPTB;
 %
@@ -997,10 +1001,11 @@ cleanup;
         % open file.
         res = Eyelink('Openfile', p.path.edf);
         %
-        Eyelink('command', 'add_file_preamble_text ''Recorded by EyelinkToolbox FearGen2 Experiment''');
+        Eyelink('command', 'add_file_preamble_text ''Recorded by EyelinkToolbox FearCloud Experiment''');
         Eyelink('command', 'screen_pixel_coords = %ld %ld %ld %ld', 0, 0, p.ptb.width-1, p.ptb.height-1);
         Eyelink('message', 'DISPLAY_COORDS %ld %ld %ld %ld', 0, 0, p.ptb.width-1, p.ptb.height-1);
         % set calibration type.
+        Eyelink('command','auto_calibration_messages = YES');
         Eyelink('command', 'calibration_type = HV13');
         Eyelink('command', 'select_parser_configuration = 1');
         %what do we want to record
