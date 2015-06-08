@@ -276,7 +276,10 @@ movefile(p.path.subject,p.path.finalsubject);
        
         
         %fixation cross 1
-        Screen('DrawText', p.ptb.w, double('+'),fix(1),fix(2), p.stim.white);
+        %Screen('DrawText', p.ptb.w, double('+'),fix(1),fix(2), p.stim.white);
+        
+        FixCross = [fix(1)-1,fix(2)-20,fix(1)+1,fix(2)+20;fix(1)-20,fix(2)-1,fix(1)+20,fix(2)+1];
+        Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');
         Eyelink('Message', 'FX Onset at %d %d',fix(1),fix(2));
         Screen('Flip',p.ptb.w,onsets(1),0);
         StartEyelinkRecording(trialID,phase,cc(current_chain),tt,current_chain,isref(1),trial(1),delta_ref(1),delta_csp(1),abs_FGangle(1),fix(1),fix(2));
@@ -299,7 +302,9 @@ movefile(p.path.subject,p.path.finalsubject);
 
         
         %fixation cross 2
-        Screen('DrawText', p.ptb.w, double('+'), fix(3),fix(4), p.stim.white);
+        %Screen('DrawText', p.ptb.w, double('+'), fix(3),fix(4), p.stim.white);
+        FixCross = [fix(3)-1,fix(4)-20,fix(3)+1,fix(4)+20;fix(3)-20,fix(4)-1,fix(3)+20,fix(4)+1];
+        Screen('FillRect', p.ptb.w, [255,255,255], FixCross');
         Eyelink('Message', 'FX Onset at %d %d',fix(3),fix(4));
         Screen('Flip',p.ptb.w,onsets(4),0);
         StartEyelinkRecording(trialID,phase,cc(current_chain),tt,current_chain,isref(2),trial(2),delta_ref(2),delta_csp(2),abs_FGangle(2),fix(3),fix(4));
@@ -358,7 +363,7 @@ movefile(p.path.subject,p.path.finalsubject);
 %         p.ptb.CrossPosition_x       = [bb(1) bb(1)];
 %         p.ptb.CrossPositionET_x     = [p.ptb.midpoint(1) p.ptb.midpoint(1)];
 %         p.ptb.CrossPositionET_y     = [p.ptb.midpoint(2)-p.ptb.cross_shift(2) p.ptb.midpoint(2)+p.ptb.cross_shift(2)];
-         p.ptb.CrossPositions   = FixationCrossPool;     
+        p.ptb.CrossPositions   = FixationCrossPool;     
 
         Priority(MaxPriority(p.ptb.w));
         
