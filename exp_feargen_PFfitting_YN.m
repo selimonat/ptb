@@ -386,13 +386,13 @@ movefile(p.path.subject,p.path.finalsubject);
         
         
         function  [cross_positions]=FixationCrossPool
-            radius   = 590; %in px (around 14 degrees (37 px/deg))
+            radius   = 420; %in px (around 14 degrees (37 px/deg))
             center   = [800 600];
             
             %setting up fixation cross pool vector of size
             % totaltrials x 4 (face_1_x face_1_y face_2_x face_2_y)
             cross_directions = round(rand(tchain*p.psi.numtrials,2))*180;
-            dummy            = cross_directions + rand(tchain*p.psi.numtrials,2)*30-15;
+            dummy            = cross_directions + rand(tchain*p.psi.numtrials,2)*15-7.5;
             cross_positions  = [cosd(dummy(:,1))*radius+center(1) sind(dummy(:,1))*radius+center(2)...
                 cosd(dummy(:,2))*radius+center(1) sind(dummy(:,2))*radius+center(2)];
         end
@@ -527,7 +527,7 @@ movefile(p.path.subject,p.path.finalsubject);
         %Range of guess rates (Prins: 0:0.03:0.3);
         p.psi.priorGammaRange = 0:0.03:0.3;
         % Stimulus values to select from (need not be equally spaced)
-        p.psi.stimRange       = 0:11.25:100;
+        p.psi.stimRange       = 0:11.25:169;
         %Function to be fitted during procedure
         p.psi.PFfit = @PAL_CumulativeNormal;    %Shape to be assumed
         
