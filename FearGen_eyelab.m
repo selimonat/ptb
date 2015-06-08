@@ -175,7 +175,7 @@ cleanup;
             ISI          = p.presentation.isi(nTrial);
             ucs          = p.presentation.ucs(nTrial);
             oddball      = p.presentation.oddball(nTrial);
-            prestimdur   = p.duration.prestim+rand(1)*.25;
+            prestimdur   = p.duration.prestim+rand(1);
             dist         = p.presentation.dist(nTrial);
             %prestimdur   = p_presentation_prestim_dur(nTrial);
             
@@ -401,7 +401,7 @@ cleanup;
         %these are the intervals of importance
         %time2fixationcross->cross2onset->onset2shock->shock2offset
         %these (duration.BLA) are average duration values:
-        p.duration.stim                = 1.5;%2;%s
+        p.duration.stim                = .45;%2;%s
         p.duration.shock               = 0.1;%s;x        
         p.duration.shockpulse          = 0.005;%ms; duration of each individual pulses
         p.duration.intershockpulse     = 0.01;%ms; and the time between each pulse
@@ -410,7 +410,7 @@ cleanup;
         p.duration.keep_recording      = 0.25;%this is the time we will keep recording (eye data) after stim offset.
         p.duration.prestim_ori         = .95;
         %p.duration.prestim             = 2-p.duration.prestim_ori;%that is 0.95 seconds
-        p.duration.prestim             = .85;
+        p.duration.prestim             = .5;
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
          %stimulus sequence
          seqpool = load('C:\Users\onat\Documents\Experiments\feargen_master\seq\seq.mat');
