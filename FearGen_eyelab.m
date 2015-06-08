@@ -219,8 +219,8 @@ cleanup;
          TimeTrackerOff     = TimeStimOnset  + p.duration.keep_recording;                
          
          %% Fixation Onset
-         Screen('Textsize', p.ptb.w,p.text.fixsize);
-         Screen('DrawText', p.ptb.w, double('+'), fix(1),fix(2), p.stim.white);            
+         FixCross = [fix(1)-1,fix(2)-20,fix(1)+1,fix(2)+20;fix(1)-20,fix(2)-1,fix(1)+20,fix(2)+1];
+         Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');          
          TimeCrossOn  = Screen('Flip',p.ptb.w,TimeCrossOnset,0);
          MarkCED( p.com.lpt.address, p.com.lpt.FixOnset );
          Eyelink('Message', 'FX Onset at %d %d',fix(1),fix(2));
@@ -428,10 +428,11 @@ cleanup;
         %Record which Phase are we going to run in this run.
         p.stim.phase                   = phase;
         %this will deal all the presentation sequence related information
-        p.presentation                 = seq;     
-        if phase==3
-        p.presentation.stim_id(p.presentation.cond_id==4)=10;
-        end
+        p.presentation                 = seq; 
+        [p.presentation.cond_id'; p.presentation.stim_id'; p.presentation.ucs'; p.presentation.oddball']
+        unique(p.presentation.stim_id)
+        WaitSecs(2);
+        
         p.out.rating                  = [];
         p.out.log                     = zeros(1000000,4).*NaN;
         p.out.response                = zeros(p.presentation.tTrial,1);
