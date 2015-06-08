@@ -265,10 +265,10 @@ movefile(p.path.subject,p.path.finalsubject);
         %GetSecs so that the onsets can be defined
         
         onsets = 0.25+GetSecs;%fix1 onset
-        onsets = [onsets onsets(end)+p.duration.fix+rand(1)*.25];%stim1 onset
+        onsets = [onsets onsets(end)+p.duration.fix+rand(1)];%stim1 onset
         onsets = [onsets onsets(end)+p.duration.stim];%stim1 offset
-        fixdelta=p.duration.fix+rand(1)*.25;
-        onsets = [onsets onsets(end)+1.5-fixdelta];%fix2 onset
+        fixdelta=p.duration.fix+rand(1);
+        onsets = [onsets onsets(end)+1.8-fixdelta];%fix2 onset
         onsets = [onsets onsets(end)+fixdelta];%stim2 onset
         onsets = [onsets onsets(end)+p.duration.stim];%stim2 offset
 
@@ -497,9 +497,9 @@ movefile(p.path.subject,p.path.finalsubject);
         %time2fixationcross->cross2onset->onset2shock->shock2offset
         %these (duration.BLA) are average duration values:
 %         1.5 0.5 0.5
-        p.duration.stim                = 1.5;%s     
+        p.duration.stim                = .45;%s     
         %p.duration.pink                = 0.7;%0.7
-        p.duration.fix                 = .85;
+        p.duration.fix                 = .5;
         %p.duration.gray                = 0;
         if simulation_mode
             p.duration.stim                = .001;%s
