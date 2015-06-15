@@ -244,18 +244,7 @@ movefile(p.path.subject,p.path.finalsubject);
        delta_csp   = MinimumAngleQuartile([trial_deg(idx(1)) trial_deg(idx(2))],csp_degree); % ...
        abs_FGangle = [trial_deg(idx(1)) trial_deg(idx(2))];
        
-       
-    
-   
-%         %create two pink noise textures
-%         pink_noise   = Image2PinkNoise(p.stim.stim(:,:,trial(1)));
-%         pink_noise   = repmat((pink_noise-mean(pink_noise(:))).*p.ptb.tw+mean(pink_noise(:)),[1 1 3]);
-%         p.ptb.stim_sprites(p.stim.tFile+1) = Screen('MakeTexture', p.ptb.w, pink_noise);
-%         pink_noise   = Image2PinkNoise(p.stim.stim(:,:,trial(2)));
-%         pink_noise   = repmat((pink_noise-mean(pink_noise(:))).*p.ptb.tw+mean(pink_noise(:)),[1 1 3]);
-%         p.ptb.stim_sprites(p.stim.tFile+2) = Screen('MakeTexture', p.ptb.w, pink_noise);
-%         %sprite_index = [pink_noise FixationCross trial(1) FixationCross pink_noise trial(2) NaN];
-%         
+
         %get fixation crosses and onsets from p parameter
         fix        = round(p.ptb.CrossPositions(tt,:));
         
