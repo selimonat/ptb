@@ -175,7 +175,7 @@ cleanup;
             ISI          = p.presentation.isi(nTrial);
             ucs          = p.presentation.ucs(nTrial);
             oddball      = p.presentation.oddball(nTrial);
-            prestimdur   = p.duration.prestim+rand(1);
+            prestimdur   = p.duration.prestim+rand(1)*.25;
             dist         = p.presentation.dist(nTrial);
             %prestimdur   = p_presentation_prestim_dur(nTrial);
             
@@ -220,7 +220,7 @@ cleanup;
          
          %% Fixation Onset
          FixCross = [fix(1)-1,fix(2)-20,fix(1)+1,fix(2)+20;fix(1)-20,fix(2)-1,fix(1)+20,fix(2)+1];
-         Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');          
+         Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');        
          TimeCrossOn  = Screen('Flip',p.ptb.w,TimeCrossOnset,0);
          MarkCED( p.com.lpt.address, p.com.lpt.FixOnset );
          Eyelink('Message', 'FX Onset at %d %d',fix(1),fix(2));
@@ -401,7 +401,7 @@ cleanup;
         %these are the intervals of importance
         %time2fixationcross->cross2onset->onset2shock->shock2offset
         %these (duration.BLA) are average duration values:
-        p.duration.stim                = .45;%2;%s
+        p.duration.stim                = 0.6;%2;%s
         p.duration.shock               = 0.1;%s;x        
         p.duration.shockpulse          = 0.005;%ms; duration of each individual pulses
         p.duration.intershockpulse     = 0.01;%ms; and the time between each pulse
@@ -410,7 +410,7 @@ cleanup;
         p.duration.keep_recording      = 0.25;%this is the time we will keep recording (eye data) after stim offset.
         p.duration.prestim_ori         = .95;
         %p.duration.prestim             = 2-p.duration.prestim_ori;%that is 0.95 seconds
-        p.duration.prestim             = .5;
+        p.duration.prestim             = .85;
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
          %stimulus sequence
          seqpool = load('C:\Users\onat\Documents\Experiments\feargen_master\seq\seq.mat');
@@ -428,11 +428,10 @@ cleanup;
         %Record which Phase are we going to run in this run.
         p.stim.phase                   = phase;
         %this will deal all the presentation sequence related information
-        p.presentation                 = seq; 
-        [p.presentation.cond_id'; p.presentation.stim_id'; p.presentation.ucs'; p.presentation.oddball']
-        unique(p.presentation.stim_id)
-        WaitSecs(2);
-        
+        p.presentation                 = seq;     
+        if phase==3
+        p.presentation.stim_id(p.presentation.cond_id==4)=10;
+        end
         p.out.rating                  = [];
         p.out.log                     = zeros(1000000,4).*NaN;
         p.out.response                = zeros(p.presentation.tTrial,1);
@@ -494,10 +493,10 @@ cleanup;
             %We will turn on the fixation cross and start the tracker
             %for the first trial. These have to be done before the main
             %for loop.            
-             Screen('Textsize', p.ptb.w,p.text.fixsize);
-             Screen('DrawText', p.ptb.w, double('+'),fix(1), fix(2), p.stim.white);
-             t  = Screen('Flip',p.ptb.w);
-             Screen('Textsize', p.ptb.w,p.text.fontsize);
+            FixCross = [fix(1)-1,fix(2)-20,fix(1)+1,fix(2)+20;fix(1)-20,fix(2)-1,fix(1)+20,fix(2)+1];
+            Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');
+            t  = Screen('Flip',p.ptb.w);
+            Screen('Textsize', p.ptb.w,p.text.fontsize);
             %
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

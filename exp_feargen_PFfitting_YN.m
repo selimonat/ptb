@@ -524,7 +524,7 @@ movefile(p.path.subject,p.path.finalsubject);
         %Range of guess rates (Prins: 0:0.03:0.3);
         p.psi.priorGammaRange = 0:0.03:0.3;
         % Stimulus values to select from (need not be equally spaced)
-        p.psi.stimRange       = 0:11.25:100;
+        p.psi.stimRange       = 0:11.25:169;
         %Function to be fitted during procedure
         p.psi.PFfit = @PAL_CumulativeNormal;    %Shape to be assumed
         
