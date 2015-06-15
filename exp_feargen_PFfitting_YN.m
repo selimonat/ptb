@@ -265,10 +265,10 @@ movefile(p.path.subject,p.path.finalsubject);
         %GetSecs so that the onsets can be defined
         
         onsets = 0.25+GetSecs;%fix1 onset
-        onsets = [onsets onsets(end)+p.duration.fix+rand(1)];%stim1 onset
+        onsets = [onsets onsets(end)+p.duration.fix+rand(1)*.25];%stim1 onset
         onsets = [onsets onsets(end)+p.duration.stim];%stim1 offset
-        fixdelta=p.duration.fix+rand(1);
-        onsets = [onsets onsets(end)+1.8-fixdelta];%fix2 onset
+        fixdelta=p.duration.fix+rand(1)*.25;
+        onsets = [onsets onsets(end)+1.5-fixdelta];%fix2 onset
         onsets = [onsets onsets(end)+fixdelta];%stim2 onset
         onsets = [onsets onsets(end)+p.duration.stim];%stim2 offset
 
@@ -276,8 +276,6 @@ movefile(p.path.subject,p.path.finalsubject);
        
         
         %fixation cross 1
-        %Screen('DrawText', p.ptb.w, double('+'),fix(1),fix(2), p.stim.white);
-        
         FixCross = [fix(1)-1,fix(2)-20,fix(1)+1,fix(2)+20;fix(1)-20,fix(2)-1,fix(1)+20,fix(2)+1];
         Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');
         Eyelink('Message', 'FX Onset at %d %d',fix(1),fix(2));
@@ -302,9 +300,8 @@ movefile(p.path.subject,p.path.finalsubject);
 
         
         %fixation cross 2
-        %Screen('DrawText', p.ptb.w, double('+'), fix(3),fix(4), p.stim.white);
         FixCross = [fix(3)-1,fix(4)-20,fix(3)+1,fix(4)+20;fix(3)-20,fix(4)-1,fix(3)+20,fix(4)+1];
-        Screen('FillRect', p.ptb.w, [255,255,255], FixCross');
+        Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');
         Eyelink('Message', 'FX Onset at %d %d',fix(3),fix(4));
         Screen('Flip',p.ptb.w,onsets(4),0);
         StartEyelinkRecording(trialID,phase,cc(current_chain),tt,current_chain,isref(2),trial(2),delta_ref(2),delta_csp(2),abs_FGangle(2),fix(3),fix(4));
@@ -363,7 +360,7 @@ movefile(p.path.subject,p.path.finalsubject);
 %         p.ptb.CrossPosition_x       = [bb(1) bb(1)];
 %         p.ptb.CrossPositionET_x     = [p.ptb.midpoint(1) p.ptb.midpoint(1)];
 %         p.ptb.CrossPositionET_y     = [p.ptb.midpoint(2)-p.ptb.cross_shift(2) p.ptb.midpoint(2)+p.ptb.cross_shift(2)];
-        p.ptb.CrossPositions   = FixationCrossPool;     
+         p.ptb.CrossPositions   = FixationCrossPool;     
 
         Priority(MaxPriority(p.ptb.w));
         
@@ -386,13 +383,13 @@ movefile(p.path.subject,p.path.finalsubject);
         
         
         function  [cross_positions]=FixationCrossPool
-            radius   = 420; %in px (around 14 degrees (37 px/deg))
+            radius   = 590; %in px (around 14 degrees (37 px/deg))
             center   = [800 600];
             
             %setting up fixation cross pool vector of size
             % totaltrials x 4 (face_1_x face_1_y face_2_x face_2_y)
             cross_directions = round(rand(tchain*p.psi.numtrials,2))*180;
-            dummy            = cross_directions + rand(tchain*p.psi.numtrials,2)*15-7.5;
+            dummy            = cross_directions + rand(tchain*p.psi.numtrials,2)*30-15;
             cross_positions  = [cosd(dummy(:,1))*radius+center(1) sind(dummy(:,1))*radius+center(2)...
                 cosd(dummy(:,2))*radius+center(1) sind(dummy(:,2))*radius+center(2)];
         end
@@ -497,9 +494,9 @@ movefile(p.path.subject,p.path.finalsubject);
         %time2fixationcross->cross2onset->onset2shock->shock2offset
         %these (duration.BLA) are average duration values:
 %         1.5 0.5 0.5
-        p.duration.stim                = .45;%s     
+        p.duration.stim                = .6;%s     
         %p.duration.pink                = 0.7;%0.7
-        p.duration.fix                 = .5;
+        p.duration.fix                 = .85;
         %p.duration.gray                = 0;
         if simulation_mode
             p.duration.stim                = .001;%s
@@ -527,7 +524,7 @@ movefile(p.path.subject,p.path.finalsubject);
         %Range of guess rates (Prins: 0:0.03:0.3);
         p.psi.priorGammaRange = 0:0.03:0.3;
         % Stimulus values to select from (need not be equally spaced)
-        p.psi.stimRange       = 0:11.25:169;
+        p.psi.stimRange       = 0:11.25:100;
         %Function to be fitted during procedure
         p.psi.PFfit = @PAL_CumulativeNormal;    %Shape to be assumed
         
