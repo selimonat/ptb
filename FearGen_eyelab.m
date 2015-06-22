@@ -1,4 +1,4 @@
-function [p]=FearGen_eyelab(subject,phase,csp,PainThreshold,nth)
+function [p]=FearGen_eyelab(subject,phase,csp,PainThreshold)
 %[p]=Conditioning(subject,NthSeq,CSpface,phase,PainThreshold)
 %
 %Used for the last recording (3rd Scan Request) sessions of the Feargen
