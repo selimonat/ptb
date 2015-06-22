@@ -483,7 +483,7 @@ movefile(p.path.subject,p.path.finalsubject);
         %time2fixationcross->cross2onset->onset2shock->shock2offset
         %these (duration.BLA) are average duration values:
 %         1.5 0.5 0.5
-        p.duration.stim                = .6;%s     
+        p.duration.stim                = 1.5;%s     
         %p.duration.pink                = 0.7;%0.7
         p.duration.fix                 = .85;
         %p.duration.gray                = 0;
