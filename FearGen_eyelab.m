@@ -1,4 +1,4 @@
-function [p]=FearGen_eyelab(subject,phase,csp,PainThreshold)
+function [p]=FearGen_eyelab(subject,phase,csp,PainThreshold,nth)
 %[p]=Conditioning(subject,NthSeq,CSpface,phase,PainThreshold)
 %
 %Used for the last recording (3rd Scan Request) sessions of the Feargen
@@ -413,15 +413,15 @@ cleanup;
         p.duration.prestim             = .85;
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
          %stimulus sequence
-%          seqpool = load('C:\Users\onat\Documents\Experiments\feargen_master\seq\seq.mat');
-%          seq = seqpool.s(nth);
-        if phase == 2
-            seq = seq_feargen_cloudseq(csp,'baseline');%only 1 short seq
-        elseif phase == 3%conditioning
-            seq = seq_feargen_cloudseq(csp,'cond');%gets 1 short seq
-        elseif phase == 4
-            seq = seq_feargen_cloudseq(csp,'test');%gets 2 short seqs
-        end
+         seqpool = load('C:\Users\onat\Documents\Experiments\feargen_master\seq\seq.mat');
+         seq = seqpool.s(nth);
+%         if phase == 2
+%             seq = seq_feargen_cloudseq(csp,'baseline');%only 1 short seq
+%         elseif phase == 3%conditioning
+%             seq = seq_feargen_cloudseq(csp,'cond');%gets 1 short seq
+%         elseif phase == 4
+%             seq = seq_feargen_cloudseq(csp,'test');%gets 2 short seqs
+%         end
         %create the randomized design
         p.stim.cs_plus                 = csp;%index of cs stimulus, this is the one paired to shock
         p.stim.cs_neg                  = csn;
