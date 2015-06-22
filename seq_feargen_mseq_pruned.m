@@ -10,7 +10,7 @@ if method == 1
     %% will prune a 360 trial long mseq, the result is a bit longer than 300 but comparable
     s   = [];
     for n = 1:3
-        s = [s; mseq2(11,2,0,randsample(1:18,1))];
+        s = [s; mseq2(11,2,0,RandSample(1:18,[1 1]))];
     end                    
     [s] = seq_feargen_prune(s,pr,po);
     
@@ -21,22 +21,22 @@ elseif method == 2
     %%use this if you want to combine two shorter seqs into one
     %     s = [];
     %     for n = 1:2
-    %         s = [s; mseq2(11,2,randsample(1:100,1),randsample(1:18,1))];
+    %         s = [s; mseq2(11,2,RandSample(1:100,[1 1]),RandSample(1:18,[1 1]))];
     %     end
-    [s]    = mseq2(11,2,randsample(1:100,1),randsample(1:18,1));
+    [s]    = mseq2(11,2,RandSample(1:100,[1 1]),RandSample(1:18,[1 1]));
     [s]  = seq_feargen_prune(s,pr,po,0);
     %seq_feargen_information(s);
     
 elseif method ==22;
     %this is for conditioning
-     [s]  = mseq2(5,3,randsample(1:100,1),randsample(1:18,1));
+     [s]  = mseq2(5,3,RandSample(1:100,[1 1]),RandSample(1:18,[1 1]));
      [s]  = seq_feargen_prune(s,pr,po,0);
      %seq_feargen_information(s);
      
 elseif method == 3
     %WORK to be done: GET AN M-sequence and equalize the transition to UCS
     %and ODDBALL trials that is it.
-    s    = mseq2(11,3,0,randsample(1:18,1));
+    s    = mseq2(11,3,0,RandSample(1:18,[1 1]));
     [s]  = seq_feargen_prune(s,pr,po,0);        
     s    = s(1:300);
 elseif method == 4
