@@ -20,9 +20,9 @@ if ~isempty(or)
     o_trial_current = sum(o_i);%number of current oddballs
     o_trial_target  = round(ttrial*or);%number of oddballs to have    
     if remove
-        s( randsample(find(s == max(conds)), o_trial_current - o_trial_target) ) = [];
+        s( RandSample(find(s == max(conds)), repmat(o_trial_current - o_trial_target,[1 2]))) = [];
     else
-        s( randsample(find(s == max(conds)), o_trial_current - o_trial_target) ) = varargin{1};
+        s( RandSample(find(s == max(conds)), repmat(o_trial_current - o_trial_target,[1 2]))) = varargin{1};
     end
     fprintf('%g oddbals are deleted/replaced...\n',o_trial_current - o_trial_target);   
 end
@@ -34,9 +34,9 @@ if ~isempty(rr)
     nucs = round(sum(s == 2)*(rr./(1-rr)));%how many do we need to have?
     tucs = sum(s == (max(conds)-1));
     if remove
-        s(randsample(find(s == (max(conds)-1)),tucs-nucs)) = [];
+        s(RandSample(find(s == (max(conds)-1)),repmat(tucs-nucs,[1 2]))) = [];
     else
-        s(randsample(find(s == (max(conds)-1)),tucs-nucs)) = varargin{1};
+        s(RandSample(find(s == (max(conds)-1)),repmat(tucs-nucs,[1 2]))) = varargin{1};
     end
     fprintf('%g UCSs are deleted/replaced...\n',tucs-nucs);
 end
