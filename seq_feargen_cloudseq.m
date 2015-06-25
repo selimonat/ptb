@@ -6,22 +6,22 @@ ok=0;
 while ~ok
 %create sequence until one passes the constraint-test
 %method 2= baseline&test, 22 = conditioning
-fprintf('Starting Constraint Check....\n')
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%5fprintf('Starting Constraint Check....\n')
 if strcmp(phase,'baseline')
-    [s]=seq_feargen_mseq_pruned(2,0.3,0.01);
+    [s0]=seq_feargen_mseq_pruned(2,0.3,0.01);
 elseif strcmp(phase,'cond')
-    [s]=seq_feargen_mseq_pruned(22,0.3,0.01);
+    [s0]=seq_feargen_mseq_pruned(22,0.3,0.01);
 elseif strcmp(phase,'test')
-    s=[];
+    s0=[];
     for n=1:2
-    [s]=[s; seq_feargen_mseq_pruned(2,0.3,0.01)];
+    [s0]=[s0; seq_feargen_mseq_pruned(2,0.3,0.01)];
     end
 end
 
-fprintf('Found appropriate sequence....\n')
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%fprintf('Found appropriate sequence....\n')
 %s has conditions only, so now we set up the whole seq structure as we had
 %it in all versions
-s.cond_id = s;
+s.cond_id = s0;
 %assign ucs seq
 s.ucs = (s.cond_id==(max(s.cond_id)-1));
 %assign oddball seq
@@ -62,7 +62,7 @@ s.dist(s.cond_id==max(s.cond_id))=1000;
 s.dist(s.cond_id==max(s.cond_id)-1)=500;
 
 %get fixation crosses from that function
-fprintf('Balancing fixation cross positions....\n')
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%fprintf('Balancing fixation cross positions....\n')
 s.CrossPosition = seq_feargen_fixcross(s);
 
 
