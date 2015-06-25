@@ -1,4 +1,4 @@
-function [p]=FearGen_eyelab(subject,phase,csp,PainThreshold)
+function [p]=FearGen_BDNF_eyelab(subject,phase,csp,PainThreshold)
 %[p]=Conditioning(subject,NthSeq,CSpface,phase,PainThreshold)
 %
 %Used for the last recording (3rd Scan Request) sessions of the Feargen
@@ -55,26 +55,36 @@ p_var_event_count         = 0;
 InitEyeLink;
 WaitSecs(2);
 %calibrate if we are at the scanner computer.
-if strcmp(p.hostname,'triostim1') || strcmp(p.hostname,'etpc');
+%need to exclude 2, because there the ConfirmIntensity will come first.
+if (phase~=2 && (strcmp(p.hostname,'triostim1') || strcmp(p.hostname,'etpc')));
      CalibrateEL;
 end
 %save again the parameter file
 save(p.path.path_param,'p');
 if phase == 1
+
     ShowInstruction(1,1);
         
 elseif phase == 2
+    
+
     %
-    p_var_ExpPhase  = phase; 
+    p_var_ExpPhase  = phase;
+    ShowInstruction(4,1);
+    ConfirmIntensity;
     ShowInstruction(101,1);
     ShowInstruction(2,1);
     ShowInstruction(3,1);
-    ShowInstruction(4,1);
-    ConfirmIntensity;
+    
+    %calibrate if we are at the scanner or ET computer.
+    if (phase~=2 && (strcmp(p.hostname,'triostim1') || strcmp(p.hostname,'etpc')));
+        CalibrateEL;
+    end
+    
     ShowInstruction(5,1);%will wait for keypresses
-    PresentStimuli;    
+    PresentStimuli;
     AskStimRating;%make sure that scanner doesnt stop prematurely asa the stim offset
-  
+    
 elseif phase == 3
     %
     p_mrt_on        = 0;
@@ -165,7 +175,7 @@ cleanup;
         %
         
         TimeEndStim                 = GetSecs;
-        for nTrial  = 1:p.presentation.tTrial;
+        for nTrial  = 1:2;%p.presentation.tTrial;
             %
             %Get the variables that Trial function needs.
             stim_id      = p.presentation.stim_id(nTrial);
@@ -205,10 +215,11 @@ cleanup;
                 Log(firstPress(p.keys.confirm),7,NaN);%log the key press for hit detection.
                 fprintf('Subject Pressed the Hit Key!!\n');
             end
-%             if (phase == 4 && nTrial == ceil(p.presentation.tTrial/2))
-%                 ShowInstruction(14,1)
-%                 CalibrateEL;
-%             end
+            %break loop
+            if (phase == 4 && (nTrial == 120 || nTrial == 240))
+                ShowInstruction(14,1)
+                CalibrateEL;
+            end
         end
     end
     function [TimeEndStim]=Trial(nTrial,TimeStimOnset , prestimdur, stim_id , ucs  , fix , oddball, dist )
@@ -314,8 +325,8 @@ cleanup;
             p.path.baselocation       = 'C:\Users\onat\Documents\Experiments\';
         end
         
-        p.path.experiment             = [p.path.baselocation 'feargen_master' filesep];
-        p.path.stim                   = 'C:\Users\onat\Documents\Experiments\feargen_master\stim\';
+        p.path.experiment             = [p.path.baselocation 'BDNF' filesep];
+        p.path.stim                   = 'C:\Users\onat\Documents\Experiments\BDNF\stim\';
         p.path.stim24                 = [p.path.stim '24bit8' '\'];
         %
         p.subID                       = sprintf('sub%02d',subject);
@@ -401,7 +412,7 @@ cleanup;
         %these are the intervals of importance
         %time2fixationcross->cross2onset->onset2shock->shock2offset
         %these (duration.BLA) are average duration values:
-        p.duration.stim                = 0.6;%2;%s
+        p.duration.stim                = 1.5;%2;%s
         p.duration.shock               = 0.1;%s;x        
         p.duration.shockpulse          = 0.005;%ms; duration of each individual pulses
         p.duration.intershockpulse     = 0.01;%ms; and the time between each pulse
@@ -413,7 +424,7 @@ cleanup;
         p.duration.prestim             = .85;
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
          %stimulus sequence
-         seqpool = load('C:\Users\onat\Documents\Experiments\feargen_master\seq\seq.mat');
+         seqpool = load('C:\Users\onat\Documents\Experiments\BDNF\seq\seq.mat');
          seq = seqpool.s(phase,csp,RandSample(1:size(seqpool.s,3),[1 1]));
          clear seqpool
 %         if phase == 2
@@ -668,10 +679,9 @@ cleanup;
                     'Drücken Sie die obere Taste um fortzufahren.\n' ...
                     ];
              elseif nInstruct == 101%first Instr. of the training phase.
-                text = ['Willkommen zum zweiten Teil des Experiments.\n'...
-                    'Eine wichtige grundsätzliche Regel ist auch hier,\n'...
+                text = ['Eine wichtige grundsätzliche Regel ist,\n'...
                     'dass Sie das Fixationskreuz (das „+“)\n' ... 
-                    'wenn es zu sehen ist, mit Ihren Augen fixieren. \n' ...
+                    'immer wenn es zu sehen ist, mit Ihren Augen fixieren. \n' ...
                     'Drücken Sie die obere Taste um fortzufahren.\n' ...
                     ];
             elseif nInstruct == 2%second Instr. of the training phase.
@@ -688,7 +698,8 @@ cleanup;
                     'Das ist besonders wichtig für die Qualität der Messung.\n' ...
                     ];
             elseif nInstruct == 4%third Instr. of the training phase.
-                text = ['Vor dem Experiment legen wir nun \n' ...
+                text = ['Willkommen zum Experiment. \n'...
+                        'Vor dem Experiment legen wir nun \n' ...
                         'die Schockintensität für den Rest des Experiments fest. \n' ...
                         'Drücken Sie die obere Taste um fortzufahren.' ...
                     ];
