@@ -1,4 +1,4 @@
-function [p]=FearGen_eyelab(subject,phase,csp,PainThreshold,nth)
+function [p]=FearGen_eyelab(subject,phase,csp,PainThreshold)
 %[p]=Conditioning(subject,NthSeq,CSpface,phase,PainThreshold)
 %
 %Used for the last recording (3rd Scan Request) sessions of the Feargen
@@ -6,7 +6,7 @@ function [p]=FearGen_eyelab(subject,phase,csp,PainThreshold,nth)
 % 
 % 
 
-if nargin ~= 5
+if nargin ~= 4
     fprintf('Wrong number of inputs\n');
     keyboard;
 end
@@ -401,7 +401,7 @@ cleanup;
         %these are the intervals of importance
         %time2fixationcross->cross2onset->onset2shock->shock2offset
         %these (duration.BLA) are average duration values:
-        p.duration.stim                = 1.5;%2;%s
+        p.duration.stim                = 0.6;%2;%s
         p.duration.shock               = 0.1;%s;x        
         p.duration.shockpulse          = 0.005;%ms; duration of each individual pulses
         p.duration.intershockpulse     = 0.01;%ms; and the time between each pulse
@@ -414,7 +414,8 @@ cleanup;
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
          %stimulus sequence
          seqpool = load('C:\Users\onat\Documents\Experiments\feargen_master\seq\seq.mat');
-         seq = seqpool.s(nth);
+         seq = seqpool.s(phase,csp,RandSample(1:size(seqpool.s,3),[1 1]));
+         clear seqpool
 %         if phase == 2
 %             seq = seq_feargen_cloudseq(csp,'baseline');%only 1 short seq
 %         elseif phase == 3%conditioning
