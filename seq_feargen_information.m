@@ -63,7 +63,7 @@ if verbose
     fprintf('Power: %g\n',dummy_det(1));
     fprintf('Normalized power: %g\n',dummy_det(1)/max_det(1)*100);
     fprintf('=====================================\n');
-    for isis = [1 2.5 3 3.5]
+    for isis = [1 2.5 3 6]
         fprintf('Expected duration: ISI of %g s -> %g minutes..\n',isis,isis*out.ttrial/60);
     end
 end
