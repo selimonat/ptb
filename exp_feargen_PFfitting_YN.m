@@ -483,7 +483,7 @@ movefile(p.path.subject,p.path.finalsubject);
         %time2fixationcross->cross2onset->onset2shock->shock2offset
         %these (duration.BLA) are average duration values:
 %         1.5 0.5 0.5
-        p.duration.stim                = 1.5;%s     
+        p.duration.stim                = 0.6;%s     
         %p.duration.pink                = 0.7;%0.7
         p.duration.fix                 = .85;
         %p.duration.gray                = 0;
@@ -513,7 +513,7 @@ movefile(p.path.subject,p.path.finalsubject);
         %Range of guess rates (Prins: 0:0.03:0.3);
         p.psi.priorGammaRange = 0:0.03:0.3;
         % Stimulus values to select from (need not be equally spaced)
-        p.psi.stimRange       = 0:11.25:169;
+        p.psi.stimRange       = 0:11.25:100;
         %Function to be fitted during procedure
         p.psi.PFfit = @PAL_CumulativeNormal;    %Shape to be assumed
         
