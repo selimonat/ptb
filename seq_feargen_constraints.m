@@ -1,5 +1,5 @@
 function [ok]=seq_feargen_constraints(seq,ucsafter,oddafter,oddbefore,slopeucs,toofarucs)
-cons=[];
+cons=NaN(5,1);
 if ucsafter
 cons(1)=IsEventAfter(seq.ucs,0.95);
 else
@@ -42,6 +42,10 @@ end
     function [out]=IsEventTooFar(seq,distance)
         %the longest distance where nothing happens.
         out = max(sort(diff(find(seq)))) > distance;
+        if isempty(out)
+            keyboard
+            out=0;
+        end
     end
 
     function [out]=SlopeCheck(seq)
