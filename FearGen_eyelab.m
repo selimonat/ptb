@@ -1,4 +1,4 @@
-function [p]=FearGen_eyelab(subject,phase,csp,PainThreshold,nth)
+function [p]=FearGen_eyelab(subject,phase,csp,PainThreshold)
 %[p]=Conditioning(subject,NthSeq,CSpface,phase,PainThreshold)
 %
 %Used for the last recording (3rd Scan Request) sessions of the Feargen
@@ -6,7 +6,7 @@ function [p]=FearGen_eyelab(subject,phase,csp,PainThreshold,nth)
 % 
 % 
 
-if nargin ~= 5
+if nargin ~= 4
     fprintf('Wrong number of inputs\n');
     keyboard;
 end
@@ -414,7 +414,8 @@ cleanup;
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
          %stimulus sequence
          seqpool = load('C:\Users\onat\Documents\Experiments\feargen_master\seq\seq.mat');
-         seq = seqpool.s(nth);
+         seq = seqpool.s(phase,csp,RandSample(1:size(seqpool.s,3),[1 1]));
+         clear seqpool
 %         if phase == 2
 %             seq = seq_feargen_cloudseq(csp,'baseline');%only 1 short seq
 %         elseif phase == 3%conditioning
