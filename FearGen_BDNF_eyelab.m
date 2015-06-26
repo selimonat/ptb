@@ -175,7 +175,7 @@ cleanup;
         %
         
         TimeEndStim                 = GetSecs;
-        for nTrial  = 1:2;%p.presentation.tTrial;
+        for nTrial  = 1:p.presentation.tTrial;
             %
             %Get the variables that Trial function needs.
             stim_id      = p.presentation.stim_id(nTrial);
