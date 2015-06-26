@@ -504,7 +504,7 @@ movefile(p.path.subject,p.path.finalsubject);
         %priors for the PSI fitting structure PM
         
         %% Define prior, these are always the same so defining once is enough.
-        p.psi.prioraaRange    = linspace(0,100,50); %values of aa to include in prior
+        p.psi.prioraaRange    = linspace(0,169,50); %values of aa to include in prior
         %IS THIS RANGE OF BETA VALUES REASONABLE?
         p.psi.priorBetaRange  = linspace(-2,0,50);  %values of log_10(beta) to include in prior
         %Range of lapse rates for the marginalized estimation of lambda
@@ -513,7 +513,7 @@ movefile(p.path.subject,p.path.finalsubject);
         %Range of guess rates (Prins: 0:0.03:0.3);
         p.psi.priorGammaRange = 0:0.03:0.3;
         % Stimulus values to select from (need not be equally spaced)
-        p.psi.stimRange       = 0:11.25:100;
+        p.psi.stimRange       = 0:11.25:169;
         %Function to be fitted during procedure
         p.psi.PFfit = @PAL_CumulativeNormal;    %Shape to be assumed
         
