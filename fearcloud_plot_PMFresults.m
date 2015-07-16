@@ -433,3 +433,224 @@ plot(v1_space_2d(:,1),v1_space_2d(:,2),'b.-')
 hold on;
 plot(circle_coord(:,1),circle_coord(:,2),'ro','MarkerFaceColor','r','MarkerSize',10)
 axis equal 
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%SUBJECTS PMF IN DISCUSSION
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+global project_path;project_path='C:\Users\onat\Google Drive\EthnoMaster\data\'
+Log       = isn_GetData(12,5,'stimulation');
+p = Log.p;
+psi       = Log.p.psi;
+x         = 0:1:100;
+xstimrange= psi.stimRange;
+% collect number of trials per stimulus Level
+
+minn=5;
+maxn=25;
+%
+fig=figure('units','normalized','outerposition',[0 0 0.45 0.6]);
+suptitle('Fitting Subject 12, after conditioning, CS+');
+
+chain=1;
+    %dotsize gets scaled by number of trials at this x
+    dotsize  = Scale(sum(~isnan(p.psi.log.xrounded(:,:,chain)),2))*(maxn-minn)+minn;
+    pcorrect = nanmean(p.psi.log.xrounded(:,:,chain),2);
+    error    = nanstd(p.psi.log.xrounded(:,:,chain),0,2);
+    
+    subplot(2,2,1)
+    plot(x,...
+        PAL_CumulativeNormal([p.psi.log.alpha(chain,end) 10.^(p.psi.log.beta(chain,end)) p.psi.log.gamma(chain,end) p.psi.log.lambda(chain,end)],x),'k','linewidth',3)
+    hold on;
+    
+    %detect the nonnan entries
+    %     for i =  find(~isnan(pcorrect(:))')
+    %         errorbar(xstimrange(i),pcorrect(i),error(i),'ko','Markersize',dotsize(i));
+    %         hold on;
+    %     end
+    for i =  find(~isnan(pcorrect(:))')
+        errorbar(xstimrange(i),pcorrect(i),error(i),'o','Markersize',10,'markerfacecolor',[0.3 0.3 0.3],'color',[0.3 0.3 0.3]);
+        hold on;
+    end
+    ylabel('p(different)')
+    xlabel('X (deg)')
+    xlim([-10 100])
+    ylim([-.4 1.4])
+    if chain==1
+        title('CS+')
+    else
+        title('CS-')
+    end
+    hold off
+    box off;
+    line([p.psi.log.alpha(chain,end) p.psi.log.alpha(chain,end)],[ylim],'Color','r')
+    
+    
+    subplot(2,2,3)
+    for i =  find(~isnan(pcorrect(:))')
+        plot(xstimrange(i),1.2,'o','color',[0.3 0.3 0.3],'Markersize',dotsize(i),'MarkerFaceColor',[0.3 0.3 0.3]);
+        hold on;
+    end
+    xlim([-10 100]);
+    title('Number of Presentations')
+    box off;
+    grid on;
+    set(gca,'yticklabel',[],'ytick',[],'ycolor',[1 1 1],'xtick',xstimrange,'xtick',xstimrange(1:2:end));
+     xlabel('X (deg)')
+    text(xstimrange(1),1.9,'20%')
+    
+    subplot(2,2,2)
+    plot(1:length(p.psi.log.alpha(chain,:)),p.psi.log.alpha(chain,:),'r-')
+    hold on;
+    errorbar([1 length(p.psi.log.alpha(chain,:))],p.psi.log.alpha(chain,[1 end]),p.psi.log.seAlpha(chain,[1 end]),'ro')
+    title(sprintf('estimated alpha=%3.3g (%3.3g)',p.psi.log.alpha(chain,end),p.psi.log.seAlpha(chain,end)))
+    xlim([-5 length(p.psi.log.beta(chain,:))+5])
+    box off;
+     xlabel('# trials')
+     ylabel('alpha (degrees)');
+    
+     subplot(2,2,4)
+%     plot(1:length(p.psi.log.beta(chain,:)),(10.^-p.psi.log.beta(chain,:)),'b-')
+%     hold on;
+%     errorbar([1 length(p.psi.log.beta(chain,:))],(10.^-p.psi.log.beta(chain,[1 end])),(10.^-p.psi.log.seBeta(chain,[1 end])),'bo')
+    plot(1:length(p.psi.log.beta(chain,:)),(p.psi.log.beta(chain,:)),'b-')
+    hold on;
+    errorbar([1 length(p.psi.log.beta(chain,:))],(p.psi.log.beta(chain,[1 end])),(p.psi.log.seBeta(chain,[1 end])),'bo')
+    %title(sprintf('estimated beta in SD = %3.3g (%3.3g)',(10.^-p.psi.log.beta(chain,end)),(10.^-p.psi.log.seBeta(chain,end))))
+    title(sprintf('estimated beta = %3.3g (%3.3g)',(p.psi.log.beta(chain,end)),(p.psi.log.seBeta(chain,end))))
+    xlim([-5 length(p.psi.log.beta(chain,:))+5])
+    box off;
+     xlabel('# trials')
+     ylabel('beta');
+
+%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%SUBJECTS PMF IN DISCUSSION
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+global project_path;project_path='C:\Users\onat\Google Drive\EthnoMaster\data\'
+Log       = isn_GetData(9,5,'stimulation');
+p = Log.p;
+psi       = Log.p.psi;
+x         = 0:1:100;
+xstimrange= psi.stimRange;
+% collect number of trials per stimulus Level
+
+minn=5;
+maxn=25;
+%
+fig=figure('units','normalized','outerposition',[0 0 0.45 0.6]);
+suptitle('Fitting Subject 12, after conditioning, CS+');
+
+chain=2;
+    %dotsize gets scaled by number of trials at this x
+    dotsize  = Scale(sum(~isnan(p.psi.log.xrounded(:,:,chain)),2))*(maxn-minn)+minn;
+    pcorrect = nanmean(p.psi.log.xrounded(:,:,chain),2);
+    error    = nanstd(p.psi.log.xrounded(:,:,chain),0,2);
+    
+    subplot(2,2,1)
+    plot(x,...
+        PAL_CumulativeNormal([p.psi.log.alpha(chain,end) 10.^(p.psi.log.beta(chain,end)) p.psi.log.gamma(chain,end) p.psi.log.lambda(chain,end)],x),'k','linewidth',3)
+    hold on;
+    
+    %detect the nonnan entries
+    %     for i =  find(~isnan(pcorrect(:))')
+    %         errorbar(xstimrange(i),pcorrect(i),error(i),'ko','Markersize',dotsize(i));
+    %         hold on;
+    %     end
+    for i =  find(~isnan(pcorrect(:))')
+        errorbar(xstimrange(i),pcorrect(i),error(i),'o','Markersize',10,'markerfacecolor',[0.3 0.3 0.3],'color',[0.3 0.3 0.3]);
+        hold on;
+    end
+    ylabel('p(different)')
+    xlabel('X (deg)')
+    xlim([-10 100])
+    ylim([-.4 1.4])
+    if chain==1
+        title('CS+')
+    else
+        title('CS-')
+    end
+    hold off
+    box off;
+    line([p.psi.log.alpha(chain,end) p.psi.log.alpha(chain,end)],[ylim],'Color','r')
+    
+    
+    subplot(2,2,3)
+    for i =  find(~isnan(pcorrect(:))')
+        plot(xstimrange(i),1.2,'o','color',[0.3 0.3 0.3],'Markersize',dotsize(i),'MarkerFaceColor',[0.3 0.3 0.3]);
+        hold on;
+    end
+    xlim([-10 100]);
+    title('Number of Presentations')
+    box off;
+    grid on;
+    set(gca,'yticklabel',[],'ytick',[],'ycolor',[1 1 1],'xtick',xstimrange,'xtick',xstimrange(1:2:end));
+     xlabel('X (deg)')
+    text(xstimrange(1),1.9,'20%')
+    
+    subplot(2,2,2)
+    plot(1:length(p.psi.log.alpha(chain,:)),p.psi.log.alpha(chain,:),'r-')
+    hold on;
+    errorbar([1 length(p.psi.log.alpha(chain,:))],p.psi.log.alpha(chain,[1 end]),p.psi.log.seAlpha(chain,[1 end]),'ro')
+    title(sprintf('estimated alpha=%3.3g (%3.3g)',p.psi.log.alpha(chain,end),p.psi.log.seAlpha(chain,end)))
+    xlim([-5 length(p.psi.log.beta(chain,:))+5])
+    box off;
+     xlabel('# trials')
+     ylabel('alpha (degrees)');
+    
+     subplot(2,2,4)
+%     plot(1:length(p.psi.log.beta(chain,:)),(10.^-p.psi.log.beta(chain,:)),'b-')
+%     hold on;
+%     errorbar([1 length(p.psi.log.beta(chain,:))],(10.^-p.psi.log.beta(chain,[1 end])),(10.^-p.psi.log.seBeta(chain,[1 end])),'bo')
+    plot(1:length(p.psi.log.beta(chain,:)),(p.psi.log.beta(chain,:)),'b-')
+    hold on;
+    errorbar([1 length(p.psi.log.beta(chain,:))],(p.psi.log.beta(chain,[1 end])),(p.psi.log.seBeta(chain,[1 end])),'bo')
+    %title(sprintf('estimated beta in SD = %3.3g (%3.3g)',(10.^-p.psi.log.beta(chain,end)),(10.^-p.psi.log.seBeta(chain,end))))
+    title(sprintf('estimated beta = %3.3g (%3.3g)',(p.psi.log.beta(chain,end)),(p.psi.log.seBeta(chain,end))))
+    xlim([-5 length(p.psi.log.beta(chain,:))+5])
+    box off;
+     xlabel('# trials')
+     ylabel('beta');
+
+     
+     
+     
+     
+     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+     %HYPOTHETICAL MEAN BARS
+     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+     alphafake.sem=[5,4.7;5.5,5];
+alphafake.mean=[60,48;62,57];
+
+betafake.sem=[4.5,4.3;5.1,4.9];
+betafake.mean=[30 20; 32 27];
+
+fig=figure('Position',[3 50 700 500]);
+subplot(1,2,1)
+[h,e] = barwitherr(squeeze(alphafake.sem),squeeze(alphafake.mean));
+set(gca,'XTickLabel',{'CS+','CS-'})
+set(e,'LineWidth',1.5)
+set(h(1), 'FaceColor','r') 
+set(h(2), 'FaceColor',[143/255 0 0])
+ylabel('threshold \alpha (degrees)')
+ylim([0 100])
+axis square
+legend('before','after','orientation','horizontal','location','southoutside')
+
+subplot(1,2,2)
+[h,e] = barwitherr(betafake.sem,betafake.mean);
+set(gca,'XTickLabel',{'CS+','CS-'})
+set(h(1), 'FaceColor','b') 
+set(h(2), 'FaceColor',[0 0.05 0.2])
+set(e,'LineWidth',1.5)
+legend('before','after','orientation','horizontal','location','southoutside')
+ylabel('slope \beta (SD)')
+ylim([0 60])
+axis square
+
+t=supertitle('hypothetical changes in threshold \alpha and slope \beta')
+set(t,'FontSize',14)
