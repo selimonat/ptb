@@ -7,7 +7,8 @@ subjects=[6:26,28:36];%PMF
 subjects_eye=[6:26,28:36];
 %subjects slower vs faster version
 subjects_1500=[6:26,28:36];
-subjects_600=[27,37:39];
+subjects_600=[27,39,41:51];
+%37 and 38 have smaller stimranges...
 
 pmf=isn_getPMF(subjects,[1 5]);
 % % %alternatively load them (this is the file with all subjects for Lea's Masterthesis):
@@ -41,10 +42,10 @@ lambda.mean=mean(pmf.lambda);
 [p_csp_beta,h]=signrank(pmf.beta(:,1,1),pmf.beta(:,1,2))
 [p_csn_beta,h]=signrank(pmf.beta(:,2,1),pmf.beta(:,2,2))
 
-[h,p]=ttest(pmf.alpha(:,1,1),pmf.alpha(:,1,2))
-[h,p]=ttest(pmf.alpha(:,2,1),pmf.alpha(:,2,2))
-[h,p]=ttest(pmf.beta(:,1,1),pmf.beta(:,1,2))
-[h,p]=ttest(pmf.beta(:,2,1),pmf.beta(:,2,2))
+[h,p_csp_alpha]=ttest(pmf.alpha(:,1,1),pmf.alpha(:,1,2))
+[h,p_csn_alpha]=ttest(pmf.alpha(:,2,1),pmf.alpha(:,2,2))
+[h,p_csp_beta]=ttest(pmf.beta(:,1,1),pmf.beta(:,1,2))
+[h,p_csp_beta]=ttest(pmf.beta(:,2,1),pmf.beta(:,2,2))
 
 alph=[pmf.alpha(:,1,1),pmf.alpha(:,2,1);pmf.alpha(:,1,2),pmf.alpha(:,2,2)];
 beta=[pmf.beta(:,1,1),pmf.beta(:,2,1);pmf.beta(:,1,2),pmf.beta(:,2,2)]
