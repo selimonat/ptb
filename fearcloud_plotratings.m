@@ -30,7 +30,7 @@ title('baseline')
 subplot(1,3,2)
 h=bar(mean(r2(:,:,1),2));SetFearGenBarColors(h);
 %set(gca,'XTickLabel',{'-135','-90','-45','CSP','45','90','135','180'})
-set(gca,'XTickLabel',{'-135','','','CSP','','','','180'})
+set(gca,'XTickLabel',{'','','','CS+','','','','CS-'})
 ylim([0 10])
 xlim([0 9])
 axis square
@@ -39,7 +39,7 @@ title('conditioning')
 subplot(1,3,3)
 h=bar(mean(r2(:,:,2),2));SetFearGenBarColors(h);
 %set(gca,'XTickLabel',{'-135','-90','-45','CSP','45','90','135','180'})
-set(gca,'XTickLabel',{'-135','','','CSP','','','','180'})
+set(gca,'XTickLabel',{'','','','CS+','','','','CS-'})
 ylim([0 10])
 xlim([0 9])
 axis square
