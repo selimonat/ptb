@@ -11,7 +11,6 @@ end
 %% %init all the variables
 %Time Storage
 TimeEndStim               = [];
-TimeStartShock            = [];
 TimeTrackerOff            = [];
 TimeCrossOn               = [];
 p_var_ExpPhase            = [];
@@ -43,8 +42,8 @@ end
 %save again the parameter file
 save(p.path.path_param,'p');
 %% RUN THE EXPERIMENT PROPER
-% ShowInstruction(2,1);
-% ShowInstruction(3,1);
+ShowInstruction(1,1);
+ShowInstruction(2,1);
 PresentStimuli;
 %%
 %get the eyelink file back to this computer
@@ -66,7 +65,7 @@ cleanup;
         %Enter the presentation loop and wait for the first pulse to
         %arrive.
 
-        TimeEndStim                 = GetSecs;
+        
         for nTrial  = 1:p.presentation.tTrial;
             %
             %Get the variables that Trial function needs.
@@ -74,58 +73,40 @@ cleanup;
             %
             fix          = p.presentation.CrossPosition(nTrial,:);
             ISI          = p.presentation.isi(nTrial);            
-            prestimdur   = p.duration.prestim(nTrial)+rand(1)*.25;            
+            prestimdur   = p.duration.prestim(nTrial);
             %prestimdur   = p_presentation_prestim_dur(nTrial);
             
             
             fprintf('%d of %d, S: %d, ISI: %d.\n',nTrial,p.presentation.tTrial,stim_id,ISI);
-            %
-            
-            OnsetTime     = TimeEndStim + ISI-p.duration.stim ;
-            
-            %             jetz = GetSecs;
-            %             if mod(nTrial,100) == 0
-            %                ShowInstruction(14,1);
-            %                OnsetTime = OnsetTime + GetSecs - jetz;
-            %             end
-            
+            %                                    
             KbQueueStart(p.ptb.device);%monitor keypresses...
             
             %Start with the trial, here is time-wise sensitive must be
             %optimal
-            [TimeEndStim]= Trial(nTrial,OnsetTime, prestimdur, stim_id , fix);
+            Trial(nTrial, stim_id , fix);
+            %
+            ShowInstruction(3,1);
+            %
+            AskStimRating;
             %
             [keypressed, firstPress]=KbQueueCheck(p.ptb.device);
-            %if the press was after stimulus onset and before stimulus
-            %offset
-            if keypressed && (firstPress(p.keys.confirm) > OnsetTime) && (firstPress(p.keys.confirm) < TimeEndStim)
-                p.out.response(nTrial) = 1;
-                Log(firstPress(p.keys.confirm),7,NaN);%log the key press for hit detection.
-                fprintf('Subject Pressed the Hit Key!!\n');
-            end
-            %             if (phase == 4 && nTrial == ceil(p.presentation.tTrial/2))
-            %                 ShowInstruction(14,1)
-            %                 CalibrateEL;
-            %             end
+            
+            
         end
     end
-    function [TimeEndStim]=Trial(nTrial,TimeStimOnset , prestimdur, stim_id , fix )
-        
-        %get all the times
-        TimeCrossOnset     = TimeStimOnset  - prestimdur;                
-        
-        %% Fixation Onset
-        FixCross = [fix(1)-1,fix(2)-20,fix(1)+1,fix(2)+20;fix(1)-20,fix(2)-1,fix(1)+20,fix(2)+1];        
-        Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');
-        TimeCrossOn  = Screen('Flip',p.ptb.w,TimeCrossOnset);
-        
-        Eyelink('Message', 'FX Onset at %d %d',fix(1),fix(2));
+    function Trial(nTrial, stim_id , fix )
         
         %turn the eye tracker on
+        StartEyelinkRecording(nTrial,stim_id,fix);
+        %% Fixation Onset
+        FixCross = [fix(1)-1,fix(2)-20,fix(1)+1,fix(2)+20;fix(1)-20,fix(2)-1,fix(1)+20,fix(2)+1];
+        Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');
+        Screen('Flip',p.ptb.w);        
+        Eyelink('Message', 'FX Onset at %d %d',fix(1),fix(2));
+        WaitSecs(1.25);
+        %
         iii = p.presentation.stim_id(nTrial);
         p.ptb.imrect  = [ p.ptb.midpoint(1)-p.stim.size(iii,2)/2 p.ptb.midpoint(2)-p.stim.size(iii,1)/2 p.stim.size(iii,2) p.stim.size(iii,1)];
-        StartEyelinkRecording(nTrial,stim_id,fix);
-        
         
         
         %% Draw the stimulus to the buffer
@@ -139,25 +120,23 @@ cleanup;
         %The proper amount is obtained with the second call of WaitPulse
         %below, before the onset of the fixation cross.
         %fprintf('Will Wait for the pulse to Stim Onset\n');
-        TimeStimOnset  = Screen('Flip',p.ptb.w,TimeStimOnset,0);%asap and dont clear
+        Screen('Flip',p.ptb.w);%asap and dont clear
         %send eyelink and ced a marker asap
         Eyelink('Message', 'Stim Onset');
         Eyelink('Message', 'SYNCTIME');
         
-        
+        %wait for the key press
         [p.out.PressingTime(nTrial),~,p.out.deltaSecs(nTrial)]=KbWait([],2);
         
         %% STIM OFF immediately after key press
-        TimeEndStim = Screen('Flip',p.ptb.w);
+        Screen('Flip',p.ptb.w);
         WaitSecs(.5);
-        %send eyelink and ced a marker
+        %send eyelink a marker
         Eyelink('Message', 'Stim Offset');
-        Eyelink('Message', 'BLANK_SCREEN');
-        Screen('Textsize', p.ptb.w,p.text.fontsize);        
+        Eyelink('Message', 'BLANK_SCREEN');        
         %
-        %% record some more eye data after stimulus offset.
-        
-        TimeTrackerOff    = StopEyelinkRecording;        
+        %% record some more eye data after stimulus offset.        
+        StopEyelinkRecording;
         
     end
     function SetParams
@@ -239,16 +218,16 @@ cleanup;
         p.duration.stim                = 5;%2;%s
         p.duration.keep_recording      = 0.25;%this is the time we will keep recording (eye data) after stim offset.
         p.duration.prestim_ori         = .95;
-        %p.duration.prestim             = 2-p.duration.prestim_ori;%that is 0.95 seconds
-        p.duration.prestim             = .85;
+        %p.duration.prestim             = 2-p.duration.prestim_ori;%that is 0.95 seconds        
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %stimulus sequence                        
-        p.presentation.CrossPosition           = repmat([10 10],p.stim.tFile,1);
+        p.presentation.CrossPosition           = repmat([720   450],p.stim.tFile,1);
         p.presentation.stim_id                 = Shuffle(1:p.stim.tFile);
         p.presentation.isi                     = repmat(3,1,p.stim.tFile);
-        p.duration.prestim                     = repmat(.5,1,p.stim.tFile);
+        p.duration.prestim                     = repmat(1.5,1,p.stim.tFile);
         p.presentation.tTrial                  = 10;%p.stim.tFile;
         
+        p.rating.division                      = 5;
         %Save the stuff
         save(p.path.path_param,'p');
         %
@@ -337,19 +316,11 @@ cleanup;
             'Bevor es jedoch mit dem Experiment losgeht, werden wir zuerst ein paar Probedurchlaeufe machen.\n'...
             '\n'...
             '(weiter mit der Pfeiltaste oben)\n'];
-        
+                
         elseif nInstruct == 3%third Instr. of the training phase.
-            text = ['Ein paar Bemerkungen zu den Zielreizen: \n' ...
-                'Zur Erinnerung: Zielreize sind die verschwommenen Gesichter.\n' ...
-                'Sobald ein solcher Zielreiz erscheint, \n' ...
-                'sollen Sie schnellstmöglich die obere Taste drücken, \n' ...
-                'und zwar bevor der Reiz wieder verschwunden ist \n' ...
-                '(Sie müssen also sehr schnell und aufmerksam sein).' ...
-                ];
-        elseif nInstruct == 4%third Instr. of the training phase.
             text = ['Bitte sag uns was du gesehen hast! (danach weiter mit der ''Pfeiltaste oben'')'];
             
-        elseif nInstruct == 5%third Instr. of the training phase.
+        elseif nInstruct == 4%third Instr. of the training phase.
             text = ['Vielen Dank. Das waren die Probedurchgaenge.\n'...
                 'Jetzt kommen wir zum Experiment. Der Ablauf ist genau wie in den Probedurchgaengen.\n'...
                 '\n'...
@@ -380,7 +351,7 @@ cleanup;
         %fontsizes, font names.
         %Find the number of the screen to be opened
         screens                     =  Screen('Screens');
-        p.ptb.screenNumber          =  1;%the maximum is the second monitor
+        p.ptb.screenNumber          =  0;%the maximum is the second monitor
         %Make everything transparent for debugging purposes.
         if debug
             commandwindow;
@@ -415,7 +386,7 @@ cleanup;
             fprintf('SET THE CORRECT SCREEN RESOLUTION\n');
         end
         %find the mid position on the screen.
-        p.ptb.midpoint              = [ p.ptb.width./2 p.ptb.height./2];        
+        p.ptb.midpoint              = [ p.ptb.width./2 p.ptb.height./2];
         p.ptb.CrossPosition_x       = p.ptb.midpoint(1);%bb(1);%always the same        
         [nx, ny bb]                 = DrawFormattedText(p.ptb.w,'+','center','center');
         
@@ -643,5 +614,93 @@ cleanup;
         %for i = 1:3;subplot(3,1,i);plot(p.out.log(1:p.out.event_counter ,i),'o-');drawnow;end
         %
         
+    end
+
+    function AskStimRating
+        % Get the text to be show during rating                       
+        message     = GetText(11);
+        SliderTextL = GetText(12);
+        SliderTextR = GetText(13);
+        % Gray everything
+        Screen('FillRect', p.ptb.w , p.stim.bg);
+        Screen('Flip',p.ptb.w);
+        WaitSecs(.6);
+        % Show the instruction
+%         ShowInstruction(11,1);
+        rect        = [p.ptb.width*0.2  p.ptb.midpoint(2) p.ptb.width*0.6 100];        
+        %save the rating sequence just for security
+        
+        
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        %
+        rate(nTrial)  = RatingSlider(rect, p.rating.division, Shuffle(1:p.rating.division,1), p.keys.increase, p.keys.decrease, p.keys.confirm, {SliderTextL{1} SliderTextR{1}},message,1);
+        
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        %Verbose the rating of the subject
+    end
+    function [rating] = RatingSlider(rect,tSection,position,up,down,confirm,labels,message,numbersOn)
+        %
+        %Detect the bounding boxes of the labels.
+        for nlab = 1:2
+            [~ , ~, bb(nlab,:)]=DrawFormattedText(p.ptb.w,labels{nlab}, 'center', 'center',  p.stim.white,[],[],[],2);
+            Screen('FillRect',p.ptb.w,p.stim.bg);
+        end
+        bb = max(bb);
+        bb_size = bb(3)-bb(1);%vertical size of the bb.
+        %
+        DrawSkala;
+        ok = 1;
+        while ok == 1
+            [secs, keyCode, ~] = KbStrokeWait;
+            keyCode = find(keyCode);
+            Log(secs,7,keyCode);
+            if length(keyCode) == 1%this loop avoids crashes to accidential presses of meta keys
+                if (keyCode == up) || (keyCode == down)
+                    next = position + increment(keyCode);
+                    if next < (tSection+1) && next > 0
+                        position = position + increment(keyCode);
+                        %rating   = tSection - position + 1;
+                    end
+                    DrawSkala;
+                elseif keyCode == confirm
+                    WaitSecs(0.1);
+                    ok = 0;
+                    Screen('FillRect',p.ptb.w,p.stim.bg);
+                    t=Screen('Flip',p.ptb.w);
+                end
+            end
+        end
+        
+        function DrawSkala
+            %rating               = tSection - position + 1;
+            rating               = position ;
+            increment([up down]) = [1 -1];%delta
+            tick_x               = linspace(rect(1),rect(1)+rect(3),tSection+1);%tick positions
+            tick_size            = rect(3)./tSection;
+            ss                   = tick_size/5*0.9;%slider size.
+            %
+            for tick = 1:length(tick_x)%draw ticks
+                Screen('DrawLine', p.ptb.w, [255 0 0], tick_x(tick), rect(2), tick_x(tick), rect(2)+rect(4) , 3);
+                if tick <= tSection && numbersOn
+                    Screen('TextSize', p.ptb.w,p.text.fontsize./2);
+                    DrawFormattedText(p.ptb.w, mat2str(tick) , tick_x(tick)+ss/2, rect(2)+rect(4),  p.stim.white);
+                    Screen('TextSize', p.ptb.w,p.text.fontsize);
+                end
+                if tick == 1
+                    DrawFormattedText(p.ptb.w, labels{1},tick_x(tick)-bb_size*1.4,rect(2), p.stim.white);
+                elseif tick == tSection+1
+                    DrawFormattedText(p.ptb.w, labels{2},tick_x(tick)+bb_size*0.4,rect(2), p.stim.white);
+                end
+            end
+            %slider coordinates
+            slider = [ tick_x(position)+tick_size*0.1 rect(2) tick_x(position)+tick_size*0.9 rect(2)+rect(4)];
+            %draw the slider
+            Screen('FillRect',p.ptb.w, p.stim.white, round(slider));
+            Screen('TextSize', p.ptb.w,p.text.fontsize*2);
+            DrawFormattedText(p.ptb.w,message, 'center', p.ptb.midpoint(2)*0.2,  p.stim.white,[],[],[],2);
+            Screen('TextSize', p.ptb.w,p.text.fontsize);
+            t = Screen('Flip',p.ptb.w);
+            Log(t,6,NaN);
+        end
     end
 end
