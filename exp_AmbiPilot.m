@@ -128,40 +128,48 @@ cleanup;
         
         function ShowStim()
             
-            if ~stim_id==0
-                %RECORD THE TIME OF THE STIMULUS!!!!!!!!!!!!!!!
-                Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(stim_id));
-            end
+%             if ~stim_id==0
+%                 %RECORD THE TIME OF THE STIMULUS!!!!!!!!!!!!!!!
+%                 Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(stim_id));
+%             end
             % Create a mask
-            if mask_method == 1 %pixel noise (looks like sh_t but see it urself too)
-                %simply
-                mask        = ones(p.stim.size(stim_id,1),p.stim.size(stim_id,2),4)*255;
-                mask(:,:,4) = (rand(p.stim.size(stim_id,1:2)) >.5)*255;
-            elseif mask_method == 2 %pixels noise but pixel sizes are now SIZE_OF_DOTS big.
-                number_of_dots     = 240;%how much noise
-                size_of_dots       = 40;%size of pixel noise
-                %For the mask first create a matrix with pixel noise. And
-                %enlarge this matrix to image size so that noise is more than
-                %one pixel size. Variables bla could all be more efficiently
-                %coded but well :P
+%             if mask_method == 1 %pixel noise (looks like sh_t but see it urself too)
+%                 %simply
+%                 mask        = repmat(rand(p.stim.size(stim_id,1),p.stim.size(stim_id,2))*255,[1 1 4]);
+%                 mask(:,:,4) = ones(p.stim.size(stim_id,1:2))*255*.85;
+%             elseif mask_method == 3
+
+                N = prod(p.stim.size(stim_id,1:2));
+                [~, R2] = histc(rand(N,1),cumsum([0;p.ptb.NoiseWeight(:)./sum(p.ptb.NoiseWeight)]));
+                image = p.stim.image{stim_id}(:,:);
+                image(R2 == 2) = 0;
+                image(R2 == 3) = 1;
                 
-                small_mask_size    = round(p.stim.size(stim_id,1:2)./size_of_dots);
-                random_coordinates = ceil([rand(number_of_dots,1)*small_mask_size(1) rand(number_of_dots,1)*small_mask_size(2)]);
-                alfa               = accumarray(random_coordinates,1,small_mask_size);%small which will be enlarged
-                alfa               = kron(alfa,ones(size_of_dots));%make dots bigger
-                alfa               = logical(alfa)*255;
-                mask               = ones(size(alfa,1),size(alfa,2),4)*128;
-                %WHY did I color the noise with 128 (gray) ?
-                %if it were black, then the black parts of the image do not
-                %get noisy. For example in this mooney picture of a women,
-                %noise operates only on white sections. That's why I made
-                %it gray. Ideally noise should simply change according to
-                %what is on the background. now how to do it?
-                
-                mask(:,:,4)        = alfa;
-            end
-            mask_tex = Screen('MakeTexture', p.ptb.w, mask);;
-            Screen('DrawTexture', p.ptb.w, mask_tex);
+%             elseif mask_method == 2 %pixels noise but pixel sizes are now SIZE_OF_DOTS big.
+%                 number_of_dots     = 240;%how much noise
+%                 size_of_dots       = 40;%size of pixel noise
+%                 %For the mask first create a matrix with pixel noise. And
+%                 %enlarge this matrix to image size so that noise is more than
+%                 %one pixel size. Variables bla could all be more efficiently
+%                 %coded but well :P
+%                 
+%                 small_mask_size    = round(p.stim.size(stim_id,1:2)./size_of_dots);
+%                 random_coordinates = ceil([rand(number_of_dots,1)*small_mask_size(1) rand(number_of_dots,1)*small_mask_size(2)]);
+%                 alfa               = accumarray(random_coordinates,1,small_mask_size);%small which will be enlarged
+%                 alfa               = kron(alfa,ones(size_of_dots));%make dots bigger
+%                 alfa               = logical(alfa)*255;
+%                 mask               = ones(size(alfa,1),size(alfa,2),4)*255;
+%                 %WHY did I color the noise with 128 (gray) ?
+%                 %if it were black, then the black parts of the image do not
+%                 %get noisy. For example in this mooney picture of a women,
+%                 %noise operates only on white sections. That's why I made
+%                 %it gray. Ideally noise should simply change according to
+%                 %what is on the background. now how to do it?
+%                 
+%                 mask(:,:,4)        = alfa;
+%             end
+            bla = Screen('MakeTexture', p.ptb.w, double(image)*255);
+            Screen('DrawTexture', p.ptb.w, bla);
             
             Screen('DrawingFinished',p.ptb.w,0);
             % STIMULUS ONSET
@@ -309,7 +317,7 @@ cleanup;
             DrawFormattedText(p.ptb.w, text, 'center', 'center',p.stim.white,[],[],[],2,[]);
             t=Screen('Flip',p.ptb.w);
             Log(t,5,nInstruct);
-            %show the messages at the experimenter screen            
+            %show the messages amaskt the experimenter screen            
             fprintf('Text shown to the subject:\n');            
             fprintf(text);            
         end
@@ -434,7 +442,8 @@ cleanup;
         p.ptb.keysOfInterest(p.keys.confirm) = 1;
         KbQueueCreate(p.ptb.device,p.ptb.keysOfInterest);%default device.
         
-        
+        p.ptb.noise = .85;        
+        p.ptb.NoiseWeight = [1-p.ptb.noise p.ptb.noise./2 p.ptb.noise./2];
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
         %load the pictures to the memory.
         p.ptb.stim_sprites = CreateStimSprites(p.stim.files);%
@@ -443,13 +452,14 @@ cleanup;
             %loads all the stims to video memory
             for nStim = 1:p.stim.tFile
                 filename       = files(nStim,:);
-                [im , ~, ~]    = imread(deblank(filename));
-                im             = double(im);
+                [im , ~, ~]    = imread(deblank(filename));                
+                im             = double(im)./255;
                 if size(im,3) == 1
                     im = repmat(im,[1 1 3]);
                 end
                 out(nStim)     = Screen('MakeTexture', p.ptb.w, im );
-                p.stim.size(nStim,:) = size(im);
+                p.stim.size(nStim,:)    = size(im);
+                p.stim.image{nStim}(:,:) = logical(im(:,:,1));
             end
         end
     end
