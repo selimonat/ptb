@@ -1,4 +1,4 @@
-function [p]=exp_AmbiPilot(subject,mask_method)
+function [p]=exp_AmbiPilot(subject,noise)
 %[p]=exp_AmbiPilot(subject,csp,PainThreshold,nth)
 %
 %   Experiment for showing ambigous pictures to people :D.
@@ -442,7 +442,7 @@ cleanup;
         p.ptb.keysOfInterest(p.keys.confirm) = 1;
         KbQueueCreate(p.ptb.device,p.ptb.keysOfInterest);%default device.
         
-        p.ptb.noise = .85;        
+        p.ptb.noise = noise;        
         p.ptb.NoiseWeight = [1-p.ptb.noise p.ptb.noise./2 p.ptb.noise./2];
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
         %load the pictures to the memory.
