@@ -38,8 +38,8 @@ end
 %save again the parameter file
 save(p.path.path_param,'p');
 %% RUN THE EXPERIMENT PROPER
-% ShowInstruction(1,1);
-% ShowInstruction(2,1);
+ShowInstruction(1,1);
+ShowInstruction(2,1);
 PresentStimuli;
 %%
 %get the eyelink file back to this computer
@@ -72,8 +72,7 @@ cleanup;
             prestimdur   = p.duration.prestim(nTrial);
             %prestimdur   = p_presentation_prestim_dur(nTrial);
             
-            
-            fprintf('%d of %d, S: %d, ISI: %d.\n',nTrial,p.presentation.tTrial,stim_id,ISI);
+            fprintf('=======================\nTRIAL: %03d (%03d)\nImage being shown: %s\n',nTrial,p.presentation.tTrial,p.stim.files(stim_id,:));
             %                                    
             KbQueueStart(p.ptb.device);%monitor keypresses...
             
@@ -193,7 +192,7 @@ cleanup;
         end
         
         p.path.experiment             = [p.path.baselocation 'AmbiPilot' filesep];
-        p.path.stim                   = '~/Dropbox/SelimTimTim/AmbiPain/app_stimulus_set/';
+        p.path.stim                   = '~/Dropbox/SelimTimTim/AmbiPain/stimulus_selection/';
         %
         p.subID                       = sprintf('sub%02d',subject);
         p.path.edf                    = sprintf(p.subID);
@@ -220,12 +219,12 @@ cleanup;
         %
         %font size and background gray level
         p.text.fontname                = 'Times New Roman';
-        p.text.fontsize                = 18;%30;
+        p.text.fontsize                = 30;
         p.text.fixsize                 = 60;
         %
         p.stim.white                   = [255 255 255];
         %get the actual stim size (assumes all the same)
-        info                           = imfinfo(p.stim.files(1,:));
+        
         
         
         if strcmp(p.hostname,'triostim1')
@@ -269,8 +268,9 @@ cleanup;
         function [FM labels] = FileMatrix(path)
             %Takes a path with file extension associated to regexp (e.g.
             %C:\blabl\bla\*.bmp) returns the file matrix
+            cd(fileparts(path))
             dummy = dir(path);
-            FM    = [repmat([fileparts(path) filesep],length(dummy),1) vertcat(dummy(:).name)];
+            FM    = strvcat(dummy(:).name);
             labels = {dummy(:).name};
         end
     end
@@ -309,13 +309,9 @@ cleanup;
             DrawFormattedText(p.ptb.w, text, 'center', 'center',p.stim.white,[],[],[],2,[]);
             t=Screen('Flip',p.ptb.w);
             Log(t,5,nInstruct);
-            %show the messages at the experimenter screen
-            fprintf('=========================================================\n');
-            fprintf('Text shown to the subject:\n');
-            fprintf('=========================================================\n');
-            fprintf(text);
-            fprintf('=========================================================\n');
-            
+            %show the messages at the experimenter screen            
+            fprintf('Text shown to the subject:\n');            
+            fprintf(text);            
         end
     end
     function [text]=GetText(nInstruct)
@@ -352,7 +348,7 @@ cleanup;
             '(weiter mit der Pfeiltaste oben)\n'];
                 
         elseif nInstruct == 3%third Instr. of the training phase.
-            text = ['Bitte sag uns was du gesehen hast! (danach weiter mit der ''Pfeiltaste oben'')'];
+            text = ['Bitte sag uns was du gesehen hast! (danach weiter mit der ''Pfeiltaste oben'')\n'];
             
         elseif nInstruct == 4%third Instr. of the training phase.
             text = ['Vielen Dank. Das waren die Probedurchgaenge.\n'...
@@ -364,7 +360,7 @@ cleanup;
                 '(''Pfeiltaste oben'' zum Start des Experiments)\n'];                   
                         
         elseif nInstruct == 11;%rating
-            text = ['Wie sicher bist Du dir auf einer Skala von 1-5?'];
+            text = ['Wie sicher bist Du dir auf einer Skala von 1-5?\n'];
                     
         elseif nInstruct == 12 %These two below are the possible responses to the question in 11
             text = {'sehr unsicher'};
@@ -447,7 +443,7 @@ cleanup;
             %loads all the stims to video memory
             for nStim = 1:p.stim.tFile
                 filename       = files(nStim,:);
-                [im , ~, ~]    = imread(filename);
+                [im , ~, ~]    = imread(deblank(filename));
                 im             = double(im);
                 if size(im,3) == 1
                     im = repmat(im,[1 1 3]);
@@ -651,6 +647,7 @@ cleanup;
     end
 
     function AskStimRating
+        fprintf('Subject is rating now\n');
         % Get the text to be show during rating                       
         message     = GetText(11);
         SliderTextL = GetText(12);
@@ -668,6 +665,8 @@ cleanup;
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %
         rate(nTrial)  = RatingSlider(rect, p.rating.division, Shuffle(1:p.rating.division,1), p.keys.increase, p.keys.decrease, p.keys.confirm, {SliderTextL{1} SliderTextR{1}},message,1);
+        fprintf('Subject Rated: %03d\n',rate(nTrial));
+        
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %Verbose the rating of the subject
@@ -729,10 +728,8 @@ cleanup;
             %slider coordinates
             slider = [ tick_x(position)+tick_size*0.1 rect(2) tick_x(position)+tick_size*0.9 rect(2)+rect(4)];
             %draw the slider
-            Screen('FillRect',p.ptb.w, p.stim.white, round(slider));
-            Screen('TextSize', p.ptb.w,p.text.fontsize*2);
-            DrawFormattedText(p.ptb.w,message, 'center', p.ptb.midpoint(2)*0.2,  p.stim.white,[],[],[],2);
-            Screen('TextSize', p.ptb.w,p.text.fontsize);
+            Screen('FillRect',p.ptb.w, p.stim.white, round(slider));            
+            DrawFormattedText(p.ptb.w,message, 'center', p.ptb.midpoint(2)*0.2,  p.stim.white,[],[],[],2);            
             t = Screen('Flip',p.ptb.w);
             Log(t,6,NaN);
         end
