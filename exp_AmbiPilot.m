@@ -1,13 +1,9 @@
-function [p]=exp_AmbiPilot(subject)
+function [p]=exp_AmbiPilot(subject,mask_method)
 %[p]=exp_AmbiPilot(subject,csp,PainThreshold,nth)
 %
 %   Experiment for showing ambigous pictures to people :D.
 %
 
-if nargin ~= 1
-    fprintf('Wrong number of inputs\n');
-    keyboard;
-end
 %% %init all the variables
 %Time Storage
 TimeEndStim               = [];
@@ -42,8 +38,8 @@ end
 %save again the parameter file
 save(p.path.path_param,'p');
 %% RUN THE EXPERIMENT PROPER
-ShowInstruction(1,1);
-ShowInstruction(2,1);
+% ShowInstruction(1,1);
+% ShowInstruction(2,1);
 PresentStimuli;
 %%
 %get the eyelink file back to this computer
@@ -104,40 +100,79 @@ cleanup;
         Screen('Flip',p.ptb.w);        
         Eyelink('Message', 'FX Onset at %d %d',fix(1),fix(2));
         WaitSecs(1.25);
-        %
-        iii = p.presentation.stim_id(nTrial);
-        p.ptb.imrect  = [ p.ptb.midpoint(1)-p.stim.size(iii,2)/2 p.ptb.midpoint(2)-p.stim.size(iii,1)/2 p.stim.size(iii,2) p.stim.size(iii,1)];
-        
-        
-        %% Draw the stimulus to the buffer
-        if ~stim_id==0
-            Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(stim_id));
-        end        
-        Screen('DrawingFinished',p.ptb.w,0);
-        
-        %% STIMULUS ONSET
-        %Here we wait only for the next pulse.
-        %The proper amount is obtained with the second call of WaitPulse
-        %below, before the onset of the fixation cross.
-        %fprintf('Will Wait for the pulse to Stim Onset\n');
-        Screen('Flip',p.ptb.w);%asap and dont clear
-        %send eyelink and ced a marker asap
+        %        
+        p.ptb.imrect  = [ p.ptb.midpoint(1)-p.stim.size(stim_id,2)/2 p.ptb.midpoint(2)-p.stim.size(stim_id,1)/2 p.stim.size(stim_id,2) p.stim.size(stim_id,1)];
+               
+        %% send eyelink the marker
         Eyelink('Message', 'Stim Onset');
         Eyelink('Message', 'SYNCTIME');
-        
-        %wait for the key press
-        [p.out.PressingTime(nTrial),~,p.out.deltaSecs(nTrial)]=KbWait([],2);
-        
+        %% Draw the stimulus to the buffer
+        keyIsDown = 0;
+        while ~keyIsDown
+            ShowStim;
+            [keyIsDown, secs, keyCode, deltaSecs] = KbCheck([]);
+            p.out.PressingTime(nTrial) = secs;
+            % wait for the key press
+%             [p.out.PressingTime(nTrial),~,p.out.deltaSecs(nTrial)]=KbWait([],2);
+        end
+        %
+        Eyelink('Message', 'KeyPressed');
         %% STIM OFF immediately after key press
         Screen('Flip',p.ptb.w);
         WaitSecs(.5);
         %send eyelink a marker
         Eyelink('Message', 'Stim Offset');
-        Eyelink('Message', 'BLANK_SCREEN');        
+        Eyelink('Message', 'BLANK_SCREEN');
         %
-        %% record some more eye data after stimulus offset.        
+        %% record some more eye data after stimulus offset.
         StopEyelinkRecording;
         
+        function ShowStim()
+            
+            if ~stim_id==0
+                %RECORD THE TIME OF THE STIMULUS!!!!!!!!!!!!!!!
+                Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(stim_id));
+            end
+            % Create a mask
+            if mask_method == 1 %pixel noise (looks like sh_t but see it urself too)
+                %simply
+                mask        = ones(p.stim.size(stim_id,1),p.stim.size(stim_id,2),4)*255;
+                mask(:,:,4) = (rand(p.stim.size(stim_id,1:2)) >.5)*255;
+            elseif mask_method == 2 %pixels noise but pixel sizes are now SIZE_OF_DOTS big.
+                number_of_dots     = 240;%how much noise
+                size_of_dots       = 40;%size of pixel noise
+                %For the mask first create a matrix with pixel noise. And
+                %enlarge this matrix to image size so that noise is more than
+                %one pixel size. Variables bla could all be more efficiently
+                %coded but well :P
+                
+                small_mask_size    = round(p.stim.size(stim_id,1:2)./size_of_dots);
+                random_coordinates = ceil([rand(number_of_dots,1)*small_mask_size(1) rand(number_of_dots,1)*small_mask_size(2)]);
+                alfa               = accumarray(random_coordinates,1,small_mask_size);%small which will be enlarged
+                alfa               = kron(alfa,ones(size_of_dots));%make dots bigger
+                alfa               = logical(alfa)*255;
+                mask               = ones(size(alfa,1),size(alfa,2),4)*128;
+                %WHY did I color the noise with 128 (gray) ?
+                %if it were black, then the black parts of the image do not
+                %get noisy. For example in this mooney picture of a women,
+                %noise operates only on white sections. That's why I made
+                %it gray. Ideally noise should simply change according to
+                %what is on the background. now how to do it?
+                
+                mask(:,:,4)        = alfa;
+            end
+            mask_tex = Screen('MakeTexture', p.ptb.w, mask);;
+            Screen('DrawTexture', p.ptb.w, mask_tex);
+            
+            Screen('DrawingFinished',p.ptb.w,0);
+            % STIMULUS ONSET
+            %Here we wait only for the next pulse.
+            %The proper amount is obtained with the second call of WaitPulse
+            %below, before the onset of the fixation cross.
+            %fprintf('Will Wait for the pulse to Stim Onset\n');
+            Screen('Flip',p.ptb.w);%asap and dont clear
+            %send eyelink and ced a marker asap
+        end
     end
     function SetParams
         
@@ -306,12 +341,11 @@ cleanup;
         
         elseif nInstruct == 2%second Instr. of the training phase.
             text = ['Du wirst gleich eine Reihe von Bildern gezeigt bekommen.\n'...
-            'Bitte druecke die ''Pfeiltaste oben'' (weiter), sobald du etwas in dem Bild erkennst,\n'...
-            'oder wenn du etwas Neues in dem Bild siehst.\n'...
+            'Bitte druecke die ''Pfeiltaste oben'' (weiter), sobald du etwas in dem Bild erkennst.\n'...
             '\n'...
-            'Nach dem Knopfdruck bleibt das Bild fuer einige Sekunden auf dem Bildschirm. Bitte sag uns im Anschluss daran, was du\n'...
-            'gesehen hast, ob du das Bild kanntest und wie klar das Dargestellte erkennbar war.\n'...
-            'Fuer die letzten beiden Fragen, benutze bitte die Tasten "rechts", "links" und die Ziffern "1-5".\n'...
+            'Bitte sag uns im Anschluss daran, was du gesehen hast,\n'...
+            'und wie sicher du dir mit deiner Erkennung bist.\n'...
+            'Fuer die letzte Frage, benutze bitte die Tasten "rechts", "links" fuer deine Antwort.\n'...
             '\n'...
             'Bevor es jedoch mit dem Experiment losgeht, werden wir zuerst ein paar Probedurchlaeufe machen.\n'...
             '\n'...
