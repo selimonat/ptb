@@ -91,9 +91,9 @@ xlimits=[50 max(t)+50];
 ylimits=[0 100];
 line(xlimits, [45 45],'color','yellow','linewidth',2,'linestyle','-')
 hold on;
-errorbar(t-10,mean1(2,ti),E1(2,ti),'bo','linewidth',2)
-errorbar(t,mean2(2,ti),E2(2,ti),'ro','linewidth',2)
-errorbar(t+10,mean3(2,ti),E3(2,ti),'ko','linewidth',2)
+errorbar(t-10,mean1(2,ti),E1(2,ti),'.','Color','blue','linewidth',2,'MarkerSize',20)
+errorbar(t,mean2(2,ti),E2(2,ti),'.','Color','red','linewidth',2,'MarkerSize',20)
+errorbar(t+10,mean3(2,ti),E3(2,ti),'k.','linewidth',2,'MarkerSize',20)
 set(gca,'XTick',[100 200 300],'XTickLabel',{'20','100','500'})
 xlim(xlimits)
 ylim(ylimits)
@@ -107,15 +107,15 @@ ti=[1 4 7];
 t=[100 200 300];
 line(xlimits, [30 30],'color','yellow','linewidth',2,'linestyle','-')
 hold on;
-errorbar(t-10,mean11(2,ti),E11(2,ti),'bo','linewidth',2)
-errorbar(t,mean22(2,ti),E22(2,ti),'ro','linewidth',2)
-errorbar(t+10,mean33(2,ti),E33(2,ti),'ko','linewidth',2)
+errorbar(t-10,mean11(2,ti),E11(2,ti),'b.','linewidth',2,'MarkerSize',20)
+errorbar(t,mean22(2,ti),E22(2,ti),'r.','linewidth',2,'MarkerSize',20)
+errorbar(t+10,mean33(2,ti),E33(2,ti),'k.','linewidth',2,'MarkerSize',20)
 set(gca,'XTick',[100 200 300],'XTickLabel',{'20','100','500'})
 xlim(xlimits)
 ylim(ylimits)
 axis square
 
-xlabel('nTtrials')
+xlabel('nTrials')
 ylabel('mean estimated beta (SD) (\pm std)')
 
 legend('generating value','PSI','PSImarg2AFC','PSImargYN','orientation','horizontal', 'location','northoutside')
@@ -171,30 +171,37 @@ set(h,'FontSize',14)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %3--- ADD FORCED ZEROS OR NOT?
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+d=load('C:\Users\onat\Dropbox\feargen_lea\EthnoMaster\simdata\diffSDs\trial_question\PSImargYN_a45_153045_20to120_merged.mat');
+d=d.d;
+a100trials_nozeros=mean(d.alpha(:,1,:,5),1);
+a100trials_nozeros_std=std(d.alpha(:,1,:,5),1);
+b100trials_nozeros=mean(d.sd(:,1,:,5),1);
+b100trials_nozeros_std=std(d.sd(:,1,:,5),1);
 
+d0=load('C:\Users\onat\Dropbox\feargen_lea\EthnoMaster\simdata\diffSDs\zeros_nozeros\d_PSImargYN0_45_153045_100tr_pluszeros_20150430_2115.mat');
+d0=d0.d;
+a100trials_zero_std=std(d0.alpha,1);
+a100trials_zero=mean(d0.alpha,1);
+b100trials_zero=mean(d0.sd,1);
+b100trials_zero_std=std(d0.sd,1);
 
-a100trials_nozeros=mean(d_nozeros.alpha(:,1,:,5),1);
-a100trials_nozeros_std=std(d_nozeros.alpha(:,1,:,5),1);
-
-a100trials_zero_std=std(d_zeros.alpha,1);
-a100trials_zero=mean(d_zeros.alpha,1);
-
-fig=figure
+fig=figure('position',[3 300 750 400]);
 
 subplot(1,2,1)
 truealpha=45
 line([80 120], [truealpha truealpha],'color','yellow','linewidth',2,'linestyle',':')
 hold on;
-errorbar([90 100 110],a100trials_nozeros,a100trials_nozeros_std,'ko','linewidth',2);
+errorbar([90 100 110],a100trials_nozeros,a100trials_nozeros_std,'k.','linewidth',2,'MarkerSize',20);
 
-errorbar([91 101 111],a100trials_zero,a100trials_zero_std,'bo','linewidth',2)
+errorbar([91 101 111],a100trials_zero,a100trials_zero_std,'b.','linewidth',2,'MarkerSize',20)
 xlim([80 120])
-%ylim([0 60])
+ylim([0 60])
 set(gca,'XTick',[90.5 100.5 110.5],'XTickLabel',{'15' '30' '45'})
 xlabel('generating noise (SD)')
 ylabel('mean estimated threshold in degrees (\pm std)')
 title('Estimation of alpha by PSImargYN')
 legend('generating value','no zeros','zeros added','orientation','horizontal','Location','best')
+axis square
 
 subplot(1,2,2)
 truebeta=[15,30,45];
@@ -202,14 +209,15 @@ for i=1:3
 line([80 120], [truebeta(i) truebeta(i)],'color','yellow','linewidth',2,'linestyle',':')
 hold on;
 end
-errorbar([90 100 110],b100trials_nozeros,b100trials_nozeros_std,'ko','linewidth',2);
+errorbar([90 100 110],b100trials_nozeros,b100trials_nozeros_std,'k.','linewidth',2,'MarkerSize',20);
 
-errorbar([91 101 111],b100trials_zero,b100trials_zero_std,'bo','linewidth',2)
+errorbar([91 101 111],b100trials_zero,b100trials_zero_std,'b.','linewidth',2,'MarkerSize',20)
 xlim([80 120])
 ylim([0 60])
 set(gca,'XTick',[90.5 100.5 110.5],'XTickLabel',{'15' '30' '45'})
 xlabel('generating noise (SD)')
 ylabel('mean estimated slope (SD) (\pm std)')
+axis square
 title('Estimation of beta by PSImargYN')
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -222,7 +230,7 @@ title('Estimation of beta by PSImargYN')
 
 
 %%%%%%SCATTERPLOT 2x2
-subjects=[6:26,28:36];
+subjects=[7,10,11:17,19:20,24:26,30,31,34:35];
 pmf=isn_getPMF(subjects,[1 5]);
 
 betaSD=10.^-(pmf.beta);
@@ -244,8 +252,8 @@ subplot(2,2,2)%CS+ beta
 plot(betaSD(:,1,1),betaSD(:,1,2),'ro','MarkerFaceColor','r');
 title('CS+ beta')
 axis square
-xlim([0 80])
-ylim([0 80])
+xlim([0 100])
+ylim([0 100])
 DrawIdentityLine(gca);
 box off
 hold on;
@@ -268,8 +276,8 @@ subplot(2,2,4)%CS- beta
 plot(betaSD(:,2,1),betaSD(:,2,2),'bo','MarkerFaceColor','b');
 xlabel(sprintf('before'))
 axis square
-xlim([0 80])
-ylim([0 80])
+xlim([0 100])
+ylim([0 100])
 DrawIdentityLine(gca);
 title('CS- beta')
 box off
@@ -366,6 +374,11 @@ ylabel('p("different")')
 axis square
 
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% 600ms version
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %FITGAUSS
 subject=6;
