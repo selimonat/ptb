@@ -4,6 +4,7 @@ project_path='C:\Users\onat\Google Drive\EthnoMaster\data\'
 subjects=[6:26,28:36];%PMF
 %subjects to exclude bc of bad fitting:
 %subexcl=6,8,9,18,21,22,23,28,29
+subjects=[7,10,11:17,19:20,24:26,30,31,34:35];
 subjects_eye=[6:26,28:36];
 %subjects slower vs faster version
 subjects_1500=[6:26,28:36];
@@ -32,10 +33,10 @@ lambda.mean=mean(pmf.lambda);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % statistical tests
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-[p_csp_alpha,h]=signtest(pmf.alpha(:,1,1),pmf.alpha(:,1,2))
-[p_csn_alpha,h]=signtest(pmf.alpha(:,2,1),pmf.alpha(:,2,2))
-[p_csp_beta,h]=signtest(pmf.beta(:,1,1),pmf.beta(:,1,2))
-[p_csn_beta,h]=signtest(pmf.beta(:,2,1),pmf.beta(:,2,2))
+[p_csp_alpha,h,stats]=signtest(pmf.alpha(:,1,1),pmf.alpha(:,1,2))
+[p_csn_alpha,h,stats]=signtest(pmf.alpha(:,2,1),pmf.alpha(:,2,2))
+[p_csp_beta,h,stats]=signtest(pmf.beta(:,1,1),pmf.beta(:,1,2))
+[p_csn_beta,h,stats]=signtest(pmf.beta(:,2,1),pmf.beta(:,2,2))
 
 [p_csp_alpha,h]=signrank(pmf.alpha(:,1,1),pmf.alpha(:,1,2))
 [p_csn_alpha,h]=signrank(pmf.alpha(:,2,1),pmf.alpha(:,2,2))
@@ -54,7 +55,7 @@ beta=[pmf.beta(:,1,1),pmf.beta(:,2,1);pmf.beta(:,1,2),pmf.beta(:,2,2)]
 
 
 %%%%%%%%%%%%%%%GAUSS%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-[o]=fearcloud_fitgauss([6:26,28:36],[3 4])
+[o]=fearcloud_fitgauss(subjects,[3 4])
 sigma_cond=o.sigma(:,1);
 sigma_test=o.sigma(:,2);
 pmf.alpha(18,:,:)=[];

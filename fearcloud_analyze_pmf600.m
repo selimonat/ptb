@@ -2,7 +2,7 @@
 
 global project_path;project_path='C:\Users\onat\Google Drive\EthnoMaster\data\'
 
-subjects=[39,42:51];
+subjects=[40,42,44,45,46,47,48,49,51];
 pmf=isn_getPMF(subjects,[1 5]);
 
 n=length(subjects);
@@ -24,7 +24,7 @@ betaSD=10.^-(pmf.beta);
 
 fig=figure('Position',[3 50 700 500]);
 subplot(2,2,1)%CS+ alpha
-plot(pmf.alpha(:,1,1),pmf.alpha(:,1,2),'ro','MarkerFaceColor','r');
+plot(pmf.alpha(:,1,1),pmf.alpha(:,1,2),'go','MarkerFaceColor','g');
 ylabel(sprintf('after'))
 axis square
 xlim([0 170])
@@ -36,7 +36,7 @@ hold on;
 plot(mean(pmf.alpha(:,1,1)),mean(pmf.alpha(:,1,2)),'k+','MarkerSize',10)
 
 subplot(2,2,2)%CS+ beta
-plot(betaSD(:,1,1),betaSD(:,1,2),'ro','MarkerFaceColor','r');
+plot(betaSD(:,1,1),betaSD(:,1,2),'go','MarkerFaceColor','g');
 title('CS+ beta')
 axis square
 xlim([0 100])
@@ -47,7 +47,7 @@ hold on;
 plot(mean(betaSD(:,1,1)),mean(betaSD(:,1,2)),'k+','MarkerSize',10)
 
 subplot(2,2,3)%CS- alpha
-plot(pmf.alpha(:,2,1),pmf.alpha(:,2,2),'bo','MarkerFaceColor','b');
+plot(pmf.alpha(:,2,1),pmf.alpha(:,2,2),'ko','MarkerFaceColor','y');
 xlim([0 170])
 ylim([0 170])
 xlabel('before')
@@ -60,7 +60,7 @@ hold on;
 plot(mean(pmf.alpha(:,2,1)),mean(pmf.alpha(:,2,2)),'k+','MarkerSize',10)
 
 subplot(2,2,4)%CS- beta
-plot(betaSD(:,2,1),betaSD(:,2,2),'bo','MarkerFaceColor','b');
+plot(betaSD(:,2,1),betaSD(:,2,2),'ko','MarkerFaceColor','y');
 xlabel(sprintf('before'))
 axis square
 xlim([0 100])
@@ -120,10 +120,10 @@ t=supertitle(['mean threshold \alpha and slope \beta, 600ms version, ' sprintf('
 set(t,'FontSize',14)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-[p_csp_alpha,h]=signtest(pmf.alpha(:,1,1),pmf.alpha(:,1,2))
-[p_csn_alpha,h]=signtest(pmf.alpha(:,2,1),pmf.alpha(:,2,2))
-[p_csp_beta,h]=signtest(pmf.beta(:,1,1),pmf.beta(:,1,2))
-[p_csn_beta,h]=signtest(pmf.beta(:,2,1),pmf.beta(:,2,2))
+[p_csp_alpha,h,stats]=signtest(pmf.alpha(:,1,1),pmf.alpha(:,1,2))
+[p_csn_alpha,h,stats]=signtest(pmf.alpha(:,2,1),pmf.alpha(:,2,2))
+[p_csp_beta,h,stats]=signtest(pmf.beta(:,1,1),pmf.beta(:,1,2))
+[p_csn_beta,h,stats]=signtest(pmf.beta(:,2,1),pmf.beta(:,2,2))
 
 [p_csp_alpha,h]=signrank(pmf.alpha(:,1,1),pmf.alpha(:,1,2))
 [p_csn_alpha,h]=signrank(pmf.alpha(:,2,1),pmf.alpha(:,2,2))
