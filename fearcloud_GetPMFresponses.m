@@ -21,8 +21,8 @@ elseif strcmp(mod,'yes')
    out=struct('yes',NaN(1,size(resp,1)),'num',NaN(1,size(resp,1)));
   for level=1:size(resp,1);
       if ~isnan(resp(level,1));
-      out(level).yes=sum(resp(level,~isnan(resp(level,:))));
-      out(level).num=length(resp(level,~isnan(resp(level,:))));
+      out.yes(level)=sum(resp(level,~isnan(resp(level,:))));
+      out.num(level)=length(resp(level,~isnan(resp(level,:))));
       end
   end
 else 
