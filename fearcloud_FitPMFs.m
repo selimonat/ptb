@@ -3,7 +3,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %fitting functions again, using PAL_FIT
-subject = 32;
+subject = 11;
 run     = 1;
 chain   = 1;
 
@@ -20,28 +20,28 @@ OutOfNum = responses.num; % number of presentations at that level
 PropCorrectData = NumPos./OutOfNum;
 % take the priors as search grid (gamma extended to .5, resolution very low
 %% for little Laptop of Lea's)
-searchGrid.alpha = 49
-searchGrid.beta = 10.^-1.07
-searchGrid.gamma = 0.36;
-searchGrid.lambda = 0.07;
+searchGrid.alpha  = 32
+searchGrid.beta   = 2
+searchGrid.gamma  = 0.1;
+searchGrid.lambda = 0.05;
 %ooor use the params that PAL gave as results
 %searchGrid = [pmf.alpha(chain) 10.^pmf.beta(chain) pmf.gamma(chain) pmf.lambda(chain)];
 paramsFree = [1 1 1 1];
-PF         = @PAL_CumulativeNormal;
+PF         = @PAL_Weibull;
 plot(StimLevels,PropCorrectData,'k.','Markersize',40);;hold on
 plot(x,PF([searchGrid.alpha searchGrid.beta searchGrid.gamma searchGrid.lambda],x),'r-','Linewidth',3);
 hold off;
 %% run the Fit!
 options             = PAL_minimize('options');
-options.MaxIter     = 10.^6;
-options.MaxFunEvals = 10.^6;
+options.MaxIter     = 10.^3;
+options.MaxFunEvals = 10.^3;
 options.Display     = 'On';
-options.ToX         = -10.^6;
-options.TolFun      = -10.^6;
+options.ToX         = -10.^3;
+options.TolFun      = -10.^3;
 
 [paramsValues LL exitflag output] = PAL_PFML_Fit(StimLevels, NumPos, OutOfNum, searchGrid, paramsFree, PF,'lapseLimits',[0 1],'guessLimits',[0 1],'searchoptions',options);
 
-%% plot the Fit
+% plot the Fit
 figure(1)
 clf
 Fit = PF(paramsValues,x);
