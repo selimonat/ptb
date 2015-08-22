@@ -8,7 +8,7 @@ function [out]=fearcloud_GetPMFresponses(sub,run,chain,mod)
 %YES gives out.yes = number of yes
 % out.num = number of trials it was asked
 global project_path
-project_path='C:\Users\onat\Google Drive\EthnoMaster\data\';
+
 
 p=isn_GetData(sub,run,'stimulation');
 p=p.p;
