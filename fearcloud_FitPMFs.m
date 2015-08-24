@@ -42,6 +42,7 @@ Fit = PF(paramsValues,StimLevelsFine);
 plot(StimLevels,PropCorrectData,'k.','Markersize',40);
 set(gca,'Fontsize',12);
 hold on;
+x          = 0:1:169;
 plot(x,...
         PF([pmf.alpha(chain) 10.^(pmf.beta(chain)) pmf.gamma(chain) pmf.lambda(chain)],x),'k','linewidth',3)
     hold on;
