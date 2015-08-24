@@ -136,7 +136,7 @@ set(t,'FontSize',14)
 [h,p_csp_beta]=ttest(pmf.beta(:,2,1),pmf.beta(:,2,2))
 
 alph=[pmf.alpha(:,1,1),pmf.alpha(:,2,1);pmf.alpha(:,1,2),pmf.alpha(:,2,2)];
-beta=[pmf.beta(:,1,1),pmf.beta(:,2,1);pmf.beta(:,1,2),pmf.beta(:,2,2)]
+beta=[pmf.beta(:,1,1),pmf.beta(:,2,1);pmf.beta(:,1,2),pmf.beta(:,2,2)];
 [p_a,table,stats]=anova2(alph,n);
 [p_b,table,stats]=anova2(beta,n);
 
