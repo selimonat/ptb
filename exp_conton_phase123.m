@@ -2,18 +2,55 @@
 %3-Nov-2015, n.herweg@uke.de
 
 %% Initialization
+%Timestamp
+fileX.(thephase{phasei}).(thepart{parti}).timestamp = datestr(now,30);
+
 %Preallocation
 thescene{n.(thephase{phasei}).(thepart{parti}).trials} = 0;
 fileX.(thephase{phasei}).(thepart{parti})(n.(thephase{phasei}).(thepart{parti}).trials,19)=0;
 
+%Counterbalance keys
+error('add eye link lab here and in other script')
+error('add keys from button box')
+switch init.hostname
+    case 'triostim1'
+        
+    case 'isnf01faf2bafa4'
+        
+        switch fileX.keycond
+            case '1'
+                key.in    = KbName('LeftArrow');
+                key.out   = KbName('DownArrow');
+                key.old   = KbName('LeftArrow');
+                key.new   = KbName('DownArrow');
+            case '2'
+                key.in    = KbName('LeftArrow');
+                key.out   = KbName('DownArrow');
+                key.old   = KbName('DownArrow');
+                key.new   = KbName('LeftArrow');
+            case '3'
+                key.in    = KbName('DownArrow');
+                key.out   = KbName('LeftArrow');
+                key.old   = KbName('DownArrow');
+                key.new   = KbName('LeftArrow');
+            case '4'
+                key.in    = KbName('DownArrow');
+                key.out   = KbName('LeftArrow');
+                key.old   = KbName('LeftArrow');
+                key.new   = KbName('DownArrow');
+        end
+        key.space = KbName('Space');
+        key.enter = KbName('Return');
+end
+
 %Load images for first block
 for pici = 1:n.(thephase{phasei}).(thepart{parti}).t2b
     if fileX.(thephase{phasei}).(thepart{parti})(pici,6)<10
-        thescene{pici} = uint8(imread(fullfile(thepath.(['pics_',thecat{fileX.(thephase{phasei}).(thepart{parti})(pici,2)}]),['00',num2str(fileX.(thephase{phasei}).(thepart{parti})(pici,6)),'_',thecat{fileX.(thephase{phasei}).(thepart{parti})(pici,2)},'.bmp'])));
+        thescene{pici} = uint8(imread(fullfile(init.thepath.(['pics_',thecat{fileX.(thephase{phasei}).(thepart{parti})(pici,2)}]),['00',num2str(fileX.(thephase{phasei}).(thepart{parti})(pici,6)),'_',thecat{fileX.(thephase{phasei}).(thepart{parti})(pici,2)},'.bmp'])));
     elseif fileX.(thephase{phasei}).(thepart{parti})(pici,6)>9 && fileX.(thephase{phasei}).(thepart{parti})(pici,6)<100
-        thescene{pici} = uint8(imread(fullfile(thepath.(['pics_',thecat{fileX.(thephase{phasei}).(thepart{parti})(pici,2)}]),['0',num2str(fileX.(thephase{phasei}).(thepart{parti})(pici,6)),'_',thecat{fileX.(thephase{phasei}).(thepart{parti})(pici,2)},'.bmp'])));
+        thescene{pici} = uint8(imread(fullfile(init.thepath.(['pics_',thecat{fileX.(thephase{phasei}).(thepart{parti})(pici,2)}]),['0',num2str(fileX.(thephase{phasei}).(thepart{parti})(pici,6)),'_',thecat{fileX.(thephase{phasei}).(thepart{parti})(pici,2)},'.bmp'])));
     elseif fileX.(thephase{phasei}).(thepart{parti})(pici,6)>99
-        thescene{pici} = uint8(imread(fullfile(thepath.(['pics_',thecat{fileX.(thephase{phasei}).(thepart{parti})(pici,2)}]),[num2str(fileX.(thephase{phasei}).(thepart{parti})(pici,6)),'_',thecat{fileX.(thephase{phasei}).(thepart{parti})(pici,2)},'.bmp'])));
+        thescene{pici} = uint8(imread(fullfile(init.thepath.(['pics_',thecat{fileX.(thephase{phasei}).(thepart{parti})(pici,2)}]),[num2str(fileX.(thephase{phasei}).(thepart{parti})(pici,6)),'_',thecat{fileX.(thephase{phasei}).(thepart{parti})(pici,2)},'.bmp'])));
     end
 end
 
@@ -35,7 +72,7 @@ thecover = zeros(size(thescene{1}))+0.5;
 
 %% Instruction
 for k = inst2load.(thephase{phasei}).(thepart{parti})
-    insttexture = Screen('MakeTexture',init.expWin,uint8(imread(fullfile(thepath.inst,['keycond',fileX.keycond],['Folie', num2str(k), '.png']))));
+    insttexture = Screen('MakeTexture',init.expWin,uint8(imread(fullfile(init.thepath.inst,['keycond',fileX.keycond],['Folie', num2str(k), '.png']))));
     Screen('DrawTexture',init.expWin,insttexture);
     Screen('Flip', init.expWin);
     Screen('Close')
@@ -82,16 +119,16 @@ for trial=1:n.(thephase{phasei}).(thepart{parti}).trials
         %Load images for next block (timing & memory issue)
         for pici = trial:trial-1+n.(thephase{phasei}).(thepart{parti}).t2b
             if fileX.(thephase{phasei}).(thepart{parti})(pici,6)<10
-                thescene{pici} = uint8(imread(fullfile(thepath.(['pics_',thecat{fileX.(thephase{phasei}).(thepart{parti})(pici,2)}]),['00',num2str(fileX.(thephase{phasei}).(thepart{parti})(pici,6)),'_',thecat{fileX.(thephase{phasei}).(thepart{parti})(pici,2)},'.bmp'])));
+                thescene{pici} = uint8(imread(fullfile(init.thepath.(['pics_',thecat{fileX.(thephase{phasei}).(thepart{parti})(pici,2)}]),['00',num2str(fileX.(thephase{phasei}).(thepart{parti})(pici,6)),'_',thecat{fileX.(thephase{phasei}).(thepart{parti})(pici,2)},'.bmp'])));
             elseif fileX.(thephase{phasei}).(thepart{parti})(pici,6)>9 && fileX.(thephase{phasei}).(thepart{parti})(pici,6)<100
-                thescene{pici} = uint8(imread(fullfile(thepath.(['pics_',thecat{fileX.(thephase{phasei}).(thepart{parti})(pici,2)}]),['0',num2str(fileX.(thephase{phasei}).(thepart{parti})(pici,6)),'_',thecat{fileX.(thephase{phasei}).(thepart{parti})(pici,2)},'.bmp'])));
+                thescene{pici} = uint8(imread(fullfile(init.thepath.(['pics_',thecat{fileX.(thephase{phasei}).(thepart{parti})(pici,2)}]),['0',num2str(fileX.(thephase{phasei}).(thepart{parti})(pici,6)),'_',thecat{fileX.(thephase{phasei}).(thepart{parti})(pici,2)},'.bmp'])));
             elseif fileX.(thephase{phasei}).(thepart{parti})(pici,6)>99
-                thescene{pici} = uint8(imread(fullfile(thepath.(['pics_',thecat{fileX.(thephase{phasei}).(thepart{parti})(pici,2)}]),[num2str(fileX.(thephase{phasei}).(thepart{parti})(pici,6)),'_',thecat{fileX.(thephase{phasei}).(thepart{parti})(pici,2)},'.bmp'])));
+                thescene{pici} = uint8(imread(fullfile(init.thepath.(['pics_',thecat{fileX.(thephase{phasei}).(thepart{parti})(pici,2)}]),[num2str(fileX.(thephase{phasei}).(thepart{parti})(pici,6)),'_',thecat{fileX.(thephase{phasei}).(thepart{parti})(pici,2)},'.bmp'])));
             end
         end
         
         Screen('DrawText', init.expWin, texttodraw{2,1},texttodraw{2,2},texttodraw{2,3}, [1 1 1]);
-        save(fullfile(thepath.results,fileX.fileName),'fileX');
+        save(fullfile(init.thepath.results,fileX.fileName),'fileX');
         Screen('Flip', init.expWin,fileX.(thephase{phasei}).(thepart{parti})(trial,11)+37-init.slack);
         Screen('Close')
         
@@ -102,15 +139,15 @@ for trial=1:n.(thephase{phasei}).(thepart{parti}).trials
     end
     
     %Instruction
-    if phasei == 2 && rem(trial,n.(thephase{phasei}).(thepart{parti}).tpb)==1 %if this is the first trial of a block in phase 2
+    if phasei == 2 && rem(trial,n.(thephase{phasei}).(thepart{parti}).tpb)==1 %if this is the first trial of a block in phase 2 show instruction for the next block
         
-        insttexture = Screen('MakeTexture',init.expWin,uint8(imread(fullfile(thepath.inst,['keycond',fileX.keycond],['Folie',num2str((9+fileX.(thephase{phasei}).(thepart{parti})(trial,4))),'.png']))));%4 encret 1 = enc; 2 = ret
+        insttexture = Screen('MakeTexture',init.expWin,uint8(imread(fullfile(init.thepath.inst,['keycond',fileX.keycond],['Folie',num2str((9+fileX.(thephase{phasei}).(thepart{parti})(trial,4))),'.png']))));%4 encret 1 = enc; 2 = ret
         Screen('DrawTexture',init.expWin,insttexture);
         fileX.(thephase{phasei}).(thepart{parti})(trial,12) = Screen('Flip', init.expWin, t_fix+time.(thephase{phasei}).fix-init.slack);%t_instr
         Screen('Close')
         
         clear t_fix
-        
+                  
         fixcross = Screen('MakeTexture',init.expWin,FixCr);
         Screen('DrawTexture',init.expWin,fixcross);
         t_fix = Screen('Flip', init.expWin,fileX.(thephase{phasei}).(thepart{parti})(trial,12)+3-init.slack);
@@ -127,7 +164,7 @@ for trial=1:n.(thephase{phasei}).(thepart{parti}).trials
     %Collect input
     if phasei ~= 3
         while GetSecs<sceneOnset+time.(thephase{phasei}).pic
-            [keyIsDown, tKeyDown, keyCode]=KbCheck;
+            [keyIsDown, tKeyDown, keyCode]=KbCheck(init.device);
             if keyIsDown
                 break
             end
@@ -162,7 +199,7 @@ for trial=1:n.(thephase{phasei}).(thepart{parti}).trials
     %If necessary go on collecting input
     if phasei ~= 3 && keyIsDown == 0  && time.(thephase{phasei}).pic<time.(thephase{phasei}).resp %if no key has been pressed within pic presentation and response period is longer than pic presentation
         while GetSecs<sceneOnset+time.(thephase{phasei}).resp
-            [keyIsDown, tKeyDown, keyCode]=KbCheck;
+            [keyIsDown, tKeyDown, keyCode]=KbCheck(init.device);
             if keyIsDown
                 break
             end
@@ -216,20 +253,20 @@ for trial=1:n.(thephase{phasei}).(thepart{parti}).trials
         fileX.(thephase{phasei}).(thepart{parti})(trial,8)=888;%two buttons
     end
     
-    clearvars -except fileX FixCr init inst2load key n parti phasei relnew t_fix thepath thecat thecond thepart thescene time trial thephase texttodraw thecover
+    clearvars -except fileX FixCr init inst2load key n parti phasei relnew t_fix thecat thecond thepart thescene time trial thephase texttodraw thecover
     thescene{trial}=[];
 end
 
 %% Finish this phase
-save(fullfile(thepath.results,fileX.fileName),'fileX');
+save(fullfile(init.thepath.results,fileX.fileName),'fileX');
 
 Screen('Flip', init.expWin);
 if parti == 1;
     RestrictKeysForKbCheck(KbName('c'));
-    insttexture = Screen('MakeTexture',init.expWin,uint8(imread(fullfile(thepath.inst,['keycond',fileX.keycond],'Folie12.png'))));
+    insttexture = Screen('MakeTexture',init.expWin,uint8(imread(fullfile(init.thepath.inst,['keycond',fileX.keycond],'Folie12.png'))));
 else
     RestrictKeysForKbCheck(KbName('m'));
-    insttexture = Screen('MakeTexture',init.expWin,uint8(imread(fullfile(thepath.inst,['keycond',fileX.keycond],'Folie13.png'))));
+    insttexture = Screen('MakeTexture',init.expWin,uint8(imread(fullfile(init.thepath.inst,['keycond',fileX.keycond],'Folie13.png'))));
 end
 Screen('DrawTexture',init.expWin,insttexture);
 Screen('Flip', init.expWin);
@@ -238,4 +275,4 @@ Screen('Close')
 KbWait([], 2);
 RestrictKeysForKbCheck([]);
 
-clearvars -except fileX FixCr init inst2load key n parti phasei relnew thecat thecond thepart thepath time thephase
+clearvars -except fileX FixCr init inst2load key n parti phasei relnew thecat thecond thepart time thephase

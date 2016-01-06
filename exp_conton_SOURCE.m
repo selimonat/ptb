@@ -1,11 +1,16 @@
 
 %Contextual Modulation of old/new effects%
-%3-Nov-2015, n.herweg@uke.de
+%5-Jan-2016, n.herweg@uke.de
 
 %% CLEAN UP
 clear all;close all;clc;
 PsychDefaultSetup(2);
 sca;
+
+init       = [];
+init.debug = 1; %debug mode = 1; testing = 0
+
+error('adjust jitter, transition probabilities, pause between blocks, power!')
 
 %seed random number generator based on the current time
 rng('shuffle');
@@ -33,7 +38,7 @@ n.p1.train.t2b      = n.p1.train.trials;
 %Phase 2: Interleaved encoding/retrieval
 time.p2.pic         = time.p1.pic;
 time.p2.fix         = 2;
-time.p2.resp        = time.p2.fix+time.p2.pic;
+time.p2.resp        = time.p2.fix+time.p2.pic-0.2;%TBD 200ms to swicht off and on eyelink
 
 relnew.p2           = 1;%amount of new pictures relative to old ones
 
@@ -77,7 +82,6 @@ n.p3.train.t2b      = n.p3.train.trials;
 %General
 n.pics.total = n.p1.test.pics.new + n.p1.test.pics.targ + n.p2.test.pics.new + n.p3.test.pics.new + n.p1.train.pics.new + n.p2.train.pics.new + n.p3.train.pics.new;
 
-
 inst2load.p1.train = [1,2];
 inst2load.p1.test = 3;
 inst2load.p2.train = [4,5];
@@ -99,14 +103,32 @@ thephase{2} = 'p2';
 thephase{3} = 'p3';
 
 %specify project path
-thepath.project = 'C:\USER\herweg\pilot';
+[~, hostname] = system('hostname');
+init.hostname                    = deblank(hostname);
 
-thepath.pics_inn=[thepath.project '\pics\inn_color\mean1275RGB'];
-thepath.pics_out=[thepath.project '\pics\out_color\mean1275RGB'];
-thepath.results=[thepath.project '\data'];
-thepath.inst= [thepath.project '\experiment\instructions'];
-thepath.scripts=[thepath.project '\experiment'];
-addpath(fullfile(thepath.project,'experiment\functions'));
+switch init.hostname
+    case 'triostim1'
+    init.thepath.project       = 'C:\USER\herweg\07_conton\MR';
+    init.debug = 0;
+    case 'isnf01faf2bafa4'
+    init.thepath.project       = 'C:\Users\herweg\Documents\_Projekte\07_conton\EL';
+    case
+    error('add eyetracking lab name here')
+    init.thepath.project       = 'C:\USER\herweg\07_conton\EL';
+end
+
+init.thepath.pics_inn=[init.thepath.project '\pics\inn_color\mean1275RGB'];
+init.thepath.pics_out=[init.thepath.project '\pics\out_color\mean1275RGB'];
+init.thepath.results=[init.thepath.project '\data'];
+init.thepath.inst= [init.thepath.project '\experiment\instructions'];
+init.thepath.scripts=[init.thepath.project '\experiment'];
+addpath(fullfile(init.thepath.project,'experiment\functions'));
+addpath('C:\Toolboxen\io_comunication');
+
+%specify MR parameters
+init.mr.ndummy  = 5;%TBD
+init.mr.noffset = 5;
+init.mr.tr      = 2;
 
 %% LOAD/CREATE FILEX
 %enter subject ID 
@@ -114,7 +136,7 @@ subID    = input('Enter subject ID: ','s');
 fileName = ['CONTON_' num2str(subID) '.mat'];
 
 %check if fileX already exists and warn, if overwriting is confirmed load
-if exist(fullfile(thepath.results,fileName),'file')
+if exist(fullfile(init.thepath.results,fileName),'file')
     
     resp=input(['The file ' fileName ' already exists. Do you want to overwrite it? [Type ok to overwrite]'], 's');
     
@@ -123,7 +145,7 @@ if exist(fullfile(thepath.results,fileName),'file')
         return
     end
     
-    load(fullfile(thepath.results,fileName)); %Loads the .m-file containing the subject's data.
+    load(fullfile(init.thepath.results,fileName)); %Loads the .m-file containing the subject's data.
 else
     
     fileX.subID    = subID;
@@ -251,46 +273,27 @@ else
         clear sc
     end
     
-    clearvars -except fileX key n thepart thepath relnew thecat thecond time thephase inst2load
-    save(fullfile(thepath.results,fileX.fileName),'fileX');
+    clearvars -except fileX n thepart relnew thecat thecond time thephase inst2load init
+    save(fullfile(init.thepath.results,fileX.fileName),'fileX');
 end
 
 %Enter session number
 phasei  = input('Enter experimental phase (1, 2, or 3): ');
 parti = input('Enter subpart (1 for training, 2 for testing): ');
 
-%Counterbalance keys
-switch fileX.keycond
-    case '1'
-    key.in    = KbName('LeftArrow');
-    key.out   = KbName('DownArrow');
-    key.old   = KbName('LeftArrow');
-    key.new   = KbName('DownArrow');
-    case '2'
-    key.in    = KbName('LeftArrow');
-    key.out   = KbName('DownArrow');
-    key.old   = KbName('DownArrow');
-    key.new   = KbName('LeftArrow');
-    case '3'
-    key.in    = KbName('DownArrow');
-    key.out   = KbName('LeftArrow');
-    key.old   = KbName('DownArrow');
-    key.new   = KbName('LeftArrow');
-    case '4'
-    key.in    = KbName('DownArrow');
-    key.out   = KbName('LeftArrow');
-    key.old   = KbName('LeftArrow');
-    key.new   = KbName('DownArrow');
-end
-key.space = KbName('Space');
-key.enter = KbName('Return');
-
 %% INITIALIZE PSYCHTOOLBOX
 % Perform standard setup
 init.screens      = Screen('Screens');
 init.screenNumber = max(init.screens);%The highest display number is a best guess about where you want the stimulus displayed
-KbCheck;
-%PsychDebugWindowConfiguration([],0.7)%transparent window, comment for testing!
+if init.debug
+    PsychDebugWindowConfiguration([],0.7)
+else HideCursor;
+end
+if strcmp(init.hostname,'triostim1')
+    error('Why do I have to do this?')
+    init.oldres = Screen('resolution',init.screenNumber,1280,960);
+end
+            
 try
     [init.expWin,init.rect] = PsychImaging('OpenWindow',init.screenNumber,[0.5 0.5 0.5]);%open onscreen Window
 catch
@@ -301,17 +304,43 @@ Screen('TextFont', init.expWin, 'Helvetica');
 init.refresh = Screen('GetFlipInterval', init.expWin);
 init.slack   = init.refresh/2;
 [init.mx, init.my] = RectCenter(init.rect);
-HideCursor;%get rid of the mouse cursor, uncomment for testing!
+init.device = -1;%query all keyboard devices and report their merged state
+
+%Load mex files now to not do it in the trial loop
+KbCheck(init.device);
+KbWait;
+GetSecs;
 
 %Fixation cross
 FixCr=ones(20,20)*0.5;
 FixCr(10:11,:)=1;FixCr(:,10:11)=1;
 
+%% INITIALIZE EYELINK
+
+error('Do I need the max priority setting?')
+
+error('add timing for eye tracking recording')
+
+init.el.recmode = 1;%1 = no EL connected, dummy mode; 0 = EL connected
+init.el.el = EyelinkInitDefaults(init.expWin);
+if ~EyelinkInit(init.el.recmode,1);%enable callback = 1 is default; if initialization does not work
+error('Initialization not successful')
+end
+[init.el.v,init.el.vs]=Eyelink('GetTrackerVersion');
+
+Eyelink('Openfile',[fileX.fileName(8:end-3),'edf']);
+  
+EyelinkDoTrackerSetup(init.el.el);
+
+Eyelink('StartRecording');
+
+
 %% START SESSIONS
 for numsession=1:6-((phasei*2)+parti-3)
+    error('Make script stop after first and second part and do eyelink initialization in second part only')
     DrawFormattedText(init.expWin,'Laden...','center','center',[1 1 1]);
     Screen('Flip',init.expWin);
-    cd (thepath.scripts);
+    cd (init.thepath.scripts);
     phase123
     if parti == 2
         phasei = phasei+1;
@@ -319,7 +348,9 @@ for numsession=1:6-((phasei*2)+parti-3)
     parti = 2/parti;
 end
 
-save(fullfile(thepath.results,fileX.fileName),'fileX');
+save(fullfile(init.thepath.results,fileX.fileName),'fileX');
+save(fullfile(init.thepath.results,[fileX.fileName,'_init']),'init');
+error('Adapt script so that init gets saved earlier! DoDriftCorrection?')
 RestrictKeysForKbCheck(27);%press escape to leave final screen
 KbWait([], 2);
 RestrictKeysForKbCheck([]);
