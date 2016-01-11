@@ -1,6 +1,8 @@
 function [t_pulse,value]=WaitPulseStrictlyAfterNow(port,n)
 %[t_pulse,value]=WaitPulseStrictlyAfterNow(port,n)
 %
+%   OBSOLETE (see WaitPulse.m)
+%
 %This function waits for the Nth upcoming pulse. If N=1, it will wait for
 %the very next pulse to arrive. 1 MEANS NEXT PULSE. So if you want to wait
 %for 6 full dummy scans, you should use N = 7 to be sure that at least 6

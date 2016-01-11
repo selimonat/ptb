@@ -1,5 +1,8 @@
 function [t_pulse,value]=WaitForPulseZero(port)
 %[t_pulse,value]=WaitForPulseZero(port,n)
+%
+% OBSOLETE. Since the arrival of the Current Design system, pulses are
+% treated as key presses. 
 
 
 
