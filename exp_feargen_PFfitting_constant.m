@@ -7,8 +7,7 @@ function [p]=exp_feargen_PFfitting_constant(subject,phase,csp_degree)
 % viewing)
 simulation_mode = 1;
 fixjump         = 1;
-%ttrials per chain
-numtrials = 10;
+
 
 ListenChar(2);%disable pressed keys to be spitted around
 commandwindow;
@@ -45,6 +44,7 @@ tt = 0;
 %trialID is counting every single face (2 per Trial_YN), need that for
 %Eyelink
 trialID = 0;
+
 SetupLog;
 
 ShowInstruction(1);
@@ -489,17 +489,32 @@ movefile(p.path.subject,p.path.finalsubject);
 
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %Set up Constant Stimuli procedure
-        csn_shift   = [0 180];
-        tchain = 2;
-        interval = 90;
-        tsteps = 360./interval - 1;
-        rep    = floor(numtrials./tsteps);
+        csn_shift               = [0 180];
+        tchain                  = 2;
+        interval = 22.5;
+        numtrials = 100;
+               
+        tsteps = 360./interval-1;
+        rep    = floor(numtrials./(tsteps+1));%+1 so that zero can be doubled...
         steps  = [repmat(0:interval:180-interval,1,rep) repmat(0:interval:180-interval,1,rep)*-1];
-        steps  = [steps(:); zeros(numtrials-length(steps(:)),1)];
+        
         for n = 1:tchain
             x(:,n)      = Shuffle(steps);
         end
-
+        fprintf('This is the distribution of stimuli we will use:\n')
+        histi = histc(x,unique(x));
+        uniquex = unique(x);
+        for l = 1:length(unique(x))
+        fprintf('Level %g: %02d repetitions. \n',uniquex(l,1),histi(l,1))
+        end
+        fprintf('---------------------------\nTotal trials: %03d per chain.\n',sum(histi(:,1)))
+        %store everything in p
+        p.psi.settings.x = x;
+        p.psi.settings.interval = interval;
+        p.psi.settings.numtrials_chain = length(x(:,1));
+        p.psi.settings.tsteps = tsteps;
+        p.psi.settings.rep    = rep;
+        p.psi.settings.uniquex = unique(x);
         %Save the stuff
         save(p.path.path_param,'p');
         %
@@ -681,9 +696,9 @@ movefile(p.path.subject,p.path.finalsubject);
         p.psi.log.x          = NaN(tchain,numtrials);
         p.psi.log.refface    = NaN(tchain,numtrials);
         p.psi.log.testface   = NaN(tchain,numtrials);
-        
         p.psi.log.response   = NaN(tchain,numtrials);
-        p.psi.log.xrounded   = NaN(p.stim.tFace/tchain+1,numtrials,tchain);
+%         p.psi.log.xrounded   = NaN(p.stim.tFace/tchain+1,numtrials,tchain);
+        p.psi.log.xrounded   = NaN(length(unique(x)),numtrials,tchain);
         p.psi.log.sdt        = NaN(tchain,numtrials);  
         p.psi.log.trial_counter  = zeros(p.stim.tFace/tchain+1,tchain);
     end
@@ -781,7 +796,7 @@ function [t]=StartEyelinkRecording(trialID,phase,cc,tt,current_chain,isref,file,
         Log(t,8,NaN);
 end
 
-function [t]=StopEyelinkRecording
+function [t] = StopEyelinkRecording
         
         Eyelink('Message', 'Stim Offset');            
         Eyelink('Message', 'BLANK_SCREEN');
