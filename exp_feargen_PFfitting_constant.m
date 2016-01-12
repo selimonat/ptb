@@ -7,7 +7,8 @@ function [p]=exp_feargen_PFfitting_constant(subject,phase,csp_degree)
 % viewing)
 simulation_mode = 1;
 fixjump         = 1;
-
+% make a break every ....th Trial
+breakpoint      = 50;
 
 ListenChar(2);%disable pressed keys to be spitted around
 commandwindow;
@@ -30,13 +31,9 @@ WaitSecs(2);
 if strcmp(p.hostname,'triostim1') || strcmp(p.hostname,'etpc');
      CalibrateEL;
 end
-
-%save again the parameter file
+SetupLog;
+%save the parameter file
 save(p.path.path_param,'p');
-
-% make a break every ....th Trial
-breakpoint=50;
-
 
 % counter for within chain trials (cc) and global trials (tt)
 cc = zeros(1,tchain);
@@ -44,16 +41,17 @@ tt = 0;
 %trialID is counting every single face (2 per Trial_YN), need that for
 %Eyelink
 trialID = 0;
-
-SetupLog;
-
 ShowInstruction(1);
 
 STOP = 0;
 while ~STOP
-  chains = 1:tchain;
-  current_chain = randsample(chains(cc~=numtrials),[1 1]);
-  if tt~=tchain*numtrials
+  chains = find(cc<p.psi.settings.numtrials_chain);
+  if length(chains) == 1
+      current_chain = chains;
+  elseif length(chains) >1
+      current_chain = randsample(chains,1);
+  end
+  if tt~=tchain*p.psi.settings.numtrials_chain
       tt=tt+1;
       % enter in break loop
       if (tt~=1 && mod(tt,breakpoint)==1 && simulation_mode==0);
@@ -62,20 +60,20 @@ while ~STOP
           CalibrateEL;
       end
       cc(current_chain)=cc(current_chain)+1;
-      fprintf('Chain %4.2f , Chain trial %03d/%03d...',current_chain,cc(current_chain),numtrials)
+      fprintf('Chain %4.2f , Chain trial %03d/%03d...',current_chain,cc(current_chain),p.psi.settings.numtrials_chain)
       
       %Present trial here at stimulus intensity x and collect
       %response
       fprintf('x is now %4.2f \n',x(cc(current_chain),current_chain))
       test      = x(cc(current_chain),current_chain) + csn_shift(current_chain) + csp_degree;
-      dummy = test;
+      dummy     = test;
       test      = mod(test,360);
       % the reference is csp or csn
       ref       = csn_shift(current_chain) + csp_degree;
       ref       = mod(ref,360);
       
       % start Trial
-      fprintf('Starting Trial %03d/%03d.\n',tt,tchain*numtrials)
+      fprintf('Starting Trial %03d/%03d.\n',tt,tchain*p.psi.settings.numtrials_chain)
       
       [test_face, ref_face, signal,trialID] = Trial_YN(trialID,ref,test,p.stim.tFace,tt);
       
@@ -114,7 +112,7 @@ while ~STOP
           
       else
           true_a = 45;
-          true_s = 10;
+          true_s = 30;
           true_g = 0.2;
           true_l = 0.02;
           response = ObserverResponseFunction(@PAL_CumulativeNormal,true_a,1/true_s,true_g,true_l,abs(x(cc(current_chain),current_chain)));
@@ -122,12 +120,12 @@ while ~STOP
       end
       
       % store everything in the Log
-      row                                     = round(abs(x(cc(current_chain),current_chain))/p.stim.delta+1);
+      row                                     = find(unique(x)==x(cc(current_chain),current_chain));
       p.psi.log.trial_counter(row,current_chain)    = p.psi.log.trial_counter(row,current_chain) + 1;
       p.psi.log.xrounded(row,p.psi.log.trial_counter(row,current_chain),current_chain) = response;
       SetLog;
       %iteration control
-      STOP = sum(cc == numtrials) == tchain;
+      STOP = sum(cc >= p.psi.settings.numtrials_chain) == tchain;
   end
   %final save of parameter-/logfile
   save(p.path.path_param,'p');
@@ -147,8 +145,12 @@ StopEyelink(p.path.edf);
 cleanup;
 %move the folder to appropriate location
 movefile(p.path.subject,p.path.finalsubject);
-
-    
+subplot(2,1,1)
+errorbar(p.psi.settings.uniquex,nanmean(p.psi.log.xrounded(:,:,1),2),nanstd(p.psi.log.xrounded(:,:,1),0,2),'b.','MarkerSize',20)
+title('CSP chain')
+subplot(2,1,2)
+errorbar(p.psi.settings.uniquex,nanmean(p.psi.log.xrounded(:,:,2),2),nanstd(p.psi.log.xrounded(:,:,2),0,2),'r.','MarkerSize',20)
+title('CSN chain')
 
     function  [test_face,ref_face,signal,trialID] = Trial_YN(trialID,ref_stim,test_stim,last_face_of_circle,tt)
         Screen('Textsize', p.ptb.w,p.text.fixsize);
@@ -211,86 +213,87 @@ movefile(p.path.subject,p.path.finalsubject);
             onsets = [onsets onsets(end)+p.duration.stim];%stim2 offset
         end
         
-        %fixation cross 1
-        FixCross = [fix(1,1)-1,fix(1,2)-20,fix(1,1)+1,fix(1,2)+20;fix(1,1)-20,fix(1,2)-1,fix(1,1)+20,fix(1,2)+1];
-        Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');
-        Eyelink('Message', 'FX Onset at %d %d',fix(1,1),fix(1,2));
-        Screen('Flip',p.ptb.w,onsets(1),0);
-        StartEyelinkRecording(trialID,phase,cc(current_chain),tt,current_chain,isref(1),trial(1),delta_ref(1),delta_csp(1),abs_FGangle(1),fix(1,1),fix(1,2));
-        %face trial(1)
-        Screen('DrawTexture',p.ptb.w,p.ptb.stim_sprites(trial(1)));
-        Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');
-        Screen('Flip',p.ptb.w,onsets(2),0);
-        Eyelink('Message', 'Stim Onset');
-        Eyelink('Message', 'SYNCTIME');
-        %fixjump trial(1)
-        FixCross = [fix(2,1)-1,fix(2,2)-20,fix(2,1)+1,fix(2,2)+20;fix(2,1)-20,fix(2,2)-1,fix(2,1)+20,fix(2,2)+1];
-        Screen('DrawTexture',p.ptb.w,p.ptb.stim_sprites(trial(1)));
-        Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');
-        Screen('Flip',p.ptb.w,onsets(3),0);
-        while GetSecs<onsets(4)
+        if fixjump ==1
+            %fixation cross 1
+            FixCross = [fix(1,1)-1,fix(1,2)-20,fix(1,1)+1,fix(1,2)+20;fix(1,1)-20,fix(1,2)-1,fix(1,1)+20,fix(1,2)+1];
+            Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');
+            Eyelink('Message', 'FX Onset at %d %d',fix(1,1),fix(1,2));
+            Screen('Flip',p.ptb.w,onsets(1),0);
+            StartEyelinkRecording(trialID,phase,cc(current_chain),tt,current_chain,isref(1),trial(1),delta_ref(1),delta_csp(1),abs_FGangle(1),fix(1,1),fix(1,2));
+            %face trial(1)
+            Screen('DrawTexture',p.ptb.w,p.ptb.stim_sprites(trial(1)));
+            Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');
+            Screen('Flip',p.ptb.w,onsets(2),0);
+            Eyelink('Message', 'Stim Onset');
+            Eyelink('Message', 'SYNCTIME');
+            %fixjump trial(1)
+            FixCross = [fix(2,1)-1,fix(2,2)-20,fix(2,1)+1,fix(2,2)+20;fix(2,1)-20,fix(2,2)-1,fix(2,1)+20,fix(2,2)+1];
+            Screen('DrawTexture',p.ptb.w,p.ptb.stim_sprites(trial(1)));
+            Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');
+            Screen('Flip',p.ptb.w,onsets(3),0);
+            while GetSecs<onsets(4)
+            end
+            Screen('Flip',p.ptb.w,onsets(4),0);
+            StopEyelinkRecording;
+            %second face of the trial
+            trialID=trialID+1;
+            %fixation cross 2
+            FixCross = [fix(1,1)-1,fix(1,2)-20,fix(1,1)+1,fix(1,2)+20;fix(1,1)-20,fix(1,2)-1,fix(1,1)+20,fix(1,2)+1];
+            Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');
+            Eyelink('Message', 'FX Onset at %d %d',fix(1,1),fix(1,2));
+            Screen('Flip',p.ptb.w,onsets(5),0);
+            StartEyelinkRecording(trialID,phase,cc(current_chain),tt,current_chain,isref(2),trial(2),delta_ref(2),delta_csp(2),abs_FGangle(2),fix(1,1),fix(1,2));
+            %face trial(1)
+            Screen('DrawTexture',p.ptb.w,p.ptb.stim_sprites(trial(2)));
+            Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');
+            Screen('Flip',p.ptb.w,onsets(6),0);
+            Eyelink('Message', 'Stim Onset');
+            Eyelink('Message', 'SYNCTIME');
+            %fixjump trial(1)
+            FixCross = [fix(2,1)-1,fix(2,2)-20,fix(2,1)+1,fix(2,2)+20;fix(2,1)-20,fix(2,2)-1,fix(2,1)+20,fix(2,2)+1];
+            Screen('DrawTexture',p.ptb.w,p.ptb.stim_sprites(trial(2)));
+            Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');
+            Screen('Flip',p.ptb.w,onsets(7),0);
+            while GetSecs<onsets(8)
+            end
+            Screen('Flip',p.ptb.w,onsets(8),0);
+            StopEyelinkRecording;
+            
+        elseif fixjump ==0;
+            %fixation cross 1
+            FixCross = [fix(1)-1,fix(2)-20,fix(1)+1,fix(2)+20;fix(1)-20,fix(2)-1,fix(1)+20,fix(2)+1];
+            Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');
+            Eyelink('Message', 'FX Onset at %d %d',fix(1),fix(2));
+            Screen('Flip',p.ptb.w,onsets(1),0);
+            StartEyelinkRecording(trialID,phase,cc(current_chain),tt,current_chain,isref(1),trial(1),delta_ref(1),delta_csp(1),abs_FGangle(1),fix(1),fix(2));
+            %face trial(1)
+            Screen('DrawTexture',p.ptb.w,p.ptb.stim_sprites(trial(1)));
+            Screen('Flip',p.ptb.w,onsets(2),0);
+            Eyelink('Message', 'Stim Onset');
+            Eyelink('Message', 'SYNCTIME');
+            while GetSecs < onsets(3)
+            end
+            Screen('Flip',p.ptb.w,onsets(3),0);
+            StopEyelinkRecording;
+            %second face of the trial
+            trialID=trialID+1;
+            %fixation cross 2
+            FixCross = [fix(3)-1,fix(4)-20,fix(3)+1,fix(4)+20;fix(3)-20,fix(4)-1,fix(3)+20,fix(4)+1];
+            Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');
+            Eyelink('Message', 'FX Onset at %d %d',fix(3),fix(4));
+            Screen('Flip',p.ptb.w,onsets(4),0);
+            StartEyelinkRecording(trialID,phase,cc(current_chain),tt,current_chain,isref(2),trial(2),delta_ref(2),delta_csp(2),abs_FGangle(2),fix(3),fix(4));
+            %face trial(2)
+            Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(trial(2)));
+            Screen('Flip',p.ptb.w,onsets(5),0);
+            Eyelink('Message', 'Stim Onset');
+            Eyelink('Message', 'SYNCTIME');
+            while GetSecs<onsets(6)
+            end
+            Screen('Flip',p.ptb.w,onsets(6),0);
+            StopEyelinkRecording;
+            
         end
-        Screen('Flip',p.ptb.w,onsets(4),0);
-        StopEyelinkRecording;
-        %second face of the trial
-        trialID=trialID+1;
-        %fixation cross 2
-        FixCross = [fix(1,1)-1,fix(1,2)-20,fix(1,1)+1,fix(1,2)+20;fix(1,1)-20,fix(1,2)-1,fix(1,1)+20,fix(1,2)+1];
-        Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');
-        Eyelink('Message', 'FX Onset at %d %d',fix(1,1),fix(1,2));
-        Screen('Flip',p.ptb.w,onsets(5),0);
-        StartEyelinkRecording(trialID,phase,cc(current_chain),tt,current_chain,isref(1),trial(1),delta_ref(1),delta_csp(1),abs_FGangle(1),fix(1,1),fix(1,2));
-        %face trial(1)
-        Screen('DrawTexture',p.ptb.w,p.ptb.stim_sprites(trial(1)));
-        Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');
-        Screen('Flip',p.ptb.w,onsets(6),0);
-        Eyelink('Message', 'Stim Onset');
-        Eyelink('Message', 'SYNCTIME');
-        %fixjump trial(1)
-        FixCross = [fix(2,1)-1,fix(2,2)-20,fix(2,1)+1,fix(2,2)+20;fix(2,1)-20,fix(2,2)-1,fix(2,1)+20,fix(2,2)+1];
-        Screen('DrawTexture',p.ptb.w,p.ptb.stim_sprites(trial(1)));
-        Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');
-        Screen('Flip',p.ptb.w,onsets(7),0);
-        while GetSecs<onsets(8)
-        end
-        Screen('Flip',p.ptb.w,onsets(8),0);
-        StopEyelinkRecording;
-       
-
-%         %fixation cross 1
-%         FixCross = [fix(1)-1,fix(2)-20,fix(1)+1,fix(2)+20;fix(1)-20,fix(2)-1,fix(1)+20,fix(2)+1];
-%         Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');
-%         Eyelink('Message', 'FX Onset at %d %d',fix(1),fix(2));
-%         Screen('Flip',p.ptb.w,onsets(1),0);
-%         StartEyelinkRecording(trialID,phase,cc(current_chain),tt,current_chain,isref(1),trial(1),delta_ref(1),delta_csp(1),abs_FGangle(1),fix(1),fix(2));
-%         %face trial(1)
-%         Screen('DrawTexture',p.ptb.w,p.ptb.stim_sprites(trial(1)));
-%         Screen('Flip',p.ptb.w,onsets(2),0);
-%         Eyelink('Message', 'Stim Onset');
-%         Eyelink('Message', 'SYNCTIME');
-%         while GetSecs < onsets(3)
-%         end
-%         Screen('Flip',p.ptb.w,onsets(3),0);
-%         StopEyelinkRecording;
-%         %second face of the trial
-%         trialID=trialID+1;
-%         %fixation cross 2
-%         FixCross = [fix(3)-1,fix(4)-20,fix(3)+1,fix(4)+20;fix(3)-20,fix(4)-1,fix(3)+20,fix(4)+1];
-%         Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');
-%         Eyelink('Message', 'FX Onset at %d %d',fix(3),fix(4));
-%         Screen('Flip',p.ptb.w,onsets(4),0);
-%         StartEyelinkRecording(trialID,phase,cc(current_chain),tt,current_chain,isref(2),trial(2),delta_ref(2),delta_csp(2),abs_FGangle(2),fix(3),fix(4));
-%         %face trial(2)
-%         Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(trial(2)));
-%         Screen('Flip',p.ptb.w,onsets(5),0);
-%         Eyelink('Message', 'Stim Onset');
-%         Eyelink('Message', 'SYNCTIME');
-%         while GetSecs<onsets(6)
-%         end
-%         Screen('Flip',p.ptb.w,onsets(6),0);
-%         StopEyelinkRecording;
-%        
-
     end
     
 
@@ -363,8 +366,8 @@ movefile(p.path.subject,p.path.finalsubject);
             
             %setting up fixation cross pool vector of size
             % totaltrials x 4 (face_1_x face_1_y face_2_x face_2_y)
-            cross_directions = round(rand(tchain*numtrials,2))*180;
-            dummy            = cross_directions + rand(tchain*numtrials,2)*30-15;
+            cross_directions = round(rand(tchain*p.psi.settings.numtrials_chain,2))*180;
+            dummy            = cross_directions + rand(tchain*p.psi.settings.numtrials_chain,2)*30-15;
             cross_positions  = [cosd(dummy(:,1))*radius+center(1) sind(dummy(:,1))*radius+center(2)...
                 cosd(dummy(:,2))*radius+center(1) sind(dummy(:,2))*radius+center(2)];
         end
@@ -472,12 +475,12 @@ movefile(p.path.subject,p.path.finalsubject);
         p.duration.stim                = 1.5;%s     
         p.duration.fix                 = .7;
         p.duration.crossmoves          = p.duration.stim./2;   
-        p.duration.isi                 = 1.5;
+        p.duration.isi                 = 1.0;
         if simulation_mode
             p.duration.stim                = .001;%s
             p.duration.crossmoves          = .001;
             p.duration.fix                 = .001;
-            p.duration.isi                 = 0.1;
+            p.duration.isi                 = 0.001;
             %p.duration.gray                = .001;
         end
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -492,10 +495,10 @@ movefile(p.path.subject,p.path.finalsubject);
         csn_shift               = [0 180];
         tchain                  = 2;
         interval = 22.5;
-        numtrials = 100;
+        maxtrials = 100;
                
         tsteps = 360./interval-1;
-        rep    = floor(numtrials./(tsteps+1));%+1 so that zero can be doubled...
+        rep    = floor(maxtrials./(tsteps+1));%+1 so that zero can be doubled...
         steps  = [repmat(0:interval:180-interval,1,rep) repmat(0:interval:180-interval,1,rep)*-1];
         
         for n = 1:tchain
@@ -508,13 +511,14 @@ movefile(p.path.subject,p.path.finalsubject);
         fprintf('Level %g: %02d repetitions. \n',uniquex(l,1),histi(l,1))
         end
         fprintf('---------------------------\nTotal trials: %03d per chain.\n',sum(histi(:,1)))
+        WaitSecs(3);
         %store everything in p
         p.psi.settings.x = x;
-        p.psi.settings.interval = interval;
+        p.psi.settings.interval        = interval;
         p.psi.settings.numtrials_chain = length(x(:,1));
-        p.psi.settings.tsteps = tsteps;
-        p.psi.settings.rep    = rep;
-        p.psi.settings.uniquex = unique(x);
+        p.psi.settings.tsteps          = tsteps;
+        p.psi.settings.rep             = histi(:,1);
+        p.psi.settings.uniquex         = unique(x);
         %Save the stuff
         save(p.path.path_param,'p');
         %
@@ -682,7 +686,7 @@ movefile(p.path.subject,p.path.finalsubject);
             text = 'Experiment beendet!\n';
             
         elseif nInstruct==4%break
-            text = [sprintf('Sie haben bereits %g von %g Durchgängen geschafft!\n',tt-1,numtrials*tchain)...
+            text = [sprintf('Sie haben bereits %g von %g Durchgängen geschafft!\n',tt-1,p.psi.settings.numtrials_chain*tchain)...
                 'Machen Sie eine kurze Pause, lehnen Sie sich gern einen Moment zurück\n'...
                 'und schließen Sie die Augen, um diese zu entspannen.\n'...
                 'Drücken Sie anschließend die mittlere Taste, um weiterzumachen.\n'];
@@ -691,16 +695,16 @@ movefile(p.path.subject,p.path.finalsubject);
        
     function SetupLog
         
-        p.psi.log.globaltrial= NaN(tchain,numtrials);
-        p.psi.log.signal     = NaN(tchain,numtrials);
-        p.psi.log.x          = NaN(tchain,numtrials);
-        p.psi.log.refface    = NaN(tchain,numtrials);
-        p.psi.log.testface   = NaN(tchain,numtrials);
-        p.psi.log.response   = NaN(tchain,numtrials);
-%         p.psi.log.xrounded   = NaN(p.stim.tFace/tchain+1,numtrials,tchain);
-        p.psi.log.xrounded   = NaN(length(unique(x)),numtrials,tchain);
-        p.psi.log.sdt        = NaN(tchain,numtrials);  
-        p.psi.log.trial_counter  = zeros(p.stim.tFace/tchain+1,tchain);
+        p.psi.log.globaltrial= NaN(tchain,length(x));
+        p.psi.log.signal     = NaN(tchain,length(x));
+        p.psi.log.x          = NaN(tchain,length(x));
+        p.psi.log.refface    = NaN(tchain,length(x));
+        p.psi.log.testface   = NaN(tchain,length(x));
+        p.psi.log.response   = NaN(tchain,length(x));
+%         p.psi.log.xrounded   = NaN(p.stim.tFace/tchain+1,p.psi.settings.numtrials_chain,tchain);
+        p.psi.log.xrounded   = NaN(length(unique(x)),max(p.psi.settings.rep),tchain);
+        p.psi.log.sdt        = NaN(tchain,length(x));  
+        p.psi.log.trial_counter  = zeros(length(unique(x)),tchain);
     end
 
     function SetLog
