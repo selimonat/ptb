@@ -10,7 +10,7 @@ sca;
 init       = [];
 init.debug = 1; %debug mode = 1; testing = 0
 
-error('adjust jitter, transition probabilities, pause between blocks, power!')
+error('adjust jitter, transition probabilities, pause between blocks/null blocks, power!')
 
 %seed random number generator based on the current time
 rng('shuffle');
@@ -19,7 +19,7 @@ rng('shuffle');
 %Phase 1: initial encoding
 time.p1.pic         = 1;
 time.p1.fix         = 1.5;
-time.p1.resp        = time.p1.fix+time.p1.pic; 
+time.p1.resp        = 2; 
 
 n.p1.test.pics.targ  = 2;
 n.p1.test.pics.new   = 160;
@@ -37,8 +37,9 @@ n.p1.train.t2b      = n.p1.train.trials;
 
 %Phase 2: Interleaved encoding/retrieval
 time.p2.pic         = time.p1.pic;
-time.p2.fix         = 2;
-time.p2.resp        = time.p2.fix+time.p2.pic-0.2;%TBD 200ms to swicht off and on eyelink
+time.p2.fix         = 2.15;%TBD 100ms to save everything & turn on tracker again, distribute trials across TR
+time.p2.resp        = 3;%TBD 
+time.trackerOff     = 1;
 
 relnew.p2           = 1;%amount of new pictures relative to old ones
 
@@ -64,8 +65,8 @@ n.p2.train.t2b      = n.p2.train.trials;
 
 %Phase 3: Final retrieval
 time.p3.pic         = time.p1.pic;
-time.p3.fix         = 3;%minimum fixation duration
-time.p3.resp        = 3+time.p3.pic;%3 sec is maximum fixation duration
+time.p3.fix         = 3;%TBD
+time.p3.resp        = 4;%TBD
 
 relnew.p3           = 0.5;%amount of new pictures relative to old ones
 
@@ -127,8 +128,8 @@ addpath('C:\Toolboxen\io_comunication');
 
 %specify MR parameters
 init.mr.ndummy  = 5;%TBD
-init.mr.noffset = 5;
-init.mr.tr      = 2;
+init.mr.noffset = 5;error('program offset')
+init.mr.tr      = 2;%TBD
 
 %% LOAD/CREATE FILEX
 %enter subject ID 
@@ -310,6 +311,9 @@ init.device = -1;%query all keyboard devices and report their merged state
 KbCheck(init.device);
 KbWait;
 GetSecs;
+
+%Create Queue for button presses
+KbQueueCreate(init.device);%uses the default device
 
 %Fixation cross
 FixCr=ones(20,20)*0.5;

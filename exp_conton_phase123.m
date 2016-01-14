@@ -1,5 +1,5 @@
 %Contextual Modulation of old/new effects%
-%3-Nov-2015, n.herweg@uke.de
+%11-Jan-2016, n.herweg@uke.de
 
 %% Initialization
 %Timestamp
@@ -44,15 +44,7 @@ switch init.hostname
 end
 
 %Load images for first block
-for pici = 1:n.(thephase{phasei}).(thepart{parti}).t2b
-    if fileX.(thephase{phasei}).(thepart{parti})(pici,6)<10
-        thescene{pici} = uint8(imread(fullfile(init.thepath.(['pics_',thecat{fileX.(thephase{phasei}).(thepart{parti})(pici,2)}]),['00',num2str(fileX.(thephase{phasei}).(thepart{parti})(pici,6)),'_',thecat{fileX.(thephase{phasei}).(thepart{parti})(pici,2)},'.bmp'])));
-    elseif fileX.(thephase{phasei}).(thepart{parti})(pici,6)>9 && fileX.(thephase{phasei}).(thepart{parti})(pici,6)<100
-        thescene{pici} = uint8(imread(fullfile(init.thepath.(['pics_',thecat{fileX.(thephase{phasei}).(thepart{parti})(pici,2)}]),['0',num2str(fileX.(thephase{phasei}).(thepart{parti})(pici,6)),'_',thecat{fileX.(thephase{phasei}).(thepart{parti})(pici,2)},'.bmp'])));
-    elseif fileX.(thephase{phasei}).(thepart{parti})(pici,6)>99
-        thescene{pici} = uint8(imread(fullfile(init.thepath.(['pics_',thecat{fileX.(thephase{phasei}).(thepart{parti})(pici,2)}]),[num2str(fileX.(thephase{phasei}).(thepart{parti})(pici,6)),'_',thecat{fileX.(thephase{phasei}).(thepart{parti})(pici,2)},'.bmp'])));
-    end
-end
+[thescenepath,thescene] = LoadStimuli(1,thephase,phasei,thepart,parti,thecat,n,fileX);
 
 %Get text length to center text position
 texttodraw{1,1} = 'Kurze Pause!';
@@ -108,7 +100,7 @@ for trial=1:n.(thephase{phasei}).(thepart{parti}).trials
     %Break
     if rem(trial,n.(thephase{phasei}).test.t2b)==1 && trial>1%short break after every nth trial
         
-        coverTexture = Screen('MakeTexture',init.expWin,thecover);%cover the fixation cross
+        coverTexture                                        = Screen('MakeTexture',init.expWin,thecover);%cover the fixation cross
         Screen('DrawTexture',init.expWin,coverTexture);
         Screen('DrawText', init.expWin, texttodraw{1,1},texttodraw{1,2},texttodraw{1,3}, [1 1 1]);
         fileX.(thephase{phasei}).(thepart{parti})(trial,11) = Screen('Flip', init.expWin, t_fix+time.(thephase{phasei}).fix-init.slack);%t_pause
@@ -117,16 +109,8 @@ for trial=1:n.(thephase{phasei}).(thepart{parti}).trials
         clear t_fix
         
         %Load images for next block (timing & memory issue)
-        for pici = trial:trial-1+n.(thephase{phasei}).(thepart{parti}).t2b
-            if fileX.(thephase{phasei}).(thepart{parti})(pici,6)<10
-                thescene{pici} = uint8(imread(fullfile(init.thepath.(['pics_',thecat{fileX.(thephase{phasei}).(thepart{parti})(pici,2)}]),['00',num2str(fileX.(thephase{phasei}).(thepart{parti})(pici,6)),'_',thecat{fileX.(thephase{phasei}).(thepart{parti})(pici,2)},'.bmp'])));
-            elseif fileX.(thephase{phasei}).(thepart{parti})(pici,6)>9 && fileX.(thephase{phasei}).(thepart{parti})(pici,6)<100
-                thescene{pici} = uint8(imread(fullfile(init.thepath.(['pics_',thecat{fileX.(thephase{phasei}).(thepart{parti})(pici,2)}]),['0',num2str(fileX.(thephase{phasei}).(thepart{parti})(pici,6)),'_',thecat{fileX.(thephase{phasei}).(thepart{parti})(pici,2)},'.bmp'])));
-            elseif fileX.(thephase{phasei}).(thepart{parti})(pici,6)>99
-                thescene{pici} = uint8(imread(fullfile(init.thepath.(['pics_',thecat{fileX.(thephase{phasei}).(thepart{parti})(pici,2)}]),[num2str(fileX.(thephase{phasei}).(thepart{parti})(pici,6)),'_',thecat{fileX.(thephase{phasei}).(thepart{parti})(pici,2)},'.bmp'])));
-            end
-        end
-        
+        [thescenepath,thescene] = LoadStimuli(trial,thephase,phasei,thepart,parti,thecat,n,fileX);
+
         Screen('DrawText', init.expWin, texttodraw{2,1},texttodraw{2,2},texttodraw{2,3}, [1 1 1]);
         save(fullfile(init.thepath.results,fileX.fileName),'fileX');
         Screen('Flip', init.expWin,fileX.(thephase{phasei}).(thepart{parti})(trial,11)+37-init.slack);
@@ -134,14 +118,14 @@ for trial=1:n.(thephase{phasei}).(thepart{parti}).trials
         
         fixcross = Screen('MakeTexture',init.expWin,FixCr);
         Screen('DrawTexture',init.expWin,fixcross);
-        t_fix = Screen('Flip', init.expWin,fileX.(thephase{phasei}).(thepart{parti})(trial,11)+40-init.slack);
+        t_fix    = Screen('Flip', init.expWin,fileX.(thephase{phasei}).(thepart{parti})(trial,11)+40-init.slack);
         Screen('Close')
     end
     
     %Instruction
     if phasei == 2 && rem(trial,n.(thephase{phasei}).(thepart{parti}).tpb)==1 %if this is the first trial of a block in phase 2 show instruction for the next block
         
-        insttexture = Screen('MakeTexture',init.expWin,uint8(imread(fullfile(init.thepath.inst,['keycond',fileX.keycond],['Folie',num2str((9+fileX.(thephase{phasei}).(thepart{parti})(trial,4))),'.png']))));%4 encret 1 = enc; 2 = ret
+        insttexture                                         = Screen('MakeTexture',init.expWin,uint8(imread(fullfile(init.thepath.inst,['keycond',fileX.keycond],['Folie',num2str((9+fileX.(thephase{phasei}).(thepart{parti})(trial,4))),'.png']))));%4 encret 1 = enc; 2 = ret
         Screen('DrawTexture',init.expWin,insttexture);
         fileX.(thephase{phasei}).(thepart{parti})(trial,12) = Screen('Flip', init.expWin, t_fix+time.(thephase{phasei}).fix-init.slack);%t_instr
         Screen('Close')
@@ -150,25 +134,31 @@ for trial=1:n.(thephase{phasei}).(thepart{parti}).trials
                   
         fixcross = Screen('MakeTexture',init.expWin,FixCr);
         Screen('DrawTexture',init.expWin,fixcross);
-        t_fix = Screen('Flip', init.expWin,fileX.(thephase{phasei}).(thepart{parti})(trial,12)+3-init.slack);
+        t_fix    = Screen('Flip', init.expWin,fileX.(thephase{phasei}).(thepart{parti})(trial,12)+3-init.slack);
+        if parti == 2
+        Eyelink('Message', 'FX Onset at %d %d',init.mx,init.my);
+        end
         Screen('Close')
     end
     
+    %Turn the eye tracker on 100ms prior to stimulus onset
+    t_trackerOn = StartEyelinkRecording(trial,init,fileX,thescenepath,thepart,parti,t_fix,time);     
+         
     %Scene presentation
-    scenetexture = Screen('MakeTexture',init.expWin,thescene{trial});
+    scenetexture         = Screen('MakeTexture',init.expWin,thescene{trial});
     Screen('DrawTexture',init.expWin,scenetexture);
     [t_scene,sceneOnset] = Screen('Flip', init.expWin,t_fix+time.(thephase{phasei}).fix-init.slack,1);%show scene and keep it in the back buffer for presentation with analogue scale
+    if phasei == 2 && parti == 2
+    Eyelink('Message', 'Stim Onset');
+    Eyelink('Message', 'SYNCTIME');
+    end
     Screen('Close')
     clear scenetexture t_fix
     
     %Collect input
     if phasei ~= 3
-        while GetSecs<sceneOnset+time.(thephase{phasei}).pic
-            [keyIsDown, tKeyDown, keyCode]=KbCheck(init.device);
-            if keyIsDown
-                break
-            end
-        end
+        %start collecting input
+        KbQueueStart(init.device);
     else
         SetMouse(init.mx,init.my+250,init.screenNumber);
         ShowCursor('Hand');
@@ -176,14 +166,14 @@ for trial=1:n.(thephase{phasei}).(thepart{parti}).trials
         VASscale_mouse(init,0,fileX.keycond);
         
         while GetSecs<sceneOnset+time.(thephase{phasei}).pic
-            [Xmouse,Ymouse,Bmouse]=GetMouse(init.expWin);
-            if Bmouse(1) && ~exist('rating','var')%rating does not exist only at first call because no rating output is queried above (l.139)
+            [Xmouse,Ymouse,Bmouse]         = GetMouse(init.expWin);
+            if Bmouse(1) && ~exist('rating','var')%rating does not exist at first call because no rating output is queried above
                 while Bmouse(1) && GetSecs<sceneOnset+time.(thephase{phasei}).pic %check position until mouse button is released again and keep that final position
-                    [Xmouse,Ymouse,Bmouse]=GetMouse(init.expWin);
-                    rating = VASscale_mouse(init,Xmouse,fileX.keycond);
+                    [Xmouse,Ymouse,Bmouse] = GetMouse(init.expWin);
+                    rating                 = VASscale_mouse(init,Xmouse,fileX.keycond);
                 end
                 if exist('rating','var') && ~Bmouse(1)
-                    fin = GetSecs; %rating is finished
+                    fin                    = GetSecs; %rating is finished
                 end
             end
         end
@@ -191,69 +181,78 @@ for trial=1:n.(thephase{phasei}).(thepart{parti}).trials
     
     %Scene offset
     coverTexture = Screen('MakeTexture',init.expWin,thecover);%cover image in the backbufer to display just the fix cross (and rating scale) with next flip
-    fixcross = Screen('MakeTexture',init.expWin,FixCr);
+    fixcross     = Screen('MakeTexture',init.expWin,FixCr);
     Screen('DrawTextures',init.expWin,[coverTexture,fixcross]);
-    t_fix = Screen('Flip', init.expWin,t_scene+time.(thephase{phasei}).pic-init.slack, 1);
+    t_fix        = Screen('Flip', init.expWin,t_scene+time.(thephase{phasei}).pic-init.slack, 1);
+    if phasei == 2 && parti == 2
+    Eyelink('Message', 'FX Onset at %d %d',init.mx,init.my);         
+    %record some more eye data after stimulus offset
+    WaitSecs('UntilTime',t_fix+time.trackerOff);
+    t_trackerOff    = StopEyelinkRecording;
+    end
     Screen('Close')
     
     %If necessary go on collecting input
-    if phasei ~= 3 && keyIsDown == 0  && time.(thephase{phasei}).pic<time.(thephase{phasei}).resp %if no key has been pressed within pic presentation and response period is longer than pic presentation
-        while GetSecs<sceneOnset+time.(thephase{phasei}).resp
-            [keyIsDown, tKeyDown, keyCode]=KbCheck(init.device);
-            if keyIsDown
-                break
-            end
-        end
-    elseif phasei == 3 && exist('rating','var') && ~exist('fin','var') % if rating has been started but not finished
+    if phasei == 3 && exist('rating','var') && ~exist('fin','var') % if rating has been started but not finished
         while Bmouse(1) && GetSecs<sceneOnset+time.(thephase{phasei}).resp %check position until mouse button is released again and keep that final position
-            [Xmouse,Ymouse,Bmouse]=GetMouse(init.expWin, Xmouse);
-            rating = VASscale_mouse(init,Xmouse,fileX.keycond);
+            [Xmouse,Ymouse,Bmouse] = GetMouse(init.expWin, Xmouse);
+            rating                 = VASscale_mouse(init,Xmouse,fileX.keycond);
         end
         if exist('rating','var') && ~Bmouse(1)
-            fin = GetSecs; %rating is finished
+            fin                    = GetSecs; %rating is finished
         end
     elseif phasei == 3 && ~exist('rating','var') % if rating has not been started
         
         VASscale_mouse(init,0,fileX.keycond);
         
         while GetSecs<sceneOnset+time.(thephase{phasei}).resp
-            [Xmouse,Ymouse,Bmouse]=GetMouse(init.expWin);
+            [Xmouse,Ymouse,Bmouse]         = GetMouse(init.expWin);
             if Bmouse(1) && ~exist('rating','var')
                 while Bmouse(1) && GetSecs<sceneOnset+time.(thephase{phasei}).resp %check position until mouse button is released again and keep that final position
-                    [Xmouse,Ymouse,Bmouse]=GetMouse(init.expWin);
-                    rating = VASscale_mouse(init,Xmouse,fileX.keycond);
+                    [Xmouse,Ymouse,Bmouse] = GetMouse(init.expWin);
+                    rating                 = VASscale_mouse(init,Xmouse,fileX.keycond);
                 end
                 if exist('rating','var') && ~Bmouse(1)
-                    fin = GetSecs; %rating is finished
+                    fin                    = GetSecs; %rating is finished
                     break
                 end
             end
         end
     end
+
+    WaitSecs('UntilTime',t_fix+time.(thephase{phasei}).resp);
+    [keyIsDown, firstPress, firstRelease, lastPress, lastRelease] = KbQueueCheck(init.device)
+    KbQueueStop(init.device);%Although a call to KbQueueStart should suffice to flush a queue that is not actively receiving events, KbQueueFlush should be used preferentially to flush events from an actively running queue. 
+    nflushed = KbQueueFlush(init.device);
     
+    if init.debug && nflushed > 0
+        error('remaining events in the queue')
+    end
+        
     %Save everything
     fileX.(thephase{phasei}).(thepart{parti})(trial,13) = t_fix;
     fileX.(thephase{phasei}).(thepart{parti})(trial,14) = t_scene;
     
+    if phasei == 2 && parti == 2
+    fileX.(thephase{phasei}).(thepart{parti})(trial,15) = t_trackerOn;
+    fileX.(thephase{phasei}).(thepart{parti})(trial,16) = t_trackerOff;
+    end
+    
     if (phasei == 3 && ~exist('fin','var')) || (phasei ~= 3 && keyIsDown == 0) %if still no button has been pressed
-        fileX.(thephase{phasei}).(thepart{parti})(trial,8) = NaN;%no response
-    elseif phasei ~=3 && size(find(keyCode),2) == 1
-        fileX.(thephase{phasei}).(thepart{parti})(trial,8) = find(keyCode);
-        fileX.(thephase{phasei}).(thepart{parti})(trial,9) = tKeyDown;
-        fileX.(thephase{phasei}).(thepart{parti})(trial,10) = tKeyDown-sceneOnset;%reaction time
-    elseif phasei == 1 && size(find(keyCode),2) ==1
-        fileX.(thephase{phasei}).(thepart{parti})(trial,8) = find(keyCode);
-        fileX.(thephase{phasei}).(thepart{parti})(trial,9) = tKeyDown;
-        fileX.(thephase{phasei}).(thepart{parti})(trial,10) = tKeyDown-sceneOnset;%reaction time
+        fileX.(thephase{phasei}).(thepart{parti})(trial,8)  = NaN;%no response
+    elseif phasei ~=3 && size(find(firstPress),2) == 1
+        fileX.(thephase{phasei}).(thepart{parti})(trial,8)  = find(firstPress);
+        fileX.(thephase{phasei}).(thepart{parti})(trial,9)  = firstPress(find(firstPress));
+        fileX.(thephase{phasei}).(thepart{parti})(trial,10) = firstPress(find(firstPress))-sceneOnset;%reaction time
     elseif phasei == 3 && exist('fin','var')
-        fileX.(thephase{phasei}).(thepart{parti})(trial,8) = rating;% -1 certainly old, 1 certainly new
-        fileX.(thephase{phasei}).(thepart{parti})(trial,9) = fin;
+        fileX.(thephase{phasei}).(thepart{parti})(trial,8)  = rating;% -1 certainly old, 1 certainly new
+        fileX.(thephase{phasei}).(thepart{parti})(trial,9)  = fin;
         fileX.(thephase{phasei}).(thepart{parti})(trial,10) = fin-sceneOnset;%reaction time
     elseif phasei ~= 3
         fileX.(thephase{phasei}).(thepart{parti})(trial,8)=888;%two buttons
     end
     
-    clearvars -except fileX FixCr init inst2load key n parti phasei relnew t_fix thecat thecond thepart thescene time trial thephase texttodraw thecover
+    clearvars -except fileX FixCr init inst2load key n parti phasei relnew t_fix thecat thecond thepart thescene time trial thephase texttodraw thecover thescenepath
     thescene{trial}=[];
 end
 
