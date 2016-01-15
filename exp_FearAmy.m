@@ -172,10 +172,10 @@ cleanup;
             %log everything but "pulse keys" as pulses, not as keypresses.
             pulses = (keycode == p.keys.pulse);
             if any(~pulses);%log keys presses if only there is one
-                Log(secs,7,keycode(~pulses));
+                Log(secs(~pulses),7,keycode(~pulses));
             end
             if any(pulses);%log pulses if only there is one
-                Log(secs,0,keycode(pulses));
+                Log(secs(pulses),0,keycode(pulses));
             end
             %now we have to detect if the subject has pressed the CONFIRM
             %key while the ODDBALL stimulus was on the screen.
@@ -186,8 +186,8 @@ cleanup;
             end            
             
         end
-        %wait for the BOLD signal to come back to the baseline...
-        WaitPulse(p.keys.pulse,p.mrt.dummy_scan);
+        %wait 6 seconds for the BOLD signal to come back to the baseline...
+        WaitPulse(p.keys.pulse,ceil(6./p.mrt.tr));%
         %stop the queue
         KbQueueStop(p.ptb.device);
         KbQueueRelease(p.ptb.device);        
@@ -287,6 +287,7 @@ cleanup;
         %mrt business
         p.mrt.dummy_scan              = 7;%this will wait until the 6th image is acquired.
         p.mrt.LastScans               = 5;%number of scans after the offset of the last stimulus
+        p.mrt.tr                      = 1;%in seconds.
         %will count the number of events to be logged        
         p.var.event_count             = 0;        
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -382,15 +383,13 @@ cleanup;
         %these are the intervals of importance
         %time2fixationcross->cross2onset->onset2shock->shock2offset
         %these (duration.BLA) are average duration values:
-        p.duration.stim                = 1;%2;%s
+        p.duration.stim                = 1.5;%2;%s
         p.duration.shock               = 0.1;%s;x        
         p.duration.shockpulse          = 0.005;%ms; duration of each individual pulses
         p.duration.intershockpulse     = 0.01;%ms; and the time between each pulse
         p.duration.onset2shock         = p.duration.stim - p.duration.shock;
         p.duration.crossmoves          = p.duration.stim./2;        
-        p.duration.keep_recording      = 0.25;%this is the time we will keep recording (eye data) after stim offset.
-        p.duration.prestim_ori         = .95;
-        %p.duration.prestim             = 2-p.duration.prestim_ori;%that is 0.95 seconds
+        p.duration.keep_recording      = 0.25;%this is the time we will keep recording (eye data) after stim offset.        
         p.duration.prestim             = .85;
         %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
          %stimulus sequence                  
@@ -533,8 +532,7 @@ cleanup;
                 if (keyCode == up) || (keyCode == down)
                     next = position + increment(keyCode);
                     if next < (tSection+1) && next > 0
-                        position = position + increment(keyCode);
-                        %rating   = tSection - position + 1;
+                        position = position + increment(keyCode);                        
                     end
                     DrawSkala;
                 elseif keyCode == confirm
@@ -558,7 +556,7 @@ cleanup;
             for tick = 1:length(tick_x)%draw ticks
                 Screen('DrawLine', p.ptb.w, [255 0 0], tick_x(tick), rect(2), tick_x(tick), rect(2)+rect(4) , 3);
                 if tick <= tSection && numbersOn
-                    Screen('TextSize', p.ptb.w,p.text.fontsize./2);
+                    Screen('TextSize', p.ptb.w,p.text.fontsize);
                     DrawFormattedText(p.ptb.w, mat2str(tick) , tick_x(tick)+ss/2, rect(2)+rect(4),  p.stim.white);
                     Screen('TextSize', p.ptb.w,p.text.fontsize);
                 end
@@ -572,7 +570,7 @@ cleanup;
             slider = [ tick_x(position)+tick_size*0.1 rect(2) tick_x(position)+tick_size*0.9 rect(2)+rect(4)];
             %draw the slider
             Screen('FillRect',p.ptb.w, p.stim.white, round(slider));
-            Screen('TextSize', p.ptb.w,p.text.fontsize./2);
+            Screen('TextSize', p.ptb.w,p.text.fontsize);
             DrawFormattedText(p.ptb.w,message, 'center', p.ptb.midpoint(2)*0.2,  p.stim.white,[],[],[],2);
             Screen('TextSize', p.ptb.w,p.text.fontsize);
             t = Screen('Flip',p.ptb.w);
@@ -776,8 +774,7 @@ cleanup;
         p.ptb.midpoint              = [ p.ptb.width./2 p.ptb.height./2];
         %NOTE about RECT:
         %RectLeft=1, RectTop=2, RectRight=3, RectBottom=4.
-        p.ptb.imrect                = [ p.ptb.midpoint(1)-p.stim.width/2 p.ptb.midpoint(2)-p.stim.height/2 p.ptb.midpoint(1)-p.stim.width/2+p.stim.width p.ptb.midpoint(2)-p.stim.height/2+p.stim.height];
-        p.ptb.cross_shift           = [45 -60];%incremental upper and lower cross positions
+        p.ptb.imrect                = [ p.ptb.midpoint(1)-p.stim.width/2 p.ptb.midpoint(2)-p.stim.height/2 p.ptb.midpoint(1)-p.stim.width/2+p.stim.width p.ptb.midpoint(2)-p.stim.height/2+p.stim.height];       
         p.ptb.cross_shift           = [180 -120];%incremental upper and lower cross positions
         p.ptb.CrossPosition_x       = p.ptb.midpoint(1);%bb(1);%always the same
         p.ptb.CrossPosition_y       = p.ptb.midpoint(2)+p.ptb.cross_shift;%bb(1);%always the same                
