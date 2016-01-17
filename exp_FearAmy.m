@@ -399,12 +399,11 @@ cleanup;
             seq.oddball       = seq.cond_id == 9;
             seq.isi           = RandSample([2 4 6],[1 9]);
             seq.stim_id       = seq.cond_id;
-            seq.tTrial        = length(seq.cond_id);
-            seq.tFacetrial    = 9;
+            seq.tTrial        = length(seq.cond_id);            
             seq.dist          = 1:9;
             seq.CrossPosition = RandSample(1:2,[1 9]);
-        elseif phase == 1            
-            seq = seq_feargen_cloudseq(csp,'test');%gets 1 short seq
+        elseif phase == 1                        
+            load('/Users/onat/Desktop/fearamy/seq.mat');
         end
         clear seqpool
         %create the randomized design
