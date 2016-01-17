@@ -8,9 +8,9 @@ function [p]=FearGen_eyelab(subject,phase,csp,PainThreshold)
 
 debug = 1;%debug mode
 %replace parallel port function with a dummy function
-if ismac
-outp = @(x,y) fprintf('pp\n');
-end
+% if ismac
+% outp = @(x,y) fprintf('pp\n');
+% end
 if nargin ~= 4
     fprintf('Wrong number of inputs\n');
     keyboard;
@@ -145,7 +145,7 @@ cleanup;
         KbQueueStart;
         %log the pulse timings.        
         TimeEndStim                 = secs(end);%take the first valid pulse as the end of the last stimulus.
-        for nTrial  = 1:p.presentation.tTrial;
+        for nTrial  = 1:3%p.presentation.tTrial;
 
             %Get the variables that Trial function needs.
             stim_id      = p.presentation.stim_id(nTrial);
@@ -186,6 +186,7 @@ cleanup;
             end            
             
         end
+        KbQueueRelease(p.ptb.device);
         %wait 6 seconds for the BOLD signal to come back to the baseline...
         WaitPulse(p.keys.pulse,ceil(6./p.mrt.tr));%
         %stop the queue
@@ -296,15 +297,15 @@ cleanup;
         [~, hostname]                 = system('hostname');
         p.hostname                    = deblank(hostname);
         if strcmp(p.hostname,'triostim1')
-            p.path.baselocation       = 'C:\USER\onat\Experiments\';
+            p.path.baselocation       = 'C:\USER\onat\Experiments\fearamy';
         elseif strcmp(p.hostname,'etpc')
             p.path.baselocation       = 'C:\Users\onat\Documents\Experiments\';
         elseif ismac
-            p.path.baselocation       = '/Users/onat/Desktop/fearamy/';
+            p.path.baselocation       = '/Users/onat/Desktop/fearamy';
         end
         
         p.path.experiment             = [p.path.baselocation  filesep];
-        p.path.stim                   = [p.path.baselocation 'stimuli' filesep];
+        p.path.stim                   = [p.path.baselocation filesep 'stimuli' filesep];
         p.path.stim24                 = [p.path.stim '24bit' filesep];
         %
         p.subID                       = sprintf('sub%02d',subject);
@@ -364,6 +365,9 @@ cleanup;
         p.keys.increase                = KbName('1!');
         p.keys.decrease                = KbName('2@');                
         p.keys.pulse                   = KbName('5%');
+        p.keys.el_calib                = KbName('v');
+        p.keys.el_valid                = KbName('c');
+        p.keys.escape                  = KbName('esc');
                 
         %% %%%%%%%%%%%%%%%%%%%%%%%%%
         %Communication business
@@ -448,9 +452,11 @@ cleanup;
         while nseq < p.rating.repetition
             nseq                    = nseq + 1;        
             [dummy idx]             = Shuffle( face_order );
-            rating_seq              = [rating_seq dummy];
-            pos1_seq                = [pos1_seq double(pos_order(idx) == rem(nseq,2))+1];%+1 to make [0 1] --> [1 2]
+            rating_seq              = [rating_seq dummy];            
+            %this balances both directions
+            %pos1_seq                = [pos1_seq double(pos_order(idx) == rem(nseq,2))+1];%+1 to make [0 1] --> [1 2]
         end         
+        pos1_seq                = ones(1,16);
         %%
         message     = GetText(11);
         SliderTextL = GetText(13);
@@ -746,7 +752,7 @@ cleanup;
         Screen('Preference', 'SuppressAllWarnings', 1);
         %set the resolution correctly        
         if strcmp(p.hostname,'triostim1') 
-            res          = [1280 960];
+            res          = [1600 1200];
             p.ptb.oldres = Screen('resolution',p.ptb.screenNumber,res(1),res(2));
             %hide the cursor
             HideCursor(p.ptb.screenNumber);
@@ -785,7 +791,7 @@ cleanup;
         %priorityLevel=MaxPriority(['GetSecs'],['KbCheck'],['KbWait'],['GetClicks']);
         Priority(MaxPriority(p.ptb.w));
         %this is necessary for the Eyelink calibration
-        InitializePsychSound(0)
+        %InitializePsychSound(0)
         %sound('Open')
 %         Beeper(1000)
                
@@ -799,12 +805,11 @@ cleanup;
         p.ptb.keysOfInterest=zeros(1,256);
         p.ptb.keysOfInterest(p.keys.confirm) = 1;
         %create a queue sensitive to only relevant keys.
-        KbQueueCreate(p.ptb.device,p.ptb.keysOfInterest);%default device.
+       % KbQueueCreate(p.ptb.device,p.ptb.keysOfInterest);%default device.
         %%%%%%%%%%%%%%%%%%%%%%%%%%%        
         %prepare parallel port communication. This relies on cogent i
         %think. We could do it with PTB as well.
-        if ~ismac
-            clear outp;
+        if ~ismac            
             config_io;
             outp(p.com.lpt.address,0);
             if( cogent.io.status ~= 0 )
@@ -814,16 +819,16 @@ cleanup;
 
         %CORRECT
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
-% % % % % %         %test whether CED receives the triggers correctly...
-% % % % % %         k = 0;
-% % % % % %         while k ~= 30;
-% % % % % %             outp(p.com.lpt.address,p.com.lpt.InitExperiment);
-% % % % % %             pause(0.1);
-% % % % % %             outp(p.com.lpt.address,0);%247 means all but the UCS channel (so that we dont shock the subject during initialization).
-% % % % % %             fprintf('=================\nDid the trigger test work?\nPress 0 to send it again, 1 to continue...\n')
-% % % % % %             [~, k] = KbStrokeWait;
-% % % % % %             k = find(k);
-% % % % % %         end
+        %test whether CED receives the triggers correctly...
+        k = 0;
+        while k ~= 86;
+            outp(p.com.lpt.address,p.com.lpt.InitExperiment);
+            pause(0.1);
+            outp(p.com.lpt.address,0);%247 means all but the UCS channel (so that we dont shock the subject during initialization).
+            fprintf('=================\nDid the trigger test work?\nPress c to send it again, v to continue...\n')
+            [~, k] = KbStrokeWait;
+            k = find(k);
+        end
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
         %load the pictures to the memory.
@@ -877,7 +882,7 @@ cleanup;
         Eyelink('Command', 'clear_screen %d', 0);
         %draw the image on the screen but also the two crosses
         if (nStim <= 16 && nStim>0)
-            Eyelink('ImageTransfer',p.stim.files24(nStim,:),p.ptb.imrect(1),p.ptb.imrect(2),p.stim.width,p.stim.height,p.ptb.imrect(1),p.ptb.imrect(2));            
+%            Eyelink('ImageTransfer',p.stim.files24(nStim,:),p.ptb.imrect(1),p.ptb.imrect(2),p.stim.width,p.stim.height,p.ptb.imrect(1),p.ptb.imrect(2));            
         end
         Eyelink('Command', 'draw_cross %d %d 15',fix(1),fix(2));
         
@@ -1069,7 +1074,7 @@ cleanup;
             secs = GetSecs;
         end
     end
-    function [keycode, secs] = KbQueueDump
+    function [keycode, secs] = KbQueueDump;
         %[keycode, secs] = KbQueueDump
         %   Will dump all the events accumulated in the queue.
         
