@@ -145,7 +145,7 @@ cleanup;
         KbQueueStart;
         %log the pulse timings.        
         TimeEndStim                 = secs(end);%take the first valid pulse as the end of the last stimulus.
-        for nTrial  = 1:29%p.presentation.tTrial;
+        for nTrial  = 1:p.presentation.tTrial;
 
             %Get the variables that Trial function needs.
             stim_id      = p.presentation.stim_id(nTrial);
@@ -234,7 +234,7 @@ cleanup;
         if oddball
             MarkCED( p.com.lpt.address, p.com.lpt.oddball );
         end   
-        Log(TimeStimOnset,3,stim_id);%log the stimulus onset
+        Log(TimeStimOnset,3,dist);%log the stimulus onset
         %% CROSS JUMPS (same as before but with a different fix position)
         if ~stim_id==0
             Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(stim_id));
@@ -403,7 +403,7 @@ cleanup;
             seq.dist          = 1:9;
             seq.CrossPosition = RandSample(1:2,[1 9]);
         elseif phase == 1                        
-            load('/Users/onat/Desktop/fearamy/seq.mat');
+            load([fileparts(which('exp_FearAmy.m')) '/bin/fearamy_seq.mat']);
         end
         clear seqpool
         %create the randomized design
