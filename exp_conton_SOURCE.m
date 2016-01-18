@@ -113,8 +113,7 @@ switch init.hostname
     init.debug = 0;
     case 'isnf01faf2bafa4'
     init.thepath.project       = 'C:\Users\herweg\Documents\_Projekte\07_conton\EL';
-    case
-    error('add eyetracking lab name here')
+    case 'etpc'
     init.thepath.project       = 'C:\USER\herweg\07_conton\EL';
 end
 

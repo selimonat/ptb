@@ -15,6 +15,8 @@ error('add keys from button box')
 switch init.hostname
     case 'triostim1'
         
+    case 'etpc'
+        
     case 'isnf01faf2bafa4'
         
         switch fileX.keycond
