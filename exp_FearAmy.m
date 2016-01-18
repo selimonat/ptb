@@ -1091,7 +1091,7 @@ cleanup;
             fprintf('Event is: %d\n',keycode(n));
         end
         i           = pressed == 1;
-        keycode(~i) = []
+        keycode(~i) = [];
         secs(~i)    = [];
         fprintf('there are %03d events found...\n',length(keycode));
     end
