@@ -10,6 +10,7 @@ sca;
 init       = [];
 init.debug = 1; %debug mode = 1; testing = 0
 
+warning('Do you want to use the same resolution for all phases?')
 error('adjust jitter, transition probabilities, pause between blocks/null blocks, power!')
 
 %seed random number generator based on the current time
@@ -126,8 +127,7 @@ addpath(fullfile(init.thepath.project,'experiment\functions'));
 addpath('C:\Toolboxen\io_comunication');
 
 %specify MR parameters
-init.mr.ndummy  = 5;%TBD
-init.mr.noffset = 5;error('program offset')
+init.mr.ndummy  = 6;
 init.mr.tr      = 2;%TBD
 
 %% LOAD/CREATE FILEX
@@ -289,10 +289,6 @@ if init.debug
     PsychDebugWindowConfiguration([],0.7)
 else HideCursor;
 end
-if strcmp(init.hostname,'triostim1')
-    error('Why do I have to do this?')
-    init.oldres = Screen('resolution',init.screenNumber,1280,960);
-end
             
 try
     [init.expWin,init.rect] = PsychImaging('OpenWindow',init.screenNumber,[0.5 0.5 0.5]);%open onscreen Window
@@ -310,9 +306,6 @@ init.device = -1;%query all keyboard devices and report their merged state
 KbCheck(init.device);
 KbWait;
 GetSecs;
-
-%Create Queue for button presses
-KbQueueCreate(init.device);%uses the default device
 
 %Fixation cross
 FixCr=ones(20,20)*0.5;

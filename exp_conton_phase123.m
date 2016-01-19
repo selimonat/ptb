@@ -10,40 +10,7 @@ thescene{n.(thephase{phasei}).(thepart{parti}).trials} = 0;
 fileX.(thephase{phasei}).(thepart{parti})(n.(thephase{phasei}).(thepart{parti}).trials,19)=0;
 
 %Counterbalance keys
-error('add eye link lab here and in other script')
-error('add keys from button box')
-switch init.hostname
-    case 'triostim1'
-        
-    case 'etpc'
-        
-    case 'isnf01faf2bafa4'
-        
-        switch fileX.keycond
-            case '1'
-                key.in    = KbName('LeftArrow');
-                key.out   = KbName('DownArrow');
-                key.old   = KbName('LeftArrow');
-                key.new   = KbName('DownArrow');
-            case '2'
-                key.in    = KbName('LeftArrow');
-                key.out   = KbName('DownArrow');
-                key.old   = KbName('DownArrow');
-                key.new   = KbName('LeftArrow');
-            case '3'
-                key.in    = KbName('DownArrow');
-                key.out   = KbName('LeftArrow');
-                key.old   = KbName('DownArrow');
-                key.new   = KbName('LeftArrow');
-            case '4'
-                key.in    = KbName('DownArrow');
-                key.out   = KbName('LeftArrow');
-                key.old   = KbName('LeftArrow');
-                key.new   = KbName('DownArrow');
-        end
-        key.space = KbName('Space');
-        key.enter = KbName('Return');
-end
+key = counterkeys(init,fileX);
 
 %Load images for first block
 [thescenepath,thescene] = LoadStimuli(1,thephase,phasei,thepart,parti,thecat,n,fileX);
@@ -88,6 +55,15 @@ else
     t_targ = GetSecs-12;
 end
 
+if phasei == 2 && parti == 2
+%Wait for dummy scans
+fileX.MRtiming.start = WaitPulse(KbName('5%'),init.mr.ndummy+1);%Waits for 6 dummys scans, the 7th is the first scan for analysis
+end
+if phasei ~= 3
+%Create Queue for button presses
+KbQueueCreate(init.device);%uses the default device
+end
+
 %Show fix cross
 fixcross = Screen('MakeTexture',init.expWin,FixCr);
 Screen('DrawTexture',init.expWin,fixcross);
@@ -100,27 +76,39 @@ clear targstim targtrial targettexture t_targ
 for trial=1:n.(thephase{phasei}).(thepart{parti}).trials
     
     %Break
-    if rem(trial,n.(thephase{phasei}).test.t2b)==1 && trial>1%short break after every nth trial
+    if rem(trial,n.(thephase{phasei}).test.tpb)==1 && trial>1%short break after every nth trial
         
         coverTexture                                        = Screen('MakeTexture',init.expWin,thecover);%cover the fixation cross
         Screen('DrawTexture',init.expWin,coverTexture);
-        Screen('DrawText', init.expWin, texttodraw{1,1},texttodraw{1,2},texttodraw{1,3}, [1 1 1]);
-        fileX.(thephase{phasei}).(thepart{parti})(trial,11) = Screen('Flip', init.expWin, t_fix+time.(thephase{phasei}).fix-init.slack);%t_pause
-        Screen('Close')
         
-        clear t_fix
+        if rem(trial,n.(thephase{phasei}).test.t2b)==1
+            Screen('DrawText', init.expWin, texttodraw{1,1},texttodraw{1,2},texttodraw{1,3}, [1 1 1]);
+            fileX.(thephase{phasei}).(thepart{parti})(trial,11) = Screen('Flip', init.expWin, t_fix+time.(thephase{phasei}).fix-init.slack);%t_pause
+        else
+            fixcross = Screen('MakeTexture',init.expWin,FixCr);
+            Screen('DrawTexture',init.expWin,fixcross);
+            fileX.(thephase{phasei}).(thepart{parti})(trial,11) = Screen('Flip', init.expWin, t_fix+time.(thephase{phasei}).fix-init.slack);%t_pause
+        end
         
-        %Load images for next block (timing & memory issue)
-        [thescenepath,thescene] = LoadStimuli(trial,thephase,phasei,thepart,parti,thecat,n,fileX);
-
-        Screen('DrawText', init.expWin, texttodraw{2,1},texttodraw{2,2},texttodraw{2,3}, [1 1 1]);
-        save(fullfile(init.thepath.results,fileX.fileName),'fileX');
-        Screen('Flip', init.expWin,fileX.(thephase{phasei}).(thepart{parti})(trial,11)+37-init.slack);
         Screen('Close')
+        clear t_fix %this has been saved during the end of the last trial
+        
+        if rem(trial,n.(thephase{phasei}).test.t2b)==1
+            %Load images for next block (timing & memory issue)
+            [thescenepath,thescene] = LoadStimuli(trial,thephase,phasei,thepart,parti,thecat,n,fileX);
+            
+            Screen('DrawText', init.expWin, texttodraw{2,1},texttodraw{2,2},texttodraw{2,3}, [1 1 1]);
+            save(fullfile(init.thepath.results,fileX.fileName),'fileX');
+            Screen('Flip', init.expWin,fileX.(thephase{phasei}).(thepart{parti})(trial,11)+37-init.slack);
+            Screen('Close')
+            time2flip = 40;
+        else
+            time2flip = 20;
+        end
         
         fixcross = Screen('MakeTexture',init.expWin,FixCr);
         Screen('DrawTexture',init.expWin,fixcross);
-        t_fix    = Screen('Flip', init.expWin,fileX.(thephase{phasei}).(thepart{parti})(trial,11)+40-init.slack);
+        t_fix    = Screen('Flip', init.expWin,fileX.(thephase{phasei}).(thepart{parti})(trial,11)+time2flip-init.slack);
         Screen('Close')
     end
     
@@ -238,13 +226,22 @@ for trial=1:n.(thephase{phasei}).(thepart{parti}).trials
     if phasei == 2 && parti == 2
     fileX.(thephase{phasei}).(thepart{parti})(trial,15) = t_trackerOn;
     fileX.(thephase{phasei}).(thepart{parti})(trial,16) = t_trackerOff;
+    
+    %Erase pulses from button press data
+    firstPress(KbName('5%'))   = 0;
+    firstRelease(KbName('5%')) = 0;
+    lastPress(KbName('5%'))    = 0;
+    lastRelease(KbName('5%'))  = 0;
+    if size(find(firstPress),2) == 0
+        keyIsDown = 0;
+    end
     end
     
     if (phasei == 3 && ~exist('fin','var')) || (phasei ~= 3 && keyIsDown == 0) %if still no button has been pressed
         fileX.(thephase{phasei}).(thepart{parti})(trial,8)  = NaN;%no response
     elseif phasei ~=3 && size(find(firstPress),2) == 1
         fileX.(thephase{phasei}).(thepart{parti})(trial,8)  = find(firstPress);
-        fileX.(thephase{phasei}).(thepart{parti})(trial,9)  = firstPress(find(firstPress));
+        fileX.(thephase{phasei}).(thepart{parti})(trial,9)  = firstPress(find(firstPress));%RT
         fileX.(thephase{phasei}).(thepart{parti})(trial,10) = firstPress(find(firstPress))-sceneOnset;%reaction time
     elseif phasei == 3 && exist('fin','var')
         fileX.(thephase{phasei}).(thepart{parti})(trial,8)  = rating;% -1 certainly old, 1 certainly new
@@ -256,6 +253,11 @@ for trial=1:n.(thephase{phasei}).(thepart{parti}).trials
     
     clearvars -except fileX FixCr init inst2load key n parti phasei relnew t_fix thecat thecond thepart thescene time trial thephase texttodraw thecover thescenepath
     thescene{trial}=[];
+end
+
+if phasei == 2 && parti == 2
+%Wait for last scans
+fileX.MRtiming.end = WaitPulse(KbName('5%'),init.mr.ndummy+1);
 end
 
 %% Finish this phase
