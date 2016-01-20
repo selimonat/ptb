@@ -311,8 +311,8 @@ cleanup;
         p.subID                       = sprintf('sub%02d',subject);
         p.path.edf                    = sprintf([p.subID 'p%02d' ],phase);
         timestamp                     = datestr(now,30);
-        p.path.subject                = [p.path.experiment 'data' filesep 'tmp' filesep p.subID '_' timestamp filesep];
-        p.path.finalsubject           = [p.path.experiment 'data' filesep p.subID '_' timestamp filesep ];
+        p.path.subject                = [p.path.experiment 'data' filesep 'tmp' filesep p.subID '_' timestamp filesep sprintf('%03d',phase) filesep];
+        p.path.finalsubject           = [p.path.experiment 'data' filesep p.subID '_' timestamp filesep sprintf('%03d',phase) filesep];
         %create folder hierarchy
         mkdir(p.path.subject);
         mkdir([p.path.subject 'scr']);
