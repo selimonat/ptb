@@ -6,11 +6,11 @@ function [p]=FearGen_eyelab(subject,phase,csp,PainThreshold)
 % 
 % 
 
-debug = 0;%debug mode
+debug = 1;%debug mode
 %replace parallel port function with a dummy function
-% if ismac
-% outp = @(x,y) fprintf('pp\n');
-% end
+if ismac
+outp = @(x,y) fprintf('pp\n');
+end
 if nargin ~= 4
     fprintf('Wrong number of inputs\n');
     keyboard;
@@ -67,16 +67,8 @@ if phase == 0
     
 elseif phase == 1
     %
-    p.var.ExpPhase  = phase;     
-    ShowInstruction(6,1);%will wait for keypresses
-    run = 1;
-    PresentStimuli;
-    ShowInstruction(6,1);
-    run = 2;
+    p.var.ExpPhase  = phase;            
     PresentStimuli;    
-    ShowInstruction(6,1);
-    run = 3;
-    PresentStimuli;
     AskStimRating;%make sure that scanner doesnt stop prematurely asa the stim offset  
 end
 
@@ -150,8 +142,7 @@ cleanup;
 
             %Get the variables that Trial function needs.
             stim_id      = p.presentation.stim_id(nTrial);
-            %CORRECT
-            fix_y        = 1;%p.presentation.CrossPosition(nTrial,:);
+            fix_y        = p.presentation.CrossPosition(nTrial);
             ISI          = p.presentation.isi(nTrial);
             ucs          = p.presentation.ucs(nTrial);
             oddball      = p.presentation.oddball(nTrial);
@@ -185,7 +176,10 @@ cleanup;
                 p.out.response(nTrial) = 1;
                 fprintf('Subject Pressed the Hit Key!!\n');
             end            
-            
+            if rem(nTrial,p.presentation.run_length) == 0
+                ShowInstruction(6,1);%will wait for keypresses
+                TimeEndStim = GetSecs;
+            end            
         end
         KbQueueRelease(p.ptb.device);
         %wait 6 seconds for the BOLD signal to come back to the baseline...
@@ -198,13 +192,13 @@ cleanup;
         %get all the times
          TimeCrossOnset     = TimeStimOnset  - prestimdur;
          TimeCrossJump      = TimeStimOnset  + p.duration.stim/2;
-         TimeEndStim        = TimeStimOnset  + p.duration.stim;                
+         TimeEndStim        = TimeStimOnset  + p.duration.stim;
          TimeStartShock     = TimeStimOnset  + p.duration.onset2shock;
          TimeTrackerOff     = TimeStimOnset  + p.duration.keep_recording;                
          
          %% Fixation Onset       
          fix          = [p.ptb.CrossPosition_x p.ptb.CrossPosition_y(fix_i)];
-         FixCross     = [fix(1)-1,fix(2)-20,fix(1)+1,fix(2)+20;fix(1)-20,fix(2)-1,fix(1)+20,fix(2)+1];
+         FixCross     = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];
          Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.imrect ); %always create a gray background
          Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');%draw the prestimus cross atop
          
@@ -243,7 +237,7 @@ cleanup;
         end
         fix          = [p.ptb.CrossPosition_x p.ptb.CrossPosition_y(setdiff(1:2,fix_i))];%take the other position
         %draw also the fixation cross
-        FixCross     = [fix(1)-1,fix(2)-20,fix(1)+1,fix(2)+20;fix(1)-20,fix(2)-1,fix(1)+20,fix(2)+1];
+        FixCross     = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];
         Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');
         Screen('DrawingFinished',p.ptb.w,0);
         TimeCrossJump  = Screen('Flip',p.ptb.w,TimeCrossJump,0);%asap and dont clear
@@ -309,19 +303,19 @@ cleanup;
         p.path.stim                   = [p.path.baselocation filesep 'stimuli' filesep];
         p.path.stim24                 = [p.path.stim '24bit' filesep];
         %
-        p.subID                       = sprintf('sub%02d',subject);
-        p.path.edf                    = sprintf([p.subID 'p%02d' ],phase);
+        p.subID                       = sprintf('sub%02d',subject);        
         timestamp                     = datestr(now,30);
-        p.path.subject                = [p.path.experiment 'data' filesep 'tmp' filesep p.subID '_' timestamp filesep sprintf('%03d',phase) filesep];
-        p.path.finalsubject           = [p.path.experiment 'data' filesep p.subID '_' timestamp filesep sprintf('%03d',phase) filesep];
+        p.path.subject                = [p.path.experiment  'tmp' filesep p.subID '_' timestamp filesep sprintf('run%03d',phase) filesep];
+        p.path.finalsubject           = [p.path.experiment  p.subID '_' timestamp filesep sprintf('run%03d',phase) filesep];
+        p.path.path_edf               = [p.path.subject  'eye' filesep];
+        p.path.edf                    = sprintf([p.subID 'p%02d.edf' ],phase);
+        p.path.path_param             = [p.path.subject 'stimulation' filesep sprintf([p.subID 'p%02d.edf' ],phase)];
         %create folder hierarchy
         mkdir(p.path.subject);
         mkdir([p.path.subject 'scr']);
         mkdir([p.path.subject 'eye']);
         mkdir([p.path.subject 'stimulation']);
-        mkdir([p.path.subject 'midlevel']);
-        p.path.path_param             = sprintf([regexprep(p.path.subject,'\\','\\\') 'stimulation\\param_phase_%02d'],phase);
-        
+        mkdir([p.path.subject 'midlevel']);                
         %% %%%%%%%%%%%%%%%%%%%%%%%%%
         %get stim files
         [p.stim.files p.stim.label]   = FileMatrix([p.path.stim '*.bmp']);
@@ -368,7 +362,7 @@ cleanup;
         p.keys.pulse                   = KbName('5%');
         p.keys.el_calib                = KbName('v');
         p.keys.el_valid                = KbName('c');
-        p.keys.escape                  = KbName('esc');
+        p.keys.escape                  = KbName('ESCAPE');
         p.keys.enter                   = KbName('return');
                 
         %% %%%%%%%%%%%%%%%%%%%%%%%%%
@@ -793,6 +787,7 @@ cleanup;
         %cross position for the eyetracker screen.
         p.ptb.CrossPositionET_x     = [p.ptb.midpoint(1) p.ptb.midpoint(1)];
         p.ptb.CrossPositionET_y     = [p.ptb.midpoint(2)-p.ptb.cross_shift(2) p.ptb.midpoint(2)+p.ptb.cross_shift(2)];
+        p.ptb.fc_size               = 10;
         %        
         %%
         %priorityLevel=MaxPriority(['GetSecs'],['KbCheck'],['KbWait'],['GetClicks']);
@@ -828,7 +823,7 @@ cleanup;
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
         %test whether CED receives the triggers correctly...
         k = 0;
-        while k ~= 86;
+        while ~(k == 25 || k == 86);
             outp(p.com.lpt.address,p.com.lpt.InitExperiment);
             pause(0.1);
             outp(p.com.lpt.address,0);%247 means all but the UCS channel (so that we dont shock the subject during initialization).
@@ -988,7 +983,7 @@ cleanup;
             WaitSecs(0.5);
             Eyelink('Closefile');
             display('receiving the EDF file...');
-            Eyelink('ReceiveFile',filename,[p.path.subject '\eye\'],1);
+            Eyelink('ReceiveFile',filename,p.path.path_edf,1);
             display('...finished!')
             % Shutdown Eyelink:
             Eyelink('Shutdown');
