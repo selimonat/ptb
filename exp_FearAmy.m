@@ -6,7 +6,7 @@ function [p]=FearGen_eyelab(subject,phase,csp,PainThreshold)
 % 
 % 
 
-debug = 1;%debug mode
+debug = 0;%debug mode
 %replace parallel port function with a dummy function
 % if ismac
 % outp = @(x,y) fprintf('pp\n');
@@ -49,7 +49,7 @@ InitEyeLink;
 WaitSecs(2);
 %calibrate if we are at the scanner computer.
 if strcmp(p.hostname,'triostim1') || strcmp(p.hostname,'etpc');
-     CalibrateEL;
+     %CalibrateEL;
 end
 %save again the parameter file
 save(p.path.path_param,'p');
@@ -62,7 +62,7 @@ if phase == 0
     ShowInstruction(2,1);
     ShowInstruction(3,1);
     ShowInstruction(4,1);
-    ConfirmIntensity;
+    %ConfirmIntensity;
     PresentStimuli;
     
 elseif phase == 1
@@ -146,7 +146,7 @@ cleanup;
         KbQueueStart;
         %log the pulse timings.        
         TimeEndStim                 = secs(end);%take the first valid pulse as the end of the last stimulus.
-        for nTrial  = 1:3%p.presentation.tTrial;
+        for nTrial  = 1:p.presentation.tTrial;
 
             %Get the variables that Trial function needs.
             stim_id      = p.presentation.stim_id(nTrial);
@@ -369,6 +369,7 @@ cleanup;
         p.keys.el_calib                = KbName('v');
         p.keys.el_valid                = KbName('c');
         p.keys.escape                  = KbName('esc');
+        p.keys.enter                   = KbName('return');
                 
         %% %%%%%%%%%%%%%%%%%%%%%%%%%
         %Communication business
@@ -802,11 +803,11 @@ cleanup;
 %         Beeper(1000)
                
         %%%%%%%%%%%%%%%%%%%%%%%%%%%Prepare the keypress queue listening.
-        p.ptb.device        = [];
+        p.ptb.device        = -1;
         %get all the required keys in a vector 
         p.ptb.keysOfInterest = [];for i = fields(p.keys)';p.ptb.keysOfInterest = [p.ptb.keysOfInterest p.keys.(i{1})];end         
         fprintf('Key listening will be restricted to %d\n',p.ptb.keysOfInterest)
-        RestrictKeysForKbCheck(p.ptb.keysOfInterest);
+%         RestrictKeysForKbCheck(p.ptb.keysOfInterest);
         
         p.ptb.keysOfInterest=zeros(1,256);
         p.ptb.keysOfInterest(p.keys.confirm) = 1;
@@ -888,7 +889,7 @@ cleanup;
         Eyelink('Command', 'clear_screen %d', 0);
         %draw the image on the screen but also the two crosses
         if (nStim <= 16 && nStim>0)
-%            Eyelink('ImageTransfer',p.stim.files24(nStim,:),p.ptb.imrect(1),p.ptb.imrect(2),p.stim.width,p.stim.height,p.ptb.imrect(1),p.ptb.imrect(2));            
+           Eyelink('ImageTransfer',p.stim.files24(nStim,:),p.ptb.imrect(1),p.ptb.imrect(2),p.stim.width,p.stim.height,p.ptb.imrect(1),p.ptb.imrect(2));            
         end
         Eyelink('Command', 'draw_cross %d %d 15',fix(1),fix(2));
         
