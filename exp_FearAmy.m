@@ -39,17 +39,11 @@ t                         = [];
 nTrial                    = 0;
 %%
 %Time Storage
-TimePulse1                = [];
-TimePulse2                = [];
-TimeStimOnset             = [];
-TimeCrossJumpTime         = [];
 TimeEndStim               = [];
 TimeStartShock            = [];
 TimeTrackerOff            = [];
-TimeTrackerOn             = [];
 TimeCrossOn               = [];   
 p.var.event_count         = 0;
-
 %%
 InitEyeLink;
 WaitSecs(2);
@@ -74,7 +68,14 @@ if phase == 0
 elseif phase == 1
     %
     p.var.ExpPhase  = phase;     
-    ShowInstruction(5,1);%will wait for keypresses
+    ShowInstruction(6,1);%will wait for keypresses
+    run = 1;
+    PresentStimuli;
+    ShowInstruction(6,1);
+    run = 2;
+    PresentStimuli;    
+    ShowInstruction(6,1);
+    run = 3;
     PresentStimuli;
     AskStimRating;%make sure that scanner doesnt stop prematurely asa the stim offset  
 end
@@ -685,6 +686,11 @@ cleanup;
                         'gelegentlich elektrische Reize bekommen.\n\n' ...
                         'Die elektrischen Reize folgen jetzt jedoch auf eins der Gesichter.\n' ...
                     ];
+             elseif nInstruct == 6%In between runs
+                %=================================================================================================================%
+                text = ['Now we will have a little break...\n' ...
+                        'Press a button when you want to go on...' ...
+                       ];
                 
             
             elseif nInstruct == 7;%rating
