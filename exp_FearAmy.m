@@ -17,7 +17,6 @@ if nargin ~= 4
 end
 
 csn   = mod( csp + 8/2-1, 8)+1;
-% ListenChar(2);%disable pressed keys to be spitted around
 commandwindow;
 %clear everything
 clear mex global functions
@@ -47,27 +46,27 @@ p.var.event_count         = 0;
 %%
 InitEyeLink;
 WaitSecs(2);
-%calibrate if we are at the scanner computer.
-if strcmp(p.hostname,'triostim1') || strcmp(p.hostname,'etpc');
-     %CalibrateEL;
-end
+
 %save again the parameter file
 save(p.path.path_param,'p');
 if phase == 0
     %
     p.mrt.dummy_scan = 0;%for the training we don't want any pulses
     p.var.ExpPhase = phase;
-    ShowInstruction(1,1);
-    ShowInstruction(101,1);
-    ShowInstruction(2,1);
-    ShowInstruction(3,1);
+    %UCS check    
     ShowInstruction(4,1);
-    %ConfirmIntensity;
+    ConfirmIntensity;
+    %test
+    ShowInstruction(1,1);    
+    ShowInstruction(101,1);    
+    ShowInstruction(2,1);    
     PresentStimuli;
     
 elseif phase == 1
     %
     p.var.ExpPhase  = phase;            
+    CalibrateEL;
+    ShowInstruction(3,1);
     PresentStimuli;    
     AskStimRating;%make sure that scanner doesnt stop prematurely asa the stim offset  
 end
@@ -138,7 +137,7 @@ cleanup;
         KbQueueStart;
         %log the pulse timings.        
         TimeEndStim                 = secs(end);%take the first valid pulse as the end of the last stimulus.
-        for nTrial  = 1:p.presentation.tTrial;
+        for nTrial  = 1:10%p.presentation.tTrial;
 
             %Get the variables that Trial function needs.
             stim_id      = p.presentation.stim_id(nTrial);
@@ -175,15 +174,13 @@ cleanup;
             if any((keycode == p.keys.confirm) & (secs > OnsetTime) & (secs <= TimeEndStim))
                 p.out.response(nTrial) = 1;
                 fprintf('Subject Pressed the Hit Key!!\n');
-            end            
-            if rem(nTrial,p.presentation.run_length) == 0
-                ShowInstruction(6,1);%will wait for keypresses
-                TimeEndStim = GetSecs;
-            end            
+            end                        
         end
         KbQueueRelease(p.ptb.device);
         %wait 6 seconds for the BOLD signal to come back to the baseline...
-        WaitPulse(p.keys.pulse,ceil(6./p.mrt.tr));%
+        if p.var.ExpPhase > 0
+            WaitPulse(p.keys.pulse,ceil(6./p.mrt.tr));%
+        end
         %stop the queue
         KbQueueStop(p.ptb.device);
         KbQueueRelease(p.ptb.device);        
@@ -305,8 +302,8 @@ cleanup;
         %
         p.subID                       = sprintf('sub%02d',subject);        
         timestamp                     = datestr(now,30);
-        p.path.subject                = [p.path.experiment  'tmp' filesep p.subID '_' timestamp filesep sprintf('run%03d',phase) filesep];
-        p.path.finalsubject           = [p.path.experiment  p.subID '_' timestamp filesep sprintf('run%03d',phase) filesep];
+        p.path.subject                = [p.path.experiment  'tmp' filesep p.subID '_' timestamp filesep ];
+        p.path.finalsubject           = [p.path.experiment  p.subID '_' timestamp filesep ];
         p.path.path_edf               = [p.path.subject  'eye' filesep];
         p.path.edf                    = sprintf([p.subID 'p%02d.edf' ],phase);
         p.path.path_param             = [p.path.subject 'stimulation' filesep sprintf([p.subID 'p%02d.edf' ],phase)];
@@ -394,14 +391,14 @@ cleanup;
         %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
          %stimulus sequence                  
         if phase == 0        
-            seq.cond_id       = Shuffle([1 2 3 4 5 6 7 8 9]);
-            seq.ucs           = zeros(1,9);
-            seq.oddball       = seq.cond_id == 9;
-            seq.isi           = RandSample([2 4 6],[1 9]);
-            seq.stim_id       = seq.cond_id;
-            seq.tTrial        = length(seq.cond_id);            
-            seq.dist          = 1:9;
-            seq.CrossPosition = RandSample(1:2,[1 9]);
+            seq.cond_id       = Shuffle([0 1 2 3 4 5 6 7 8 9]);
+            seq.tTrial        = length(seq.cond_id);
+            seq.ucs           = zeros(1,seq.tTrial);
+            seq.oddball       = seq.cond_id == 10;
+            seq.isi           = RandSample([3 4.5],[1 seq.tTrial]);
+            seq.stim_id       = seq.cond_id;            
+            seq.dist          = 1:10;
+            seq.CrossPosition = RandSample(1:2,[1 seq.tTrial]);
         elseif phase == 1                        
             load([fileparts(which('exp_FearAmy.m')) '/bin/fearamy_seq.mat']);
         end
@@ -450,7 +447,7 @@ cleanup;
             [dummy idx]             = Shuffle( face_order );
             rating_seq              = [rating_seq dummy];            
             %this balances both directions
-            %pos1_seq                = [pos1_seq double(pos_order(idx) == rem(nseq,2))+1];%+1 to make [0 1] --> [1 2]
+            pos1_seq                = [pos1_seq double(pos_order(idx) == rem(nseq,2))+1];%+1 to make [0 1] --> [1 2]
         end         
         pos1_seq                = ones(1,16);
         %%
