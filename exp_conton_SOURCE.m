@@ -113,18 +113,18 @@ switch init.hostname
     init.thepath.project       = 'C:\USER\herweg\07_conton\MR';
     init.debug = 0;
     case 'isnf01faf2bafa4'
-    init.thepath.project       = 'C:\Users\herweg\Documents\_Projekte\07_conton\EL';
+    init.thepath.project       = 'C:\Users\herweg\Documents\_Projekte\07_conton\MR';
     case 'etpc'
-    init.thepath.project       = 'C:\USER\herweg\07_conton\EL';
+    init.thepath.project       = 'C:\USER\herweg\07_conton\MR';
 end
 
 init.thepath.pics_inn = [init.thepath.project '\pics\inn_color\mean1275RGB'];
 init.thepath.pics_out = [init.thepath.project '\pics\out_color\mean1275RGB'];
 init.thepath.results  = [init.thepath.project '\data'];
 init.thepath.inst     = [init.thepath.project '\experiment\instructions'];
-init.thepath.scripts  = [init.thepath.project '\experiment'];
-addpath(fullfile(init.thepath.project,'experiment\functions'));
-addpath('C:\Toolboxen\io_comunication');
+%init.thepath.scripts  = [init.thepath.project '\experiment'];
+%addpath(fullfile(init.thepath.project,'experiment\functions'));
+addpath('C:\Users\herweg\Documents\GitHub\ptb\exp_conton_functions');
 
 %specify MR parameters
 init.mr.ndummy  = 6;
@@ -305,7 +305,8 @@ init.device = -1;%query all keyboard devices and report their merged state
 
 %Load mex files now to not do it in the trial loop
 KbCheck(init.device);
-KbWait;
+disp('Press any key to start');
+KbWait(init.device);
 GetSecs;
 
 %Fixation cross
@@ -354,10 +355,11 @@ end
 
 %% START SESSIONS
 for numsession=1:6-((phasei*2)+parti-3)
+    disp('Starting session');
     DrawFormattedText(init.expWin,'Laden...','center','center',[1 1 1]);
     Screen('Flip',init.expWin);
-    cd (init.thepath.scripts);
-    phase123
+    cd (init.thepath.results);
+    exp_conton_phase123
     if parti == 2
         phasei = phasei+1;
     end

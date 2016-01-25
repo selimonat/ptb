@@ -1,4 +1,4 @@
-function [thescenepath,thescene] = LoadStimuli(trial,thephase,phasei,thepart,parti,thecat,n,fileX)       
+function [thescenepath,thescene] = LoadStimuli(trial,thephase,phasei,thepart,parti,thecat,n,fileX,init)       
 
 for pici = trial:trial-1+n.(thephase{phasei}).(thepart{parti}).t2b
     if fileX.(thephase{phasei}).(thepart{parti})(pici,6)<10

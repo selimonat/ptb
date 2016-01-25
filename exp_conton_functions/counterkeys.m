@@ -1,5 +1,6 @@
 function key = counterkeys(init,fileX)
 
+error('add space key for p1?')
 switch init.hostname
     case 'triostim1'
         switch fileX.keycond

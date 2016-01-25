@@ -3,7 +3,7 @@
 
 %% Initialization
 %Timestamp
-fileX.(thephase{phasei}).(thepart{parti}).timestamp = datestr(now,30);
+fileX.timestamp.(thephase{phasei}).(thepart{parti}) = datestr(now,30);
 
 %Preallocation
 thescene{n.(thephase{phasei}).(thepart{parti}).trials} = 0;
@@ -13,7 +13,7 @@ fileX.(thephase{phasei}).(thepart{parti})(n.(thephase{phasei}).(thepart{parti}).
 key = counterkeys(init,fileX);
 
 %Load images for first block
-[thescenepath,thescene] = LoadStimuli(1,thephase,phasei,thepart,parti,thecat,n,fileX);
+[thescenepath,thescene] = LoadStimuli(1,thephase,phasei,thepart,parti,thecat,n,fileX,init);
 
 %Get text length to center text position
 texttodraw{1,1} = 'Kurze Pause!';
@@ -57,7 +57,7 @@ end
 
 if phasei == 2 && parti == 2
 %Wait for dummy scans
-fileX.MRtiming.start = WaitPulse(init.mr.ndummy+1,init.device);%Waits for 6 dummys scans, the 7th is the first scan for analysis
+fileX.MRtiming.start = WaitPulseKbQueue(init.mr.ndummy+1,init.device);%Waits for 6 dummys scans, the 7th is the first scan for analysis
 end
 if phasei ~= 3
 %Create Queue for button presses
@@ -95,7 +95,7 @@ for trial=1:n.(thephase{phasei}).(thepart{parti}).trials
         
         if rem(trial,n.(thephase{phasei}).test.t2b)==1
             %Load images for next block (timing & memory issue)
-            [thescenepath,thescene] = LoadStimuli(trial,thephase,phasei,thepart,parti,thecat,n,fileX);
+            [thescenepath,thescene] = LoadStimuli(trial,thephase,phasei,thepart,parti,thecat,n,fileX,init);
             
             Screen('DrawText', init.expWin, texttodraw{2,1},texttodraw{2,2},texttodraw{2,3}, [1 1 1]);
             save(fullfile(init.thepath.results,fileX.fileName),'fileX');
@@ -258,19 +258,19 @@ end
 
 if phasei == 2 && parti == 2
 %Wait for last scans and shut down eyelink
-fileX.MRtiming.end = WaitPulse(KbName('5%'),init.mr.ndummy+1);
+fileX.MRtiming.end = WaitPulseKbQueue(KbName('5%'),init.mr.ndummy+1);
         try
-            Disp('Trying to stop the Eyelink system with StopEyelink');
+            disp('Trying to stop the Eyelink system with StopEyelink');
             Eyelink('StopRecording');
             WaitSecs(0.5);
             Eyelink('Closefile');
-            Disp('receiving the EDF file...');
+            disp('receiving the EDF file...');
             Eyelink('ReceiveFile',[fileX.fileName(8:end-3),'edf'],init.thepath.results,1);
-            Disp('...finished!')
+            disp('...finished!')
             % Shutdown Eyelink:
             Eyelink('Shutdown');
         catch
-            display('StopEyeLink routine didn''t really run well');
+            disp('StopEyeLink routine didn''t really run well');
         end
 end
 

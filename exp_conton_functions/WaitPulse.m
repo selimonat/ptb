@@ -1,4 +1,4 @@
-function [secs]=WaitPulse(n,device)
+function [secs]=WaitPulseKbQueue(n,device)
 %[secs]=WaitPulse(keycode,n)
 %
 %   This function waits for the Nth upcoming pulse. If N=1, it will wait for
