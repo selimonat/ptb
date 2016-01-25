@@ -12,7 +12,8 @@ function [secs]=WaitPulse(n,device)
 %   http://ftp.tuebingen.mpg.de/pub/pub_dahl/stmdev10_D/Matlab6/Toolboxes/Psychtoolbox/PsychDocumentation/KbQueue.html
 
 try %to relase running queue
-    KbQueueCheck(device);
+    keyboard
+    KbQueueCheck(device);%this should throw an error if no queue is running
     queuerunning = 1;
     KbQueueRelease(device);
 catch %notice no queue was running

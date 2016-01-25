@@ -257,8 +257,21 @@ for trial=1:n.(thephase{phasei}).(thepart{parti}).trials
 end
 
 if phasei == 2 && parti == 2
-%Wait for last scans
+%Wait for last scans and shut down eyelink
 fileX.MRtiming.end = WaitPulse(KbName('5%'),init.mr.ndummy+1);
+        try
+            Disp('Trying to stop the Eyelink system with StopEyelink');
+            Eyelink('StopRecording');
+            WaitSecs(0.5);
+            Eyelink('Closefile');
+            Disp('receiving the EDF file...');
+            Eyelink('ReceiveFile',[fileX.fileName(8:end-3),'edf'],init.thepath.results,1);
+            Disp('...finished!')
+            % Shutdown Eyelink:
+            Eyelink('Shutdown');
+        catch
+            display('StopEyeLink routine didn''t really run well');
+        end
 end
 
 %% Finish this phase

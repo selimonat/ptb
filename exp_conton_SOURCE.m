@@ -118,11 +118,11 @@ switch init.hostname
     init.thepath.project       = 'C:\USER\herweg\07_conton\EL';
 end
 
-init.thepath.pics_inn=[init.thepath.project '\pics\inn_color\mean1275RGB'];
-init.thepath.pics_out=[init.thepath.project '\pics\out_color\mean1275RGB'];
-init.thepath.results=[init.thepath.project '\data'];
-init.thepath.inst= [init.thepath.project '\experiment\instructions'];
-init.thepath.scripts=[init.thepath.project '\experiment'];
+init.thepath.pics_inn = [init.thepath.project '\pics\inn_color\mean1275RGB'];
+init.thepath.pics_out = [init.thepath.project '\pics\out_color\mean1275RGB'];
+init.thepath.results  = [init.thepath.project '\data'];
+init.thepath.inst     = [init.thepath.project '\experiment\instructions'];
+init.thepath.scripts  = [init.thepath.project '\experiment'];
 addpath(fullfile(init.thepath.project,'experiment\functions'));
 addpath('C:\Toolboxen\io_comunication');
 
@@ -314,10 +314,25 @@ FixCr(10:11,:)=1;FixCr(:,10:11)=1;
 
 %% INITIALIZE EYELINK
 if phasei == 2 && parti == 2
-    error('Do I need the max priority setting?')
+    warning('Do I need the max priority setting?')
     
     init.el.recmode = init.debug;%1 = no EL connected, dummy mode; 0 = EL connected
     init.el.el = EyelinkInitDefaults(init.expWin);
+    
+    init.el.el.targetbeep   = 0;  % sound a beep when a target is presented
+    init.el.el.feedbackbeep = 0; 
+    init.el.el.backgroundcolour = BlackIndex(init.window)/2;warning('Is this really grey?')
+    init.el.el.msgfontcolour            = WhiteIndex(init.window);
+    init.el.el.imgtitlecolour           = WhiteIndex(init.window);
+    init.el.el.calibrationtargetcolour  = WhiteIndex(init.window);
+    init.el.el.calibrationtargetsize    = 1.5;
+    init.el.el.calibrationtargetwidth   = 0.5;
+    init.el.el.displayCalResults        = 1;
+    init.el.el.eyeimgsize               = 50;
+    init.el.el.waitformodereadytime     = 25;%ms
+
+    EyelinkUpdateDefaults(el);
+    
     if ~EyelinkInit(init.el.recmode,1);%enable callback = 1 is default; if initialization does not work
         error('Initialization not successful')
     end
@@ -325,8 +340,15 @@ if phasei == 2 && parti == 2
     
     Eyelink('Openfile',[fileX.fileName(8:end-3),'edf']);
     
+    insttexture = Screen('MakeTexture',init.expWin,uint8(imread(fullfile(init.thepath.inst,'calibration.png'))));
+    Screen('DrawTexture',init.expWin,insttexture);
+    Screen('Flip', init.expWin);
+    Screen('Close')
+    KbWait([], 2);
+    clear insttexture
+    
     EyelinkDoTrackerSetup(init.el.el);
-    error('print to the console that light should not change after calibration')
+
     Eyelink('StartRecording');
 end
 
@@ -347,7 +369,6 @@ end
 
 save(fullfile(init.thepath.results,fileX.fileName),'fileX');
 save(fullfile(init.thepath.results,[fileX.fileName,'_init']),'init');
-error('Do DriftCorrection?')
 RestrictKeysForKbCheck(27);%press escape to leave final screen
 KbWait([], 2);
 RestrictKeysForKbCheck([]);
