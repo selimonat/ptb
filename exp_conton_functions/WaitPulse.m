@@ -12,14 +12,17 @@ function [secs]=WaitPulse(n,device)
 %   http://ftp.tuebingen.mpg.de/pub/pub_dahl/stmdev10_D/Matlab6/Toolboxes/Psychtoolbox/PsychDocumentation/KbQueue.html
 
 try %to relase running queue
-    KbQueueCheck;
+    KbQueueCheck(device);
     queuerunning = 1;
     KbQueueRelease(device);
 catch %notice no queue was running
     queuerunning = 0;
 end
 
-KbQueueCreate(device,KbName('5%'));
+keys = zeros(1,256);
+keys(1,KbName('5%')) = 1;
+
+KbQueueCreate(device,keys);
 KbQueueStart(device);
 
 secs  = nan(1,n);
