@@ -7,11 +7,11 @@ clear all;close all;clc;
 PsychDefaultSetup(2);
 sca;
 
-init       = [];
-init.debug = 1; %debug mode = 1; testing = 0
+init            = [];
+init.debug      = 1; %debug mode = 1, testing = 0
+init.continuous = 0; %all phases = 1, only current phase = 0
 
 warning('Do you want to use the same resolution for all phases?')
-error('adjust jitter, transition probabilities, pause between blocks/null blocks, power!')
 
 %seed random number generator based on the current time
 rng('shuffle');
@@ -38,7 +38,7 @@ n.p1.train.t2b      = n.p1.train.trials;
 
 %Phase 2: Interleaved encoding/retrieval
 time.p2.pic         = time.p1.pic;
-time.p2.fix         = 2.15;%TBD 100ms to save everything & turn on tracker again, distribute trials across TR
+time.p2.fix         = 2.15;%TBD 150ms to save everything & turn on tracker again, distribute trials across TR
 time.p2.resp        = 3;%TBD 
 time.trackerOff     = 1;
 
@@ -275,6 +275,7 @@ else
     
     clearvars -except fileX n thepart relnew thecat thecond time thephase inst2load init
     save(fullfile(init.thepath.results,fileX.fileName),'fileX');
+    save(fullfile(init.thepath.results,[fileX.fileName,'_init']),'init');
 end
 
 %Enter session number
@@ -312,28 +313,25 @@ FixCr=ones(20,20)*0.5;
 FixCr(10:11,:)=1;FixCr(:,10:11)=1;
 
 %% INITIALIZE EYELINK
-
-error('Do I need the max priority setting?')
-
-error('add timing for eye tracking recording')
-
-init.el.recmode = 1;%1 = no EL connected, dummy mode; 0 = EL connected
-init.el.el = EyelinkInitDefaults(init.expWin);
-if ~EyelinkInit(init.el.recmode,1);%enable callback = 1 is default; if initialization does not work
-error('Initialization not successful')
+if phasei == 2 && parti == 2
+    error('Do I need the max priority setting?')
+    
+    init.el.recmode = init.debug;%1 = no EL connected, dummy mode; 0 = EL connected
+    init.el.el = EyelinkInitDefaults(init.expWin);
+    if ~EyelinkInit(init.el.recmode,1);%enable callback = 1 is default; if initialization does not work
+        error('Initialization not successful')
+    end
+    [init.el.v,init.el.vs]=Eyelink('GetTrackerVersion');
+    
+    Eyelink('Openfile',[fileX.fileName(8:end-3),'edf']);
+    
+    EyelinkDoTrackerSetup(init.el.el);
+    error('print to the console that light should not change after calibration')
+    Eyelink('StartRecording');
 end
-[init.el.v,init.el.vs]=Eyelink('GetTrackerVersion');
-
-Eyelink('Openfile',[fileX.fileName(8:end-3),'edf']);
-  
-EyelinkDoTrackerSetup(init.el.el);
-
-Eyelink('StartRecording');
-
 
 %% START SESSIONS
 for numsession=1:6-((phasei*2)+parti-3)
-    error('Make script stop after first and second part and do eyelink initialization in second part only')
     DrawFormattedText(init.expWin,'Laden...','center','center',[1 1 1]);
     Screen('Flip',init.expWin);
     cd (init.thepath.scripts);
@@ -342,11 +340,14 @@ for numsession=1:6-((phasei*2)+parti-3)
         phasei = phasei+1;
     end
     parti = 2/parti;
+    if parti == 2 && init.continuous == 0
+        break
+    end
 end
 
 save(fullfile(init.thepath.results,fileX.fileName),'fileX');
 save(fullfile(init.thepath.results,[fileX.fileName,'_init']),'init');
-error('Adapt script so that init gets saved earlier! DoDriftCorrection?')
+error('Do DriftCorrection?')
 RestrictKeysForKbCheck(27);%press escape to leave final screen
 KbWait([], 2);
 RestrictKeysForKbCheck([]);

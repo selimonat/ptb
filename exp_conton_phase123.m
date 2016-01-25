@@ -99,6 +99,7 @@ for trial=1:n.(thephase{phasei}).(thepart{parti}).trials
             
             Screen('DrawText', init.expWin, texttodraw{2,1},texttodraw{2,2},texttodraw{2,3}, [1 1 1]);
             save(fullfile(init.thepath.results,fileX.fileName),'fileX');
+            save(fullfile(init.thepath.results,[fileX.fileName,'_init']),'init');
             Screen('Flip', init.expWin,fileX.(thephase{phasei}).(thepart{parti})(trial,11)+37-init.slack);
             Screen('Close')
             time2flip = 40;
@@ -262,6 +263,7 @@ end
 
 %% Finish this phase
 save(fullfile(init.thepath.results,fileX.fileName),'fileX');
+save(fullfile(init.thepath.results,[fileX.fileName,'_init']),'init');
 
 Screen('Flip', init.expWin);
 if parti == 1;
