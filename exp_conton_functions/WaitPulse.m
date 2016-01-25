@@ -1,4 +1,4 @@
-function [secs]=WaitPulse(keycode,n)
+function [secs]=WaitPulse(n,device)
 %[secs]=WaitPulse(keycode,n)
 %
 %   This function waits for the Nth upcoming pulse. If N=1, it will wait for
@@ -11,13 +11,27 @@ function [secs]=WaitPulse(keycode,n)
 %   nice discussion on the topic can be found here: 
 %   http://ftp.tuebingen.mpg.de/pub/pub_dahl/stmdev10_D/Matlab6/Toolboxes/Psychtoolbox/PsychDocumentation/KbQueue.html
 
-KbQueueRelease;
+try %to relase running queue
+    KbQueueCheck;
+    queuerunning = 1;
+    KbQueueRelease(device);
+catch %notice no queue was running
+    queuerunning = 0;
+end
+
+KbQueueCreate(device,KbName('5%'));
+KbQueueStart(device);
 
 secs  = nan(1,n);
 pulse = 0;
 while pulse < n
-    secs(pulse+1) = KbTriggerWait(keycode);
+    KbQueueFlush(device,3);
+    secs(pulse+1) = KbQueueWait(device);
     pulse         = pulse + 1;
 end
 
-KbQueueRelease;
+KbQueueRelease(device);
+
+if queuerunning == 1
+    KbQueueCreate(device);
+end

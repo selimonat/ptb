@@ -57,7 +57,7 @@ end
 
 if phasei == 2 && parti == 2
 %Wait for dummy scans
-fileX.MRtiming.start = WaitPulse(KbName('5%'),init.mr.ndummy+1);%Waits for 6 dummys scans, the 7th is the first scan for analysis
+fileX.MRtiming.start = WaitPulse(init.mr.ndummy+1,init.device);%Waits for 6 dummys scans, the 7th is the first scan for analysis
 end
 if phasei ~= 3
 %Create Queue for button presses
