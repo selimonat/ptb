@@ -8,16 +8,15 @@ function [p]=FearGen_eyelab(subject,phase,csp,PainThreshold)
 
 debug = 1;%debug mode
 %replace parallel port function with a dummy function
-% if ismac
-% outp = @(x,y) fprintf('pp\n');
-% end
+if ismac
+outp = @(x,y) fprintf('pp\n');
+end
 if nargin ~= 4
     fprintf('Wrong number of inputs\n');
     keyboard;
 end
 
 csn   = mod( csp + 8/2-1, 8)+1;
-% ListenChar(2);%disable pressed keys to be spitted around
 commandwindow;
 %clear everything
 clear mex global functions
@@ -39,43 +38,36 @@ t                         = [];
 nTrial                    = 0;
 %%
 %Time Storage
-TimePulse1                = [];
-TimePulse2                = [];
-TimeStimOnset             = [];
-TimeCrossJumpTime         = [];
 TimeEndStim               = [];
 TimeStartShock            = [];
 TimeTrackerOff            = [];
-TimeTrackerOn             = [];
 TimeCrossOn               = [];   
 p.var.event_count         = 0;
-
 %%
 InitEyeLink;
 WaitSecs(2);
-%calibrate if we are at the scanner computer.
-if strcmp(p.hostname,'triostim1') || strcmp(p.hostname,'etpc');
-     CalibrateEL;
-end
+
 %save again the parameter file
 save(p.path.path_param,'p');
 if phase == 0
     %
     p.mrt.dummy_scan = 0;%for the training we don't want any pulses
     p.var.ExpPhase = phase;
-    ShowInstruction(1,1);
-    ShowInstruction(101,1);
-    ShowInstruction(2,1);
-    ShowInstruction(3,1);
+    %UCS check    
     ShowInstruction(4,1);
     ConfirmIntensity;
+    %test
+    ShowInstruction(1,1);    
+    ShowInstruction(101,1);    
+    ShowInstruction(2,1);    
     PresentStimuli;
     
 elseif phase == 1
     %
-    p.var.ExpPhase  = phase;     
-    ShowInstruction(5,1);%will wait for keypresses
-    PresentStimuli;
+    p.var.ExpPhase  = phase;            
+    CalibrateEL;
+    ShowInstruction(3,1);
+    PresentStimuli;    
     AskStimRating;%make sure that scanner doesnt stop prematurely asa the stim offset  
 end
 
@@ -145,12 +137,11 @@ cleanup;
         KbQueueStart;
         %log the pulse timings.        
         TimeEndStim                 = secs(end);%take the first valid pulse as the end of the last stimulus.
-        for nTrial  = 1:3%p.presentation.tTrial;
+        for nTrial  = 1:10%p.presentation.tTrial;
 
             %Get the variables that Trial function needs.
             stim_id      = p.presentation.stim_id(nTrial);
-            %CORRECT
-            fix_y        = 1;%p.presentation.CrossPosition(nTrial,:);
+            fix_y        = p.presentation.CrossPosition(nTrial);
             ISI          = p.presentation.isi(nTrial);
             ucs          = p.presentation.ucs(nTrial);
             oddball      = p.presentation.oddball(nTrial);
@@ -183,12 +174,13 @@ cleanup;
             if any((keycode == p.keys.confirm) & (secs > OnsetTime) & (secs <= TimeEndStim))
                 p.out.response(nTrial) = 1;
                 fprintf('Subject Pressed the Hit Key!!\n');
-            end            
-            
+            end                        
         end
         KbQueueRelease(p.ptb.device);
         %wait 6 seconds for the BOLD signal to come back to the baseline...
-        WaitPulse(p.keys.pulse,ceil(6./p.mrt.tr));%
+        if p.var.ExpPhase > 0
+            WaitPulse(p.keys.pulse,ceil(6./p.mrt.tr));%
+        end
         %stop the queue
         KbQueueStop(p.ptb.device);
         KbQueueRelease(p.ptb.device);        
@@ -197,13 +189,13 @@ cleanup;
         %get all the times
          TimeCrossOnset     = TimeStimOnset  - prestimdur;
          TimeCrossJump      = TimeStimOnset  + p.duration.stim/2;
-         TimeEndStim        = TimeStimOnset  + p.duration.stim;                
+         TimeEndStim        = TimeStimOnset  + p.duration.stim;
          TimeStartShock     = TimeStimOnset  + p.duration.onset2shock;
          TimeTrackerOff     = TimeStimOnset  + p.duration.keep_recording;                
          
          %% Fixation Onset       
          fix          = [p.ptb.CrossPosition_x p.ptb.CrossPosition_y(fix_i)];
-         FixCross     = [fix(1)-1,fix(2)-20,fix(1)+1,fix(2)+20;fix(1)-20,fix(2)-1,fix(1)+20,fix(2)+1];
+         FixCross     = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];
          Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.imrect ); %always create a gray background
          Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');%draw the prestimus cross atop
          
@@ -242,7 +234,7 @@ cleanup;
         end
         fix          = [p.ptb.CrossPosition_x p.ptb.CrossPosition_y(setdiff(1:2,fix_i))];%take the other position
         %draw also the fixation cross
-        FixCross     = [fix(1)-1,fix(2)-20,fix(1)+1,fix(2)+20;fix(1)-20,fix(2)-1,fix(1)+20,fix(2)+1];
+        FixCross     = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];
         Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');
         Screen('DrawingFinished',p.ptb.w,0);
         TimeCrossJump  = Screen('Flip',p.ptb.w,TimeCrossJump,0);%asap and dont clear
@@ -308,19 +300,19 @@ cleanup;
         p.path.stim                   = [p.path.baselocation filesep 'stimuli' filesep];
         p.path.stim24                 = [p.path.stim '24bit' filesep];
         %
-        p.subID                       = sprintf('sub%02d',subject);
-        p.path.edf                    = sprintf([p.subID 'p%02d' ],phase);
+        p.subID                       = sprintf('sub%02d',subject);        
         timestamp                     = datestr(now,30);
-        p.path.subject                = [p.path.experiment 'data' filesep 'tmp' filesep p.subID '_' timestamp filesep];
-        p.path.finalsubject           = [p.path.experiment 'data' filesep p.subID '_' timestamp filesep ];
+        p.path.subject                = [p.path.experiment  'tmp' filesep p.subID '_' timestamp filesep ];
+        p.path.finalsubject           = [p.path.experiment  p.subID '_' timestamp filesep ];
+        p.path.path_edf               = [p.path.subject  'eye' filesep];
+        p.path.edf                    = sprintf([p.subID 'p%02d.edf' ],phase);
+        p.path.path_param             = [p.path.subject 'stimulation' filesep sprintf([p.subID 'p%02d.edf' ],phase)];
         %create folder hierarchy
         mkdir(p.path.subject);
         mkdir([p.path.subject 'scr']);
         mkdir([p.path.subject 'eye']);
         mkdir([p.path.subject 'stimulation']);
-        mkdir([p.path.subject 'midlevel']);
-        p.path.path_param             = sprintf([regexprep(p.path.subject,'\\','\\\') 'stimulation\\param_phase_%02d'],phase);
-        
+        mkdir([p.path.subject 'midlevel']);                
         %% %%%%%%%%%%%%%%%%%%%%%%%%%
         %get stim files
         [p.stim.files p.stim.label]   = FileMatrix([p.path.stim '*.bmp']);
@@ -367,7 +359,8 @@ cleanup;
         p.keys.pulse                   = KbName('5%');
         p.keys.el_calib                = KbName('v');
         p.keys.el_valid                = KbName('c');
-        p.keys.escape                  = KbName('esc');
+        p.keys.escape                  = KbName('ESCAPE');
+        p.keys.enter                   = KbName('return');
                 
         %% %%%%%%%%%%%%%%%%%%%%%%%%%
         %Communication business
@@ -398,14 +391,14 @@ cleanup;
         %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
          %stimulus sequence                  
         if phase == 0        
-            seq.cond_id       = Shuffle([1 2 3 4 5 6 7 8 9]);
-            seq.ucs           = zeros(1,9);
-            seq.oddball       = seq.cond_id == 9;
-            seq.isi           = RandSample([2 4 6],[1 9]);
-            seq.stim_id       = seq.cond_id;
-            seq.tTrial        = length(seq.cond_id);            
-            seq.dist          = 1:9;
-            seq.CrossPosition = RandSample(1:2,[1 9]);
+            seq.cond_id       = Shuffle([0 1 2 3 4 5 6 7 8 9]);
+            seq.tTrial        = length(seq.cond_id);
+            seq.ucs           = zeros(1,seq.tTrial);
+            seq.oddball       = seq.cond_id == 10;
+            seq.isi           = RandSample([3 4.5],[1 seq.tTrial]);
+            seq.stim_id       = seq.cond_id;            
+            seq.dist          = 1:10;
+            seq.CrossPosition = RandSample(1:2,[1 seq.tTrial]);
         elseif phase == 1                        
             load([fileparts(which('exp_FearAmy.m')) '/bin/fearamy_seq.mat']);
         end
@@ -454,7 +447,7 @@ cleanup;
             [dummy idx]             = Shuffle( face_order );
             rating_seq              = [rating_seq dummy];            
             %this balances both directions
-            %pos1_seq                = [pos1_seq double(pos_order(idx) == rem(nseq,2))+1];%+1 to make [0 1] --> [1 2]
+            pos1_seq                = [pos1_seq double(pos_order(idx) == rem(nseq,2))+1];%+1 to make [0 1] --> [1 2]
         end         
         pos1_seq                = ones(1,16);
         %%
@@ -685,6 +678,11 @@ cleanup;
                         'gelegentlich elektrische Reize bekommen.\n\n' ...
                         'Die elektrischen Reize folgen jetzt jedoch auf eins der Gesichter.\n' ...
                     ];
+             elseif nInstruct == 6%In between runs
+                %=================================================================================================================%
+                text = ['Now we will have a little break...\n' ...
+                        'Press a button when you want to go on...' ...
+                       ];
                 
             
             elseif nInstruct == 7;%rating
@@ -786,6 +784,7 @@ cleanup;
         %cross position for the eyetracker screen.
         p.ptb.CrossPositionET_x     = [p.ptb.midpoint(1) p.ptb.midpoint(1)];
         p.ptb.CrossPositionET_y     = [p.ptb.midpoint(2)-p.ptb.cross_shift(2) p.ptb.midpoint(2)+p.ptb.cross_shift(2)];
+        p.ptb.fc_size               = 10;
         %        
         %%
         %priorityLevel=MaxPriority(['GetSecs'],['KbCheck'],['KbWait'],['GetClicks']);
@@ -796,11 +795,11 @@ cleanup;
 %         Beeper(1000)
                
         %%%%%%%%%%%%%%%%%%%%%%%%%%%Prepare the keypress queue listening.
-        p.ptb.device        = [];
+        p.ptb.device        = -1;
         %get all the required keys in a vector 
         p.ptb.keysOfInterest = [];for i = fields(p.keys)';p.ptb.keysOfInterest = [p.ptb.keysOfInterest p.keys.(i{1})];end         
         fprintf('Key listening will be restricted to %d\n',p.ptb.keysOfInterest)
-        RestrictKeysForKbCheck(p.ptb.keysOfInterest);
+%         RestrictKeysForKbCheck(p.ptb.keysOfInterest);
         
         p.ptb.keysOfInterest=zeros(1,256);
         p.ptb.keysOfInterest(p.keys.confirm) = 1;
@@ -821,7 +820,7 @@ cleanup;
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
         %test whether CED receives the triggers correctly...
         k = 0;
-        while k ~= 86;
+        while ~(k == 25 || k == 86);
             outp(p.com.lpt.address,p.com.lpt.InitExperiment);
             pause(0.1);
             outp(p.com.lpt.address,0);%247 means all but the UCS channel (so that we dont shock the subject during initialization).
@@ -882,7 +881,7 @@ cleanup;
         Eyelink('Command', 'clear_screen %d', 0);
         %draw the image on the screen but also the two crosses
         if (nStim <= 16 && nStim>0)
-%            Eyelink('ImageTransfer',p.stim.files24(nStim,:),p.ptb.imrect(1),p.ptb.imrect(2),p.stim.width,p.stim.height,p.ptb.imrect(1),p.ptb.imrect(2));            
+           Eyelink('ImageTransfer',p.stim.files24(nStim,:),p.ptb.imrect(1),p.ptb.imrect(2),p.stim.width,p.stim.height,p.ptb.imrect(1),p.ptb.imrect(2));            
         end
         Eyelink('Command', 'draw_cross %d %d 15',fix(1),fix(2));
         
@@ -981,7 +980,7 @@ cleanup;
             WaitSecs(0.5);
             Eyelink('Closefile');
             display('receiving the EDF file...');
-            Eyelink('ReceiveFile',filename,[p.path.subject '\eye\'],1);
+            Eyelink('ReceiveFile',filename,p.path.path_edf,1);
             display('...finished!')
             % Shutdown Eyelink:
             Eyelink('Shutdown');
