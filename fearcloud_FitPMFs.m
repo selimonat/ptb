@@ -1,9 +1,14 @@
-function fearcloud_FitPMFs(subjects)
+function [out]=fearcloud_FitPMFs(subjects)
 for subject=subjects
   
 %
 fig=figure('units','normalized','position',[0 1 0.7 0.9]);
 suptitle(sprintf('Fitting Subject %g',subject));
+
+out.params1    = NaN(4,4);
+out.Likelihood = NaN(4,1);
+out.ExitFlag   = NaN(4,1);
+
 
 cr=0;
 for run = [1 5];
@@ -31,20 +36,40 @@ for run = [1 5];
         dotsize = dotsize(i);
         error    = nanstd(p.psi.log.xrounded(:,:,chain),0,2);
         error = error(i);
-        % take the priors as search grid (gamma extended to .5, resolution very low
-        % for little Laptop of Lea's)
-        searchGrid.alpha = pmf.alpha(chain);
-        searchGrid.beta   = 4;
-        searchGrid.gamma = PropCorrectData(1);
-        searchGrid.lambda = 1-PropCorrectData(end);
-        params0 = [ searchGrid.alpha  searchGrid.beta searchGrid.gamma searchGrid.lambda];
-        % %ooor use the params that PAL gave as results
-        % searchGrid.alpha = pmf.alpha(chain);
-        % searchGrid.beta  = 10.^pmf.beta(chain);
-        % searchGrid.gamma = pmf.gamma(chain);
-        % searchGrid.lambda = pmf.lambda(chain);
         
-        paramsFree = [1 1 1 1];
+        
+        % take the priors as search grid (gamma extended to .5, resolution very low
+%         % for little Laptop of Lea's)
+%         searchGrid.alpha = pmf.alpha(chain);
+%         searchGrid.beta   = 4;
+%         searchGrid.gamma = PropCorrectData(1);
+%         searchGrid.lambda = 1-PropCorrectData(end);
+%         params0 = [ searchGrid.alpha  searchGrid.beta searchGrid.gamma searchGrid.lambda];
+%         
+%         
+        % %ooor use the params that PAL gave as results
+        searchGrid.alpha = 80;
+        searchGrid.beta  = 2;%10.^pmf.beta(chain);
+        searchGrid.gamma = PropCorrectData(1);%pmf.gamma(chain);
+        searchGrid.lambda = 1-PropCorrectData(end);%pmf.lambda(chain);
+        params0 = [ searchGrid.alpha  searchGrid.beta searchGrid.gamma searchGrid.lambda];
+        
+        %oooor use the params that the first Weibull try gave as subject's
+%         %mean across all four PMFs:
+%         data=load('C:\Users\onat\Desktop\Lea\Weibulldata_allsubj_1st.mat','fits');
+%         data=data.fits;
+%         
+%         submean = mean(data(subject).params1(1:4,:),1);
+%         
+%         searchGrid.alpha  = submean(1);
+%         searchGrid.beta   = submean(2);
+%         searchGrid.gamma  = submean(3);
+%         searchGrid.lambda = submean(4);
+% 
+% 
+%         params0 = [ searchGrid.alpha  searchGrid.beta searchGrid.gamma searchGrid.lambda];
+%         
+% %         paramsFree = [1 1 1 1];
         PF         = @PAL_Weibull;
         
         %% run the Fit!
@@ -66,11 +91,14 @@ for run = [1 5];
         
         options         = optimset('Display','iter','maxfunevals',10000,'tolX',10^-12,'tolfun',10^-12,'MaxIter',10000,'Algorithm','interior-point');
         
-        [params1, o.Likelihood, o.ExitFlag]  = fmincon(funny, params0, [],[],[],[],[-Inf -Inf 0 0],[Inf Inf 1 1],[],options);
+        [o.params1, o.Likelihood, o.ExitFlag]  = fmincon(funny, params0, [],[],[],[],[-Inf -Inf 0 0],[Inf Inf 1 1],[],options);
         
-        
+        out.params1(chain+cr,:)    = o.params1;
+        out.Likelihood(chain+cr,1) = o.Likelihood;
+        out.ExitFlag(chain+cr,1)   = o.ExitFlag ;
+        out.subInd                 = subject;
         %% plot the Fit
-        Fit = PF(params1,x);
+        Fit = PF(o.params1,x);
         
         subplot(2,2,chain+cr)
         hold on;
@@ -79,7 +107,7 @@ for run = [1 5];
         plot(x,Fit,'g-','Linewidth',3);
         xlim([-5 180]);
         legend('PALs PMF','InitialValues','New Fit','location','southeast')
-        title(sprintf('Run %g, Chain %g',run,chain))
+        title(sprintf('Run %g, Chain %g, L = %03g',run,chain,o.Likelihood))
         for i = 1:length(StimLevels)
             errorbar(StimLevels(i),PropCorrectData(i),error(i),'o','Markersize',dotsize(i),'markerfacecolor',[0.3 0.3 0.3],'color',[0.3 0.3 0.3]);
         end
@@ -89,10 +117,11 @@ for run = [1 5];
 cr=cr+2;
 end
 
-%%%%
-save_path = sprintf('%sfigures/%s.eps',isn_GetPath(subject,run),mfilename);
-hgexport(fig,save_path);
-saveas(fig,sprintf('%sfigures/%s_png.png',isn_GetPath(subject,run),mfilename))
-
+%%
+% save_path = sprintf('%sfigures/%s_test.eps',isn_GetPath(subject,run),mfilename);
+% hgexport(fig,save_path);
+% saveas(fig,sprintf('%sfigures/%s_png_test.png',isn_GetPath(subject,run),mfilename));
+% saveas(fig,sprintf('%sfigures/%s_test.fig',isn_GetPath(subject,run),mfilename));
+% close all
 end
 end
