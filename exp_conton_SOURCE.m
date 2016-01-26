@@ -7,6 +7,12 @@ clear all;close all;clc;
 PsychDefaultSetup(2);
 sca;
 
+singdisp = input('Set to single display? Trial loop over all trials? Type y for yes.','s');
+
+if ~strcmp(singdisp,'y')
+    error('Don''t run experiment in multidisplay mode!')
+end
+
 warning('Do you want to use the same resolution for all phases?')
 
 %seed random number generator based on the current time
@@ -146,7 +152,7 @@ if exist(fullfile(init.(thephase{phasei}).thepath.results,fileName),'file')
     load(fullfile(init.thepath.results,fileName)); %Loads the .m-file containing the subject's data.
 else
       
-init.debug      = 1; %debug mode = 1, testing = 0
+init.debug      = 0; %debug mode = 1, testing = 0
 init.continuous = 0; %all phases = 1, only current phase = 0
 %specify MR parameters
 init.mr.ndummy  = 6;
@@ -279,7 +285,7 @@ init.mr.tr      = 2;%TBD
     
     clearvars -except fileX n thepart relnew thecat thecond time thephase inst2load init phasei parti
     save(fullfile(init.(thephase{phasei}).thepath.results,fileX.fileName),'fileX');
-    save(fullfile(init.(thephase{phasei}).thepath.results,[fileX.fileName,'_init']),'init');
+    save(fullfile(init.(thephase{phasei}).thepath.results,[fileX.fileName(1:end-4),'_init.mat']),'init');
 end
 
 %% INITIALIZE PSYCHTOOLBOX
@@ -288,6 +294,11 @@ init.(thephase{phasei}).screenNumber = max(init.(thephase{phasei}).screens);%The
 if init.debug
     PsychDebugWindowConfiguration([],0.7)
 else HideCursor;
+    Screen('Preference', 'SkipSyncTests', 1);
+    skipsync = input('You are skipping the sync test. Don''t this during real testing!!! Type y if you understood.','s');
+    if ~strcmp(skipsync,'y')
+        error('Experiment aborted');
+    end
 end
             
 try
@@ -295,6 +306,7 @@ try
 catch
     [init.(thephase{phasei}).expWin,init.(thephase{phasei}).rect] = PsychImaging('OpenWindow',init.(thephase{phasei}).screenNumber,[0.5 0.5 0.5]);%open onscreen Window
 end
+
 Screen('TextSize', init.(thephase{phasei}).expWin,24);
 Screen('TextFont', init.(thephase{phasei}).expWin, 'Helvetica');
 init.(thephase{phasei}).refresh = Screen('GetFlipInterval', init.(thephase{phasei}).expWin);
@@ -320,9 +332,9 @@ if phasei == 2 && parti == 2
     init.el.recmode = init.debug;%1 = no EL connected, dummy mode; 0 = EL connected
     init.el.el = EyelinkInitDefaults(init.(thephase{phasei}).expWin);
     
-    init.el.el.targetbeep   = 0;  % sound a beep when a target is presented
-    init.el.el.feedbackbeep = 0; 
-    init.el.el.backgroundcolour = BlackIndex(init.(thephase{phasei}).expWin)/2;warning('Is this really grey?')
+    init.el.el.targetbeep               = 0;  % sound a beep when a target is presented
+    init.el.el.feedbackbeep             = 0; 
+    init.el.el.backgroundcolour         = WhiteIndex(init.(thephase{phasei}).expWin)/2;warning('Is this really grey?')
     init.el.el.msgfontcolour            = WhiteIndex(init.(thephase{phasei}).expWin);
     init.el.el.imgtitlecolour           = WhiteIndex(init.(thephase{phasei}).expWin);
     init.el.el.calibrationtargetcolour  = WhiteIndex(init.(thephase{phasei}).expWin);
@@ -370,7 +382,7 @@ for numsession = 1:6-((phasei*2)+parti-3)
 end
 
 save(fullfile(init.(thephase{phasei}).thepath.results,fileX.fileName),'fileX');
-save(fullfile(init.(thephase{phasei}).thepath.results,[fileX.fileName,'_init']),'init');
+save(fullfile(init.(thephase{phasei}).thepath.results,[fileX.fileName(1:end-4),'_init.mat']),'init');
 RestrictKeysForKbCheck(27);%press escape to leave final screen
 KbWait([], 2);
 RestrictKeysForKbCheck([]);
