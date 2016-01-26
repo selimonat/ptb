@@ -1,7 +1,6 @@
-function key = counterkeys(init,fileX)
+function key = counterkeys(init,fileX,thephase,phasei)
 
-error('add space key for p1?')
-switch init.hostname
+switch init.(thephase{phasei}).hostname
     case 'triostim1'
         switch fileX.keycond
             case '1'
