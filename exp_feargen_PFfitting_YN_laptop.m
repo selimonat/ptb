@@ -5,6 +5,7 @@ function [p]=exp_feargen_PFfitting_YN_laptop(subject,phase,csp_degree)
 % Enter the subject Number as well as the CS+ Face in Degrees (where 00 is
 % 1st face, and so)
 simulation_mode = 0;
+ncircle=1;
 
 ListenChar(2);%disable pressed keys to be spitted around
 commandwindow;
