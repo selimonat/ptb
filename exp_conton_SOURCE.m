@@ -1,11 +1,19 @@
 
 %Contextual Modulation of old/new effects%
-%3-Nov-2015, n.herweg@uke.de
+%5-Jan-2016, n.herweg@uke.de
 
 %% CLEAN UP
 clear all;close all;clc;
 PsychDefaultSetup(2);
 sca;
+
+singdisp = input('Set to single display? Trial loop over all trials? Type y for yes.','s');
+
+if ~strcmp(singdisp,'y')
+    error('Don''t run experiment in multidisplay mode!')
+end
+
+warning('Do you want to use the same resolution for all phases?')
 
 %seed random number generator based on the current time
 rng('shuffle');
@@ -14,7 +22,7 @@ rng('shuffle');
 %Phase 1: initial encoding
 time.p1.pic         = 1;
 time.p1.fix         = 1.5;
-time.p1.resp        = time.p1.fix+time.p1.pic; 
+time.p1.resp        = 2; 
 
 n.p1.test.pics.targ  = 2;
 n.p1.test.pics.new   = 160;
@@ -32,8 +40,9 @@ n.p1.train.t2b      = n.p1.train.trials;
 
 %Phase 2: Interleaved encoding/retrieval
 time.p2.pic         = time.p1.pic;
-time.p2.fix         = 2;
-time.p2.resp        = time.p2.fix+time.p2.pic;
+time.p2.fix         = 2.15;%TBD 150ms to save everything & turn on tracker again, distribute trials across TR
+time.p2.resp        = 3;%TBD 
+time.trackerOff     = 1;
 
 relnew.p2           = 1;%amount of new pictures relative to old ones
 
@@ -59,8 +68,8 @@ n.p2.train.t2b      = n.p2.train.trials;
 
 %Phase 3: Final retrieval
 time.p3.pic         = time.p1.pic;
-time.p3.fix         = 3;%minimum fixation duration
-time.p3.resp        = 3+time.p3.pic;%3 sec is maximum fixation duration
+time.p3.fix         = 3;%TBD
+time.p3.resp        = 4;%TBD
 
 relnew.p3           = 0.5;%amount of new pictures relative to old ones
 
@@ -76,7 +85,6 @@ n.p3.train.t2b      = n.p3.train.trials;
 
 %General
 n.pics.total = n.p1.test.pics.new + n.p1.test.pics.targ + n.p2.test.pics.new + n.p3.test.pics.new + n.p1.train.pics.new + n.p2.train.pics.new + n.p3.train.pics.new;
-
 
 inst2load.p1.train = [1,2];
 inst2load.p1.test = 3;
@@ -98,23 +106,41 @@ thephase{1} = 'p1';
 thephase{2} = 'p2';
 thephase{3} = 'p3';
 
-%specify project path
-thepath.project = 'C:\USER\herweg\pilot';
-
-thepath.pics_inn=[thepath.project '\pics\inn_color\mean1275RGB'];
-thepath.pics_out=[thepath.project '\pics\out_color\mean1275RGB'];
-thepath.results=[thepath.project '\data'];
-thepath.inst= [thepath.project '\experiment\instructions'];
-thepath.scripts=[thepath.project '\experiment'];
-addpath(fullfile(thepath.project,'experiment\functions'));
-
 %% LOAD/CREATE FILEX
 %enter subject ID 
 subID    = input('Enter subject ID: ','s');
 fileName = ['CONTON_' num2str(subID) '.mat'];
 
+%Enter session number
+phasei  = input('Enter experimental phase (1, 2, or 3): ');
+parti = input('Enter subpart (1 for training, 2 for testing): ');
+
+%specify project path
+init            = [];
+[~, hostname] = system('hostname');
+init.(thephase{phasei}).hostname                  = deblank(hostname);
+
+switch init.(thephase{phasei}).hostname
+    case 'triostim1'
+    init.(thephase{phasei}).thepath.project       = 'C:\USER\herweg\07_conton\MR';
+    init.(thephase{phasei}).thepath.inst     = [init.(thephase{phasei}).thepath.project '\experiment\instructions\buttonbox'];
+    case 'isnf01faf2bafa4'
+    init.(thephase{phasei}).thepath.project       = 'C:\Users\herweg\Documents\_Projekte\07_conton\MR';
+    init.(thephase{phasei}).thepath.inst     = [init.(thephase{phasei}).thepath.project '\experiment\instructions\keyboard'];
+    case 'etpc'
+    init.(thephase{phasei}).thepath.project       = 'C:\USER\herweg\07_conton\MR';
+    init.(thephase{phasei}).thepath.inst     = [init.(thephase{phasei}).thepath.project '\experiment\instructions\keyboard'];
+end
+init.(thephase{phasei}).thepath.pics_inn = [init.(thephase{phasei}).thepath.project '\pics\inn_color\mean1275RGB'];
+init.(thephase{phasei}).thepath.pics_out = [init.(thephase{phasei}).thepath.project '\pics\out_color\mean1275RGB'];
+init.(thephase{phasei}).thepath.results  = [init.(thephase{phasei}).thepath.project '\data'];
+
+%init.thepath.scripts  = [init.thepath.project '\experiment'];
+%addpath(fullfile(init.thepath.project,'experiment\functions'));
+addpath('C:\Users\herweg\Documents\GitHub\ptb\exp_conton_functions');
+
 %check if fileX already exists and warn, if overwriting is confirmed load
-if exist(fullfile(thepath.results,fileName),'file')
+if exist(fullfile(init.(thephase{phasei}).thepath.results,fileName),'file')
     
     resp=input(['The file ' fileName ' already exists. Do you want to overwrite it? [Type ok to overwrite]'], 's');
     
@@ -123,39 +149,45 @@ if exist(fullfile(thepath.results,fileName),'file')
         return
     end
     
-    load(fullfile(thepath.results,fileName)); %Loads the .m-file containing the subject's data.
+    load(fullfile(init.thepath.results,fileName)); %Loads the .m-file containing the subject's data.
 else
-    
+      
+init.debug      = 0; %debug mode = 1, testing = 0
+init.continuous = 0; %all phases = 1, only current phase = 0
+%specify MR parameters
+init.mr.ndummy  = 6;
+init.mr.tr      = 2;%TBD
+
     fileX.subID    = subID;
     fileX.fileName = fileName;
     fileX.keycond  = input('Enter number for key mapping (1-4): ','s');
     
     %assign category, condition, targetness and oldnew to trials
-    for parti = 1:size(thepart,2)
-        fileX.p1.(thepart{parti})(:,2) = repmat([1;2],n.p1.(thepart{parti}).trials/size(thecat,2),1);% 2 category
-        fileX.p1.(thepart{parti})(:,3) = [ones(n.p1.(thepart{parti}).pics.targ*n.p1.(thepart{parti}).shows.targ,1);ones(n.p1.(thepart{parti}).pics.new*n.p1.(thepart{parti}).shows.reg,1)*0];%3 targetness 1 = target, 0 = no target
-        fileX.p1.(thepart{parti})(:,1) = rand(size(fileX.p1.(thepart{parti}),1),1);
-        fileX.p1.(thepart{parti})      = sortrows(fileX.p1.(thepart{parti}),1);
-        fileX.p1.(thepart{parti})(:,1) = (1:n.p1.(thepart{parti}).trials);%1 trialnumber
-        fileX.p1.(thepart{parti})(fileX.p1.(thepart{parti})(:,3)==0,4) = 1; %all trials that are not targets are encoding trials
+    for partj = 1:size(thepart,2)
+        fileX.p1.(thepart{partj})(:,2) = repmat([1;2],n.p1.(thepart{partj}).trials/size(thecat,2),1);% 2 category
+        fileX.p1.(thepart{partj})(:,3) = [ones(n.p1.(thepart{partj}).pics.targ*n.p1.(thepart{partj}).shows.targ,1);ones(n.p1.(thepart{partj}).pics.new*n.p1.(thepart{partj}).shows.reg,1)*0];%3 targetness 1 = target, 0 = no target
+        fileX.p1.(thepart{partj})(:,1) = rand(size(fileX.p1.(thepart{partj}),1),1);
+        fileX.p1.(thepart{partj})      = sortrows(fileX.p1.(thepart{partj}),1);
+        fileX.p1.(thepart{partj})(:,1) = (1:n.p1.(thepart{partj}).trials);%1 trialnumber
+        fileX.p1.(thepart{partj})(fileX.p1.(thepart{partj})(:,3)==0,4) = 1; %all trials that are not targets are encoding trials
         
-        fileX.p2.(thepart{parti})(:,1) = (1:n.p2.(thepart{parti}).trials);%1 trialnumber
+        fileX.p2.(thepart{partj})(:,1) = (1:n.p2.(thepart{partj}).trials);%1 trialnumber
         
-        for blocki = 1:n.p2.(thepart{parti}).blocks %equal number of in/out and old/new per block 
-            catrand(:,1) = repmat([1;2],n.p2.(thepart{parti}).tpb/size(thecat,2),1);% 2 category
-            catrand(:,2) = repmat([1;2;2;1],(n.p2.(thepart{parti}).tpb/size(thecat,2))/2,1);% 3 oldnew 1 = new; 2 = old
+        for blocki = 1:n.p2.(thepart{partj}).blocks %equal number of in/out and old/new per block 
+            catrand(:,1) = repmat([1;2],n.p2.(thepart{partj}).tpb/size(thecat,2),1);% 2 category
+            catrand(:,2) = repmat([1;2;2;1],(n.p2.(thepart{partj}).tpb/size(thecat,2))/2,1);% 3 oldnew 1 = new; 2 = old
             catrand(:,3) = rand(size(catrand,1),1);
             catrand      = sortrows(catrand,3);
             
-            fileX.p2.(thepart{parti})(1+((blocki-1)*n.p2.(thepart{parti}).tpb):n.p2.(thepart{parti}).tpb+((blocki-1)*n.p2.(thepart{parti}).tpb),2:3) = catrand(:,1:2);
+            fileX.p2.(thepart{partj})(1+((blocki-1)*n.p2.(thepart{partj}).tpb):n.p2.(thepart{partj}).tpb+((blocki-1)*n.p2.(thepart{partj}).tpb),2:3) = catrand(:,1:2);
             clear catrand
         end
-        for runi = 1: n.p2.(thepart{parti}).runs
-            condrand      = repmat([1;2],n.p2.(thepart{parti}).bpr/size(thecond,2),1);
+        for runi = 1: n.p2.(thepart{partj}).runs
+            condrand      = repmat([1;2],n.p2.(thepart{partj}).bpr/size(thecond,2),1);
             condrand(:,2) = rand(size(condrand,1),1);
             condrand      = sortrows(condrand,2);
             
-            fileX.p2.(thepart{parti})(1+((runi-1)*n.p2.(thepart{parti}).tpr):n.p2.(thepart{parti}).tpr+((runi-1)*n.p2.(thepart{parti}).tpr),4) = kron(condrand(:,1),ones(n.p2.(thepart{parti}).tpb,1));%4 encret 1 = enc; 2 = ret
+            fileX.p2.(thepart{partj})(1+((runi-1)*n.p2.(thepart{partj}).tpr):n.p2.(thepart{partj}).tpr+((runi-1)*n.p2.(thepart{partj}).tpr),4) = kron(condrand(:,1),ones(n.p2.(thepart{partj}).tpb,1));%4 encret 1 = enc; 2 = ret
             clear condrand
         end
     end
@@ -195,131 +227,162 @@ else
         sc.p3.train.new = sc.all(sc.all(:,2)==6,1);
         sc.p3.test.new  = sc.all(sc.all(:,2)==7,1);
          
-        for parti = 1:size(thepart,2)
+        for partj = 1:size(thepart,2)
             %adapt sc to the number of times each scene is shown and include old images from previous phases; randomize
             %again
-            sc.p1.(thepart{parti}).new      = repmat(sc.p1.(thepart{parti}).new,n.p1.(thepart{parti}).shows.reg,1);
-            sc.p1.(thepart{parti}).new(:,2) = rand(size(sc.p1.(thepart{parti}).new,1),1);
-            sc.p1.(thepart{parti}).new      = sortrows(sc.p1.(thepart{parti}).new,2);
-            sc.p1.(thepart{parti}).new(:,2) = [];
+            sc.p1.(thepart{partj}).new      = repmat(sc.p1.(thepart{partj}).new,n.p1.(thepart{partj}).shows.reg,1);
+            sc.p1.(thepart{partj}).new(:,2) = rand(size(sc.p1.(thepart{partj}).new,1),1);
+            sc.p1.(thepart{partj}).new      = sortrows(sc.p1.(thepart{partj}).new,2);
+            sc.p1.(thepart{partj}).new(:,2) = [];
             
-            sc.p1.(thepart{parti}).targ     = repmat(sc.p1.(thepart{parti}).targ,n.p1.(thepart{parti}).shows.targ,1);
-            sc.p1.(thepart{parti}).targ(:,2)= rand(size(sc.p1.(thepart{parti}).targ,1),1);
-            sc.p1.(thepart{parti}).targ     = sortrows(sc.p1.(thepart{parti}).targ,2);
-            sc.p1.(thepart{parti}).targ(:,2)= [];
+            sc.p1.(thepart{partj}).targ     = repmat(sc.p1.(thepart{partj}).targ,n.p1.(thepart{partj}).shows.targ,1);
+            sc.p1.(thepart{partj}).targ(:,2)= rand(size(sc.p1.(thepart{partj}).targ,1),1);
+            sc.p1.(thepart{partj}).targ     = sortrows(sc.p1.(thepart{partj}).targ,2);
+            sc.p1.(thepart{partj}).targ(:,2)= [];
             
-            sc.p2.(thepart{parti}).old      = unique(sc.p1.(thepart{parti}).new);
-            sc.p2.(thepart{parti}).old(:,2) = rand(size(sc.p2.(thepart{parti}).old,1),1);
-            sc.p2.(thepart{parti}).old      = sortrows(sc.p2.(thepart{parti}).old,2);
-            sc.p2.(thepart{parti}).old(:,2) = [];
+            sc.p2.(thepart{partj}).old      = unique(sc.p1.(thepart{partj}).new);
+            sc.p2.(thepart{partj}).old(:,2) = rand(size(sc.p2.(thepart{partj}).old,1),1);
+            sc.p2.(thepart{partj}).old      = sortrows(sc.p2.(thepart{partj}).old,2);
+            sc.p2.(thepart{partj}).old(:,2) = [];
             
             %put new and old scenes in fileX
-            fileX.p1.(thepart{parti})(fileX.p1.(thepart{parti})(:,2)==cati & fileX.p1.(thepart{parti})(:,4)==1,6) = sc.p1.(thepart{parti}).new;
-            fileX.p1.(thepart{parti})(fileX.p1.(thepart{parti})(:,2)==cati & fileX.p1.(thepart{parti})(:,4)==0,6) = sc.p1.(thepart{parti}).targ;
+            fileX.p1.(thepart{partj})(fileX.p1.(thepart{partj})(:,2)==cati & fileX.p1.(thepart{partj})(:,4)==1,6) = sc.p1.(thepart{partj}).new;
+            fileX.p1.(thepart{partj})(fileX.p1.(thepart{partj})(:,2)==cati & fileX.p1.(thepart{partj})(:,4)==0,6) = sc.p1.(thepart{partj}).targ;
             
-            fileX.p2.(thepart{parti})(fileX.p2.(thepart{parti})(:,2)==cati & fileX.p2.(thepart{parti})(:,3)==1,6) = sc.p2.(thepart{parti}).new;
-            fileX.p2.(thepart{parti})(fileX.p2.(thepart{parti})(:,2)==cati & fileX.p2.(thepart{parti})(:,3)==2,6) = sc.p2.(thepart{parti}).old;
+            fileX.p2.(thepart{partj})(fileX.p2.(thepart{partj})(:,2)==cati & fileX.p2.(thepart{partj})(:,3)==1,6) = sc.p2.(thepart{partj}).new;
+            fileX.p2.(thepart{partj})(fileX.p2.(thepart{partj})(:,2)==cati & fileX.p2.(thepart{partj})(:,3)==2,6) = sc.p2.(thepart{partj}).old;
             
             %sort old scenes for p3 according to assigned conditions
-            sc.p3.(thepart{parti}).old.pold.enc = fileX.p2.(thepart{parti})(fileX.p2.(thepart{parti})(:,2)==cati & fileX.p2.(thepart{parti})(:,3)==2 & fileX.p2.(thepart{parti})(:,4)==1,6);
-            sc.p3.(thepart{parti}).old.pnew.enc = fileX.p2.(thepart{parti})(fileX.p2.(thepart{parti})(:,2)==cati & fileX.p2.(thepart{parti})(:,3)==1 & fileX.p2.(thepart{parti})(:,4)==1,6);
+            sc.p3.(thepart{partj}).old.pold.enc = fileX.p2.(thepart{partj})(fileX.p2.(thepart{partj})(:,2)==cati & fileX.p2.(thepart{partj})(:,3)==2 & fileX.p2.(thepart{partj})(:,4)==1,6);
+            sc.p3.(thepart{partj}).old.pnew.enc = fileX.p2.(thepart{partj})(fileX.p2.(thepart{partj})(:,2)==cati & fileX.p2.(thepart{partj})(:,3)==1 & fileX.p2.(thepart{partj})(:,4)==1,6);
             
-            sc.p3.(thepart{parti}).old.pold.ret = fileX.p2.(thepart{parti})(fileX.p2.(thepart{parti})(:,2)==cati & fileX.p2.(thepart{parti})(:,3)==2 & fileX.p2.(thepart{parti})(:,4)==2,6);
-            sc.p3.(thepart{parti}).old.pnew.ret = fileX.p2.(thepart{parti})(fileX.p2.(thepart{parti})(:,2)==cati & fileX.p2.(thepart{parti})(:,3)==1 & fileX.p2.(thepart{parti})(:,4)==2,6);
+            sc.p3.(thepart{partj}).old.pold.ret = fileX.p2.(thepart{partj})(fileX.p2.(thepart{partj})(:,2)==cati & fileX.p2.(thepart{partj})(:,3)==2 & fileX.p2.(thepart{partj})(:,4)==2,6);
+            sc.p3.(thepart{partj}).old.pnew.ret = fileX.p2.(thepart{partj})(fileX.p2.(thepart{partj})(:,2)==cati & fileX.p2.(thepart{partj})(:,3)==1 & fileX.p2.(thepart{partj})(:,4)==2,6);
  
-            sc.p3.(thepart{parti}).old.pold.enc(:,2) = rand(size(sc.p3.(thepart{parti}).old.pold.enc,1),1);
-            sc.p3.(thepart{parti}).old.pnew.enc(:,2) = rand(size(sc.p3.(thepart{parti}).old.pnew.enc,1),1);
-            sc.p3.(thepart{parti}).old.pold.ret(:,2) = rand(size(sc.p3.(thepart{parti}).old.pold.ret,1),1);
-            sc.p3.(thepart{parti}).old.pnew.ret(:,2) = rand(size(sc.p3.(thepart{parti}).old.pnew.ret,1),1);
+            sc.p3.(thepart{partj}).old.pold.enc(:,2) = rand(size(sc.p3.(thepart{partj}).old.pold.enc,1),1);
+            sc.p3.(thepart{partj}).old.pnew.enc(:,2) = rand(size(sc.p3.(thepart{partj}).old.pnew.enc,1),1);
+            sc.p3.(thepart{partj}).old.pold.ret(:,2) = rand(size(sc.p3.(thepart{partj}).old.pold.ret,1),1);
+            sc.p3.(thepart{partj}).old.pnew.ret(:,2) = rand(size(sc.p3.(thepart{partj}).old.pnew.ret,1),1);
             
-            sc.p3.(thepart{parti}).old.pold.enc = sortrows(sc.p3.(thepart{parti}).old.pold.enc,2);
-            sc.p3.(thepart{parti}).old.pnew.enc = sortrows(sc.p3.(thepart{parti}).old.pnew.enc,2);
-            sc.p3.(thepart{parti}).old.pold.ret = sortrows(sc.p3.(thepart{parti}).old.pold.ret,2);
-            sc.p3.(thepart{parti}).old.pnew.ret = sortrows(sc.p3.(thepart{parti}).old.pnew.ret,2);
+            sc.p3.(thepart{partj}).old.pold.enc = sortrows(sc.p3.(thepart{partj}).old.pold.enc,2);
+            sc.p3.(thepart{partj}).old.pnew.enc = sortrows(sc.p3.(thepart{partj}).old.pnew.enc,2);
+            sc.p3.(thepart{partj}).old.pold.ret = sortrows(sc.p3.(thepart{partj}).old.pold.ret,2);
+            sc.p3.(thepart{partj}).old.pnew.ret = sortrows(sc.p3.(thepart{partj}).old.pnew.ret,2);
             
-            sc.p3.(thepart{parti}).old.pold.enc(:,2) = [];
-            sc.p3.(thepart{parti}).old.pnew.enc(:,2) = [];
-            sc.p3.(thepart{parti}).old.pold.ret(:,2) = [];
-            sc.p3.(thepart{parti}).old.pnew.ret(:,2) = []; 
+            sc.p3.(thepart{partj}).old.pold.enc(:,2) = [];
+            sc.p3.(thepart{partj}).old.pnew.enc(:,2) = [];
+            sc.p3.(thepart{partj}).old.pold.ret(:,2) = [];
+            sc.p3.(thepart{partj}).old.pnew.ret(:,2) = []; 
 
-            fileX.p3.(thepart{parti})(fileX.p3.(thepart{parti})(:,2)==cati & fileX.p3.(thepart{parti})(:,3)==1,6) = sc.p3.(thepart{parti}).new;
-            fileX.p3.(thepart{parti})(fileX.p3.(thepart{parti})(:,2)==cati & fileX.p3.(thepart{parti})(:,3)==2 & fileX.p3.(thepart{parti})(:,4)==1 & fileX.p3.(thepart{parti})(:,5)==1,6) = sc.p3.(thepart{parti}).old.pnew.enc;
-            fileX.p3.(thepart{parti})(fileX.p3.(thepart{parti})(:,2)==cati & fileX.p3.(thepart{parti})(:,3)==2 & fileX.p3.(thepart{parti})(:,4)==1 & fileX.p3.(thepart{parti})(:,5)==2,6) = sc.p3.(thepart{parti}).old.pold.enc;
-            fileX.p3.(thepart{parti})(fileX.p3.(thepart{parti})(:,2)==cati & fileX.p3.(thepart{parti})(:,3)==2 & fileX.p3.(thepart{parti})(:,4)==2 & fileX.p3.(thepart{parti})(:,5)==1,6) = sc.p3.(thepart{parti}).old.pnew.ret;
-            fileX.p3.(thepart{parti})(fileX.p3.(thepart{parti})(:,2)==cati & fileX.p3.(thepart{parti})(:,3)==2 & fileX.p3.(thepart{parti})(:,4)==2 & fileX.p3.(thepart{parti})(:,5)==2,6) = sc.p3.(thepart{parti}).old.pold.ret;
+            fileX.p3.(thepart{partj})(fileX.p3.(thepart{partj})(:,2)==cati & fileX.p3.(thepart{partj})(:,3)==1,6) = sc.p3.(thepart{partj}).new;
+            fileX.p3.(thepart{partj})(fileX.p3.(thepart{partj})(:,2)==cati & fileX.p3.(thepart{partj})(:,3)==2 & fileX.p3.(thepart{partj})(:,4)==1 & fileX.p3.(thepart{partj})(:,5)==1,6) = sc.p3.(thepart{partj}).old.pnew.enc;
+            fileX.p3.(thepart{partj})(fileX.p3.(thepart{partj})(:,2)==cati & fileX.p3.(thepart{partj})(:,3)==2 & fileX.p3.(thepart{partj})(:,4)==1 & fileX.p3.(thepart{partj})(:,5)==2,6) = sc.p3.(thepart{partj}).old.pold.enc;
+            fileX.p3.(thepart{partj})(fileX.p3.(thepart{partj})(:,2)==cati & fileX.p3.(thepart{partj})(:,3)==2 & fileX.p3.(thepart{partj})(:,4)==2 & fileX.p3.(thepart{partj})(:,5)==1,6) = sc.p3.(thepart{partj}).old.pnew.ret;
+            fileX.p3.(thepart{partj})(fileX.p3.(thepart{partj})(:,2)==cati & fileX.p3.(thepart{partj})(:,3)==2 & fileX.p3.(thepart{partj})(:,4)==2 & fileX.p3.(thepart{partj})(:,5)==2,6) = sc.p3.(thepart{partj}).old.pold.ret;
         end
         clear sc
     end
     
-    clearvars -except fileX key n thepart thepath relnew thecat thecond time thephase inst2load
-    save(fullfile(thepath.results,fileX.fileName),'fileX');
+    clearvars -except fileX n thepart relnew thecat thecond time thephase inst2load init phasei parti
+    save(fullfile(init.(thephase{phasei}).thepath.results,fileX.fileName),'fileX');
+    save(fullfile(init.(thephase{phasei}).thepath.results,[fileX.fileName(1:end-4),'_init.mat']),'init');
 end
-
-%Enter session number
-phasei  = input('Enter experimental phase (1, 2, or 3): ');
-parti = input('Enter subpart (1 for training, 2 for testing): ');
-
-%Counterbalance keys
-switch fileX.keycond
-    case '1'
-    key.in    = KbName('LeftArrow');
-    key.out   = KbName('DownArrow');
-    key.old   = KbName('LeftArrow');
-    key.new   = KbName('DownArrow');
-    case '2'
-    key.in    = KbName('LeftArrow');
-    key.out   = KbName('DownArrow');
-    key.old   = KbName('DownArrow');
-    key.new   = KbName('LeftArrow');
-    case '3'
-    key.in    = KbName('DownArrow');
-    key.out   = KbName('LeftArrow');
-    key.old   = KbName('DownArrow');
-    key.new   = KbName('LeftArrow');
-    case '4'
-    key.in    = KbName('DownArrow');
-    key.out   = KbName('LeftArrow');
-    key.old   = KbName('LeftArrow');
-    key.new   = KbName('DownArrow');
-end
-key.space = KbName('Space');
-key.enter = KbName('Return');
 
 %% INITIALIZE PSYCHTOOLBOX
-% Perform standard setup
-init.screens      = Screen('Screens');
-init.screenNumber = max(init.screens);%The highest display number is a best guess about where you want the stimulus displayed
-KbCheck;
-%PsychDebugWindowConfiguration([],0.7)%transparent window, comment for testing!
-try
-    [init.expWin,init.rect] = PsychImaging('OpenWindow',init.screenNumber,[0.5 0.5 0.5]);%open onscreen Window
-catch
-    [init.expWin,init.rect] = PsychImaging('OpenWindow',init.screenNumber,[0.5 0.5 0.5]);%open onscreen Window
+init.(thephase{phasei}).screens      = Screen('Screens');
+init.(thephase{phasei}).screenNumber = max(init.(thephase{phasei}).screens);%The highest display number is a best guess about where you want the stimulus displayed
+if init.debug
+    PsychDebugWindowConfiguration([],0.7)
+else HideCursor;
+    Screen('Preference', 'SkipSyncTests', 1);
+    skipsync = input('You are skipping the sync test. Don''t this during real testing!!! Type y if you understood.','s');
+    if ~strcmp(skipsync,'y')
+        error('Experiment aborted');
+    end
 end
-Screen('TextSize', init.expWin,24);
-Screen('TextFont', init.expWin, 'Helvetica');
-init.refresh = Screen('GetFlipInterval', init.expWin);
-init.slack   = init.refresh/2;
-[init.mx, init.my] = RectCenter(init.rect);
-HideCursor;%get rid of the mouse cursor, uncomment for testing!
+            
+try
+    [init.(thephase{phasei}).expWin,init.(thephase{phasei}).rect] = PsychImaging('OpenWindow',init.(thephase{phasei}).screenNumber,[0.5 0.5 0.5]);%open onscreen Window
+catch
+    [init.(thephase{phasei}).expWin,init.(thephase{phasei}).rect] = PsychImaging('OpenWindow',init.(thephase{phasei}).screenNumber,[0.5 0.5 0.5]);%open onscreen Window
+end
+
+Screen('TextSize', init.(thephase{phasei}).expWin,24);
+Screen('TextFont', init.(thephase{phasei}).expWin, 'Helvetica');
+init.(thephase{phasei}).refresh = Screen('GetFlipInterval', init.(thephase{phasei}).expWin);
+init.(thephase{phasei}).slack   = init.(thephase{phasei}).refresh/2;
+[init.(thephase{phasei}).mx, init.(thephase{phasei}).my] = RectCenter(init.(thephase{phasei}).rect);
+init.(thephase{phasei}).device = -1;%query all devices and report their merged state
+
+%Load mex files now to not do it in the trial loop
+KbCheck(init.(thephase{phasei}).device);
+disp('======================');
+disp('Press any key to start');
+KbWait(init.(thephase{phasei}).device);
+GetSecs;
 
 %Fixation cross
 FixCr=ones(20,20)*0.5;
 FixCr(10:11,:)=1;FixCr(:,10:11)=1;
 
+%% INITIALIZE EYELINK
+if phasei == 2 && parti == 2
+    warning('Do I need the max priority setting?')
+    
+    init.el.recmode = init.debug;%1 = no EL connected, dummy mode; 0 = EL connected
+    init.el.el = EyelinkInitDefaults(init.(thephase{phasei}).expWin);
+    
+    init.el.el.targetbeep               = 0;  % sound a beep when a target is presented
+    init.el.el.feedbackbeep             = 0; 
+    init.el.el.backgroundcolour         = WhiteIndex(init.(thephase{phasei}).expWin)/2;warning('Is this really grey?')
+    init.el.el.msgfontcolour            = WhiteIndex(init.(thephase{phasei}).expWin);
+    init.el.el.imgtitlecolour           = WhiteIndex(init.(thephase{phasei}).expWin);
+    init.el.el.calibrationtargetcolour  = WhiteIndex(init.(thephase{phasei}).expWin);
+    init.el.el.calibrationtargetsize    = 1.5;
+    init.el.el.calibrationtargetwidth   = 0.5;
+    init.el.el.displayCalResults        = 1;
+    init.el.el.eyeimgsize               = 50;
+    init.el.el.waitformodereadytime     = 25;%ms
+
+    EyelinkUpdateDefaults(init.el.el);
+    
+    if ~EyelinkInit(init.el.recmode,1);%enable callback = 1 is default; if initialization does not work
+        error('Initialization not successful')
+    end
+    [init.el.v,init.el.vs]=Eyelink('GetTrackerVersion');
+    
+    Eyelink('Openfile',[fileX.fileName(8:end-3),'edf']);
+    
+    insttexture = Screen('MakeTexture',init.(thephase{phasei}).expWin,uint8(imread(fullfile(init.(thephase{phasei}).thepath.inst,'calibration.png'))));
+    Screen('DrawTexture',init.(thephase{phasei}).expWin,insttexture);
+    Screen('Flip', init.(thephase{phasei}).expWin);
+    Screen('Close')
+    KbWait([], 2);
+    clear insttexture
+    
+    EyelinkDoTrackerSetup(init.el.el);
+
+    Eyelink('StartRecording');
+end
+
 %% START SESSIONS
-for numsession=1:6-((phasei*2)+parti-3)
-    DrawFormattedText(init.expWin,'Laden...','center','center',[1 1 1]);
-    Screen('Flip',init.expWin);
-    cd (thepath.scripts);
-    phase123
+for numsession = 1:6-((phasei*2)+parti-3)
+    disp('Starting session');
+    DrawFormattedText(init.(thephase{phasei}).expWin,'Laden...','center','center',[1 1 1]);
+    Screen('Flip',init.(thephase{phasei}).expWin);
+    cd (init.(thephase{phasei}).thepath.results);
+    exp_conton_phase123
     if parti == 2
         phasei = phasei+1;
+    end
+    if parti == 2 && init.continuous == 0
+        break
     end
     parti = 2/parti;
 end
 
-save(fullfile(thepath.results,fileX.fileName),'fileX');
+save(fullfile(init.(thephase{phasei}).thepath.results,fileX.fileName),'fileX');
+save(fullfile(init.(thephase{phasei}).thepath.results,[fileX.fileName(1:end-4),'_init.mat']),'init');
 RestrictKeysForKbCheck(27);%press escape to leave final screen
 KbWait([], 2);
 RestrictKeysForKbCheck([]);
