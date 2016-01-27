@@ -64,12 +64,10 @@ if phase == 0
     PresentStimuli;
     
 elseif phase == 1
-    %
-    KbQueueStop(p.ptb.device);
-    KbQueueRelease(p.ptb.device);
+    %    
     p.var.ExpPhase  = phase;            
-%    CalibrateEL;
-%     ShowInstruction(3,1);
+   CalibrateEL;   
+   ShowInstruction(3,1);
     PresentStimuli;    
     AskStimRating;%make sure that scanner doesnt stop prematurely asa the stim offset  
 end
@@ -131,15 +129,13 @@ cleanup;
     end
     function PresentStimuli 
         %Enter the presentation loop and wait for the first pulse to
-        %arrive.    
-        KbQueueStop;
-        KbQueueRelease;
-        %wait for the dummy scans
+        %arrive.            
+        %wait for the dummy scans        
         [secs] = WaitPulse(p.keys.pulse,p.mrt.dummy_scan);%will log it
-        KbQueueStop;
+        KbQueueStop(p.ptb.device);
         WaitSecs(.05);
-        KbQueueCreate;
-        KbQueueStart;
+        KbQueueCreate(p.ptb.device);
+        KbQueueStart(p.ptb.device);
         %log the pulse timings.        
         TimeEndStim                 = secs(end);%take the first valid pulse as the end of the last stimulus.
         for nTrial  = 1:p.presentation.tTrial;
@@ -756,9 +752,9 @@ cleanup;
         %set the resolution correctly        
         if strcmp(p.hostname,'triostim1') 
             res          = [1600 1200];
-            %p.ptb.oldres = Screen('resolution',p.ptb.screenNumber,res(1),res(2));
+%             p.ptb.oldres = Screen('resolution',p.ptb.screenNumber,res(1),res(2));
             %hide the cursor
-            HideCursor(p.ptb.screenNumber);
+            %HideCursor(p.ptb.screenNumber);
         elseif strcmp(p.hostname,'etpc')
             res          = [1600 1200];
             p.ptb.oldres = Screen('resolution',p.ptb.screenNumber,res(1),res(2));
@@ -771,7 +767,7 @@ cleanup;
         end
         %Open a graphics window using PTB
         p.ptb.w                     = Screen('OpenWindow', p.ptb.screenNumber, p.var.current_bg);
-        Screen('BlendFunction', p.ptb.w, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        %Screen('BlendFunction', p.ptb.w, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         Screen('Flip',p.ptb.w);%make the bg
         p.ptb.slack                 = Screen('GetFlipInterval',p.ptb.w)./2;
         [p.ptb.width, p.ptb.height] = Screen('WindowSize', p.ptb.screenNumber);
@@ -798,9 +794,9 @@ cleanup;
         %InitializePsychSound(0)
         %sound('Open')
 %         Beeper(1000)
-               
+               LoadPsychHID
         %%%%%%%%%%%%%%%%%%%%%%%%%%%Prepare the keypress queue listening.
-        p.ptb.device        = -1;
+        p.ptb.device        = [];
         %get all the required keys in a vector 
         p.ptb.keysOfInterest = [];for i = fields(p.keys)';p.ptb.keysOfInterest = [p.ptb.keysOfInterest p.keys.(i{1})];end         
         fprintf('Key listening will be restricted to %d\n',p.ptb.keysOfInterest)
@@ -824,15 +820,15 @@ cleanup;
         %CORRECT
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
         %test whether CED receives the triggers correctly...
-        k = 0;
-        while ~(k == 25 | k == 86 );
-            outp(p.com.lpt.address,p.com.lpt.InitExperiment);
-            pause(0.1);
-            outp(p.com.lpt.address,0);%247 means all but the UCS channel (so that we dont shock the subject during initialization).
-            fprintf('=================\nDid the trigger test work?\nPress c to send it again, v to continue...\n')
-            [~, k] = KbStrokeWait(p.ptb.device);
-            k = find(k);
-        end
+% % %         k = 0;
+% % %         while ~(k == 25 | k == 86 );
+% % %             outp(p.com.lpt.address,p.com.lpt.InitExperiment);
+% % %             pause(0.1);
+% % %             outp(p.com.lpt.address,0);%247 means all but the UCS channel (so that we dont shock the subject during initialization).
+% % %             fprintf('=================\nDid the trigger test work?\nPress c to send it again, v to continue...\n')
+% % %             [~, k] = KbStrokeWait(p.ptb.device);
+% % %             k = find(k);
+% % %         end
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
         %load the pictures to the memory.
@@ -958,7 +954,8 @@ cleanup;
         el.drift_correction_failed_beep = [0 0 0];
         el.drift_correction_success_beep= [0 0 0];
         EyelinkUpdateDefaults(el);
-        %PsychEyelinkDispatchCallback(el)
+        el
+        PsychEyelinkDispatchCallback(el)
                             
         % open file.
         res = Eyelink('Openfile', p.path.edf);
@@ -1063,6 +1060,8 @@ cleanup;
         %   level event queues, which are much less likely to skip short events. A
         %   nice discussion on the topic can be found here:
         %   http://ftp.tuebingen.mpg.de/pub/pub_dahl/stmdev10_D/Matlab6/Toolboxes/Psychtoolbox/PsychDocumentation/KbQueue.html        
+        
+        %KbQueueFlush;KbQueueStop;KbQueueRelease;WaitSecs(1);
         fprintf('Will wait for %i dummy pulses...\n',n);
         if n ~= 0
             secs  = nan(1,n);
