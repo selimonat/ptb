@@ -6,11 +6,11 @@ function [p]=FearGen_eyelab(subject,phase,csp,PainThreshold)
 % 
 % 
 
-debug = 1;%debug mode
+debug = 0;%debug mode
 %replace parallel port function with a dummy function
-if ismac
-outp = @(x,y) fprintf('pp\n');
-end
+% if ismac
+% outp = @(x,y) fprintf('pp\n');
+% end
 if nargin ~= 4
     fprintf('Wrong number of inputs\n');
     keyboard;
@@ -46,7 +46,8 @@ p.var.event_count         = 0;
 %%
 InitEyeLink;
 WaitSecs(2);
-
+KbQueueStop(p.ptb.device);
+KbQueueRelease(p.ptb.device);
 %save again the parameter file
 save(p.path.path_param,'p');
 if phase == 0
@@ -64,9 +65,11 @@ if phase == 0
     
 elseif phase == 1
     %
+    KbQueueStop(p.ptb.device);
+    KbQueueRelease(p.ptb.device);
     p.var.ExpPhase  = phase;            
-    CalibrateEL;
-    ShowInstruction(3,1);
+%    CalibrateEL;
+%     ShowInstruction(3,1);
     PresentStimuli;    
     AskStimRating;%make sure that scanner doesnt stop prematurely asa the stim offset  
 end
@@ -100,7 +103,7 @@ cleanup;
         fprintf('    Experimenter: Press any key to deliver a shock.\n');
         fprintf([repmat('=',1,50) '\n']);
         %
-        [secs, keyCode, deltaSecs] = KbStrokeWait;
+        [secs, keyCode, deltaSecs] = KbStrokeWait(p.ptb.device);
         ShowInstruction(10,0);%shock is coming message...
         t = GetSecs + p.duration.shock;
         MarkCED( p.com.lpt.address, p.com.lpt.shock );
@@ -128,7 +131,9 @@ cleanup;
     end
     function PresentStimuli 
         %Enter the presentation loop and wait for the first pulse to
-        %arrive.             
+        %arrive.    
+        KbQueueStop;
+        KbQueueRelease;
         %wait for the dummy scans
         [secs] = WaitPulse(p.keys.pulse,p.mrt.dummy_scan);%will log it
         KbQueueStop;
@@ -137,7 +142,7 @@ cleanup;
         KbQueueStart;
         %log the pulse timings.        
         TimeEndStim                 = secs(end);%take the first valid pulse as the end of the last stimulus.
-        for nTrial  = 1:10%p.presentation.tTrial;
+        for nTrial  = 1:p.presentation.tTrial;
 
             %Get the variables that Trial function needs.
             stim_id      = p.presentation.stim_id(nTrial);
@@ -359,7 +364,7 @@ cleanup;
         p.keys.pulse                   = KbName('5%');
         p.keys.el_calib                = KbName('v');
         p.keys.el_valid                = KbName('c');
-        p.keys.escape                  = KbName('ESCAPE');
+        p.keys.escape                  = KbName('esc');
         p.keys.enter                   = KbName('return');
                 
         %% %%%%%%%%%%%%%%%%%%%%%%%%%
@@ -369,11 +374,11 @@ cleanup;
         %codes for different events
         p.com.lpt.InitExperiment       = 64;%which is all channels without digitimer
         p.com.lpt.FixOnset             = 4;
-        p.com.lpt.StimOnset            = 8;
+        p.com.lpt.StimOnset            = 64;
         p.com.lpt.shock                = 16;
         p.com.lpt.oddball              = 32;
         p.com.lpt.keypress             = 2;
-        p.com.lpt.digitimer            = 128;
+        p.com.lpt.digitimer            = 8;
         %
         %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %timing business
@@ -395,10 +400,10 @@ cleanup;
             seq.tTrial        = length(seq.cond_id);
             seq.ucs           = zeros(1,seq.tTrial);
             seq.oddball       = seq.cond_id == 10;
-            seq.isi           = RandSample([3 4.5],[1 seq.tTrial]);
+            seq.isi           = PsychRandSample([3 4.5],[1 seq.tTrial]);
             seq.stim_id       = seq.cond_id;            
             seq.dist          = 1:10;
-            seq.CrossPosition = RandSample(1:2,[1 seq.tTrial]);
+            seq.CrossPosition = PsychRandSample(1:2,[1 seq.tTrial]);
         elseif phase == 1                        
             load([fileparts(which('exp_FearAmy.m')) '/bin/fearamy_seq.mat']);
         end
@@ -523,7 +528,7 @@ cleanup;
         DrawSkala;
         ok = 1;
         while ok == 1
-            [secs, keyCode, ~] = KbStrokeWait;
+            [secs, keyCode, ~] = KbStrokeWait(p.ptb.device);
             keyCode = find(keyCode);
             Log(secs,7,keyCode);
             if length(keyCode) == 1%this loop avoids crashes to accidential presses of meta keys
@@ -587,7 +592,7 @@ cleanup;
         %need that in the case of INSTRUCT = 5;
         if waitforkeypress
             if nInstruct ~= 10%this is for the Reiz kommnt
-                KbStrokeWait;
+                KbStrokeWait(p.ptb.device);
             else
                 WaitSecs(2.5+rand(1));
             end
@@ -595,7 +600,7 @@ cleanup;
             t = Screen('Flip',p.ptb.w);            
         else
             if nInstruct ~= 10%this is for the Reiz kommnt
-                KbStrokeWait;
+                KbStrokeWait(p.ptb.device);
             else
                 WaitSecs(1+rand(1));
             end
@@ -729,7 +734,7 @@ cleanup;
             end
         end
     function SetPTB
-        KbName('UnifyKeyNames');
+        %KbName('UnifyKeyNames');
         %Sets the parameters related to the PTB toolbox. Including
         %fontsizes, font names.
         %Find the number of the screen to be opened        
@@ -751,7 +756,7 @@ cleanup;
         %set the resolution correctly        
         if strcmp(p.hostname,'triostim1') 
             res          = [1600 1200];
-            p.ptb.oldres = Screen('resolution',p.ptb.screenNumber,res(1),res(2));
+            %p.ptb.oldres = Screen('resolution',p.ptb.screenNumber,res(1),res(2));
             %hide the cursor
             HideCursor(p.ptb.screenNumber);
         elseif strcmp(p.hostname,'etpc')
@@ -820,12 +825,12 @@ cleanup;
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
         %test whether CED receives the triggers correctly...
         k = 0;
-        while ~(k == 25 || k == 86);
+        while ~(k == 25 | k == 86 );
             outp(p.com.lpt.address,p.com.lpt.InitExperiment);
             pause(0.1);
             outp(p.com.lpt.address,0);%247 means all but the UCS channel (so that we dont shock the subject during initialization).
             fprintf('=================\nDid the trigger test work?\nPress c to send it again, v to continue...\n')
-            [~, k] = KbStrokeWait;
+            [~, k] = KbStrokeWait(p.ptb.device);
             k = find(k);
         end
         
@@ -903,7 +908,7 @@ cleanup;
         shuffled        = vector(idx(1:N));
         shuffled        = shuffled(:);
     end
-    function Buzz
+    function Buzz        
         outp(p.com.lpt.address, p.com.lpt.digitimer );
         WaitSecs(p.duration.shockpulse);
         outp(p.com.lpt.address, 0);
@@ -1063,8 +1068,8 @@ cleanup;
             secs  = nan(1,n);
             pulse = 0;
             dummy = [];
-            while pulse < n
-                dummy         = KbTriggerWait(keycode);
+            while pulse < n                
+                dummy         = KbTriggerWait(keycode,p.ptb.device);
                 pulse         = pulse + 1;
                 secs(pulse+1) = dummy;
                 Log(dummy,0,NaN);
