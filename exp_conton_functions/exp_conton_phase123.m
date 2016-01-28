@@ -55,9 +55,9 @@ else
     t_targ = GetSecs-12;
 end
 
-if phasei == 2 && parti == 2
+if phasei == 2 && parti == 2 && strcmp(init.p2.hostname,'triostim')
 %Wait for dummy scans
-fileX.MRtiming.start = WaitPulseKbQueue(init.mr.ndummy+1,init.(thephase{phasei}).device);%Waits for 6 dummys scans, the 7th is the first scan for analysis
+fileX.MRtiming.start = WaitPulse(init.mr.ndummy+1,init.(thephase{phasei}).device);%Waits for 6 dummys scans, the 7th is the first scan for analysis
 end
 if phasei ~= 3
 %Create Queue for button presses
@@ -73,7 +73,7 @@ Screen('Close')
 clear targstim targtrial targettexture t_targ
 
 %% Start trial loop
-for trial=1:n.(thephase{phasei}).(thepart{parti}).trials
+for trial=1:n.p2.test.t2b*2%n.(thephase{phasei}).(thepart{parti}).trials
     
     %Break
     if (phasei==2 && rem(trial,n.(thephase{phasei}).test.tpb)==1 && trial>1) || (phasei ~= 2 && rem(trial,n.(thephase{phasei}).test.t2b)==1 && trial>1)%short break after every nth trial
@@ -99,7 +99,7 @@ for trial=1:n.(thephase{phasei}).(thepart{parti}).trials
             
             Screen('DrawText', init.(thephase{phasei}).expWin, texttodraw{2,1},texttodraw{2,2},texttodraw{2,3}, [1 1 1]);
             save(fullfile(init.(thephase{phasei}).thepath.results,fileX.fileName),'fileX');
-            save(fullfile(init.(thephase{phasei}).thepath.results,[fileX.fileName,'_init']),'init');
+            save(fullfile(init.(thephase{phasei}).thepath.results,[fileX.fileName(1:end-4),'_init.mat']),'init');
             Screen('Flip', init.(thephase{phasei}).expWin,fileX.(thephase{phasei}).(thepart{parti})(trial,11)+37-init.(thephase{phasei}).slack);
             Screen('Close')
             time2flip = 40;
@@ -134,7 +134,7 @@ for trial=1:n.(thephase{phasei}).(thepart{parti}).trials
     
     if phasei == 2 && parti == 2
     %Turn the eye tracker on prior to stimulus onset
-    t_trackerOn = StartEyelinkRecording(trial,init,fileX,thescenepath,thepart,parti,t_fix,time);     
+    t_trackerOn = StartEyelinkRecording(trial,init,fileX,thescenepath,thephase,phasei,thepart,parti,t_fix,time);     
     end
     
     %Scene presentation
@@ -255,26 +255,29 @@ for trial=1:n.(thephase{phasei}).(thepart{parti}).trials
 end
 
 if phasei == 2 && parti == 2
-%Wait for last scans and shut down eyelink
-fileX.MRtiming.end = WaitPulseKbQueue(KbName('5%'),init.mr.ndummy+1);
-        try
-            disp('Trying to stop the Eyelink system with StopEyelink');
-            Eyelink('StopRecording');
-            WaitSecs(0.5);
-            Eyelink('Closefile');
-            disp('receiving the EDF file...');
-            Eyelink('ReceiveFile',[fileX.fileName(8:end-3),'edf'],init.(thephase{phasei}).thepath.results,1);
-            disp('...finished!')
-            % Shutdown Eyelink:
-            Eyelink('Shutdown');
-        catch
-            disp('StopEyeLink routine didn''t really run well');
-        end
+    %Wait for last scans and shut down eyelink
+    if strcmp(init.p2.hostname,'triostim')
+        disp('Waiting for dummy pulses...');
+        fileX.MRtiming.end = WaitPulse(KbName('5%'),init.mr.ndummy+1);
+    end
+    try
+        disp('Trying to stop the Eyelink system with StopEyelink');
+        Eyelink('StopRecording');
+        WaitSecs(0.5);
+        Eyelink('Closefile');
+        disp('receiving the EDF file...');
+        Eyelink('ReceiveFile',[fileX.fileName(8:end-3),'edf'],init.(thephase{phasei}).thepath.results,1);
+        disp('...finished!')
+        % Shutdown Eyelink:
+        Eyelink('Shutdown');
+    catch
+        disp('StopEyeLink routine didn''t really run well');
+    end
 end
 
 %% Finish this phase
 save(fullfile(init.(thephase{phasei}).thepath.results,fileX.fileName),'fileX');
-save(fullfile(init.(thephase{phasei}).thepath.results,[fileX.fileName,'_init']),'init');
+save(fullfile(init.(thephase{phasei}).thepath.results,[fileX.fileName(1:end-4),'_init.mat']),'init');
 
 Screen('Flip', init.(thephase{phasei}).expWin);
 if parti == 1;
