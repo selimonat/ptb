@@ -1,4 +1,4 @@
-function [p]=exp_feargen_PFfitting_constant(subject,phase,csp_degree)
+function [p]=exp_fearamy_PFfitting_constant(subject,phase,csp_degree)
 
 % Diskrimination Task estimating the Threshold alpha of an
 % observer's underlying Psychometric Function (PF), using constant stimuli.
@@ -45,13 +45,13 @@ ShowInstruction(1);
 
 STOP = 0;
 while ~STOP
-  chains = find(cc<p.psi.settings.numtrials_chain);
+  chains = find(cc<p.psi.presentation.numtrials_chain);
   if length(chains) == 1
       current_chain = chains;
   elseif length(chains) >1
       current_chain = randsample(chains,1);
   end
-  if tt~=tchain*p.psi.settings.numtrials_chain
+  if tt~=tchain*p.psi.presentation.numtrials_chain
       tt=tt+1;
       % enter in break loop
       if (tt~=1 && mod(tt,breakpoint)==1 && simulation_mode==0);
@@ -60,7 +60,7 @@ while ~STOP
           CalibrateEL;
       end
       cc(current_chain)=cc(current_chain)+1;
-      fprintf('Chain %4.2f , Chain trial %03d/%03d...',current_chain,cc(current_chain),p.psi.settings.numtrials_chain)
+      fprintf('Chain %4.2f , Chain trial %03d/%03d...',current_chain,cc(current_chain),p.psi.presentation.numtrials_chain)
       
       %Present trial here at stimulus intensity x and collect
       %response
@@ -73,7 +73,7 @@ while ~STOP
       ref       = mod(ref,360);
       
       % start Trial
-      fprintf('Starting Trial %03d/%03d.\n',tt,tchain*p.psi.settings.numtrials_chain)
+      fprintf('Starting Trial %03d/%03d.\n',tt,tchain*p.psi.presentation.numtrials_chain)
       
       [test_face, ref_face, signal,trialID] = Trial_YN(trialID,ref,test,p.stim.tFace,tt);
       
@@ -84,7 +84,8 @@ while ~STOP
       message1 = 'Waren die Gesichter unterschiedlich oder gleich?\n';
       message2 = 'Bewegen Sie den "Zeiger" mit der rechten und linken Pfeiltaste\n und bestätigen Sie Ihre Einschätzung mit der oberen Pfeiltaste.';
       if ~simulation_mode
-          [response_subj]      = RatingSlider(p.ptb.rect,2,Shuffle(1:2,1),p.keys.increase,p.keys.decrease,p.keys.confirm,{ 'unterschiedlich' 'gleich'},message1,message2,0);
+          rect        = [p.ptb.width*0.2  p.ptb.midpoint(2) p.ptb.width*0.6 100];
+          [response_subj]      = RatingSlider(rect,2,Shuffle(1:2,1),p.keys.increase,p.keys.decrease,p.keys.confirm,{ 'unterschiedlich' 'gleich'},message1,message2,0);
           
           % see if subject found the different pair of faces...
           % buttonpress left (Yes) is response_subj=2, right alternative (No) outputs a 1.
@@ -112,7 +113,7 @@ while ~STOP
           
       else
           true_a = 45;
-          true_s = 30;
+          true_s = 5;
           true_g = 0.2;
           true_l = 0.02;
           response = ObserverResponseFunction(@PAL_CumulativeNormal,true_a,1/true_s,true_g,true_l,abs(x(cc(current_chain),current_chain)));
@@ -125,7 +126,7 @@ while ~STOP
       p.psi.log.xrounded(row,p.psi.log.trial_counter(row,current_chain),current_chain) = response;
       SetLog;
       %iteration control
-      STOP = sum(cc >= p.psi.settings.numtrials_chain) == tchain;
+      STOP = sum(cc >= p.psi.presentation.numtrials_chain) == tchain;
   end
   %final save of parameter-/logfile
   save(p.path.path_param,'p');
@@ -146,10 +147,10 @@ cleanup;
 %move the folder to appropriate location
 movefile(p.path.subject,p.path.finalsubject);
 subplot(2,1,1)
-errorbar(p.psi.settings.uniquex,nanmean(p.psi.log.xrounded(:,:,1),2),nanstd(p.psi.log.xrounded(:,:,1),0,2),'b.','MarkerSize',20)
+errorbar(p.psi.presentation.uniquex,nanmean(p.psi.log.xrounded(:,:,1),2),nanstd(p.psi.log.xrounded(:,:,1),0,2),'b.','MarkerSize',20)
 title('CSP chain')
 subplot(2,1,2)
-errorbar(p.psi.settings.uniquex,nanmean(p.psi.log.xrounded(:,:,2),2),nanstd(p.psi.log.xrounded(:,:,2),0,2),'r.','MarkerSize',20)
+errorbar(p.psi.presentation.uniquex,nanmean(p.psi.log.xrounded(:,:,2),2),nanstd(p.psi.log.xrounded(:,:,2),0,2),'r.','MarkerSize',20)
 title('CSN chain')
 
     function  [test_face,ref_face,signal,trialID] = Trial_YN(trialID,ref_stim,test_stim,last_face_of_circle,tt)
@@ -181,17 +182,11 @@ title('CSN chain')
        delta_csp   = MinimumAngleQuartile([trial_deg(idx(1)) trial_deg(idx(2))],csp_degree); % ...
        abs_FGangle = [trial_deg(idx(1)) trial_deg(idx(2))];
        
+       trialID=trialID+1;
 
         %get fixation crosses and onsets from p parameter
         
-        if fixjump ==1
-            fix(1,:)         = [p.ptb.CrossPosition_x(1) p.ptb.CrossPosition_y(1)];
-            fix(2,:)         = [p.ptb.CrossPosition_x(2) p.ptb.CrossPosition_y(2)];
-        else
-            fix        = round(p.ptb.CrossPositions(tt,:));
-        end
-        trialID=trialID+1;
-        
+               
         %GetSecs so that the onsets can be defined
         if fixjump ==1
             onsets = 0.25+GetSecs;                                   %fix1 onset
@@ -214,10 +209,13 @@ title('CSN chain')
         end
         
         if fixjump ==1
+            fix_i        = p.psi.presentation.fix_start(cc(current_chain),current_chain);
+            fix          = [p.ptb.CrossPosition_x p.ptb.CrossPosition_y(fix_i)];
+            FixCross     = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];
             %fixation cross 1
-            FixCross = [fix(1,1)-1,fix(1,2)-20,fix(1,1)+1,fix(1,2)+20;fix(1,1)-20,fix(1,2)-1,fix(1,1)+20,fix(1,2)+1];
+            %FixCross = [fix(1,1)-1,fix(1,2)-p.ptb.fc_size,fix(1,1)+1,fix(1,2)+p.ptb.fc_size;fix(1,1)-p.ptb.fc_size,fix(1,2)-1,fix(1,1)+p.ptb.fc_size,fix(1,2)+1];
             Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');
-            Eyelink('Message', 'FX Onset at %d %d',fix(1,1),fix(1,2));
+            Eyelink('Message', 'FX Onset at %d %d',fix(1),fix(2));
             Screen('Flip',p.ptb.w,onsets(1),0);
             StartEyelinkRecording(trialID,phase,cc(current_chain),tt,current_chain,isref(1),trial(1),delta_ref(1),delta_csp(1),abs_FGangle(1),fix(1,1),fix(1,2));
             %face trial(1)
@@ -226,8 +224,10 @@ title('CSN chain')
             Screen('Flip',p.ptb.w,onsets(2),0);
             Eyelink('Message', 'Stim Onset');
             Eyelink('Message', 'SYNCTIME');
-            %fixjump trial(1)
-            FixCross = [fix(2,1)-1,fix(2,2)-20,fix(2,1)+1,fix(2,2)+20;fix(2,1)-20,fix(2,2)-1,fix(2,1)+20,fix(2,2)+1];
+            %fixJUMP trial(1)
+            fix          = [p.ptb.CrossPosition_x p.ptb.CrossPosition_y(setdiff(1:2,fix_i))];%take the other position
+            FixCross     = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];
+            %FixCross = [fix(2,1)-1,fix(2,2)-p.ptb.fc_size,fix(2,1)+1,fix(2,2)+p.ptb.fc_size; fix(2,1)-p.ptb.fc_size,fix(2,2)-1,fix(2,1)+p.ptb.fc_size,fix(2,2)+1];
             Screen('DrawTexture',p.ptb.w,p.ptb.stim_sprites(trial(1)));
             Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');
             Screen('Flip',p.ptb.w,onsets(3),0);
@@ -235,12 +235,15 @@ title('CSN chain')
             end
             Screen('Flip',p.ptb.w,onsets(4),0);
             StopEyelinkRecording;
+            
             %second face of the trial
             trialID=trialID+1;
             %fixation cross 2
-            FixCross = [fix(1,1)-1,fix(1,2)-20,fix(1,1)+1,fix(1,2)+20;fix(1,1)-20,fix(1,2)-1,fix(1,1)+20,fix(1,2)+1];
+            fix_i        = p.psi.presentation.fix_start(cc(current_chain),current_chain);
+            fix          = [p.ptb.CrossPosition_x p.ptb.CrossPosition_y(fix_i)];
+            FixCross     = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];
             Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');
-            Eyelink('Message', 'FX Onset at %d %d',fix(1,1),fix(1,2));
+            Eyelink('Message', 'FX Onset at %d %d',fix(1),fix(2));
             Screen('Flip',p.ptb.w,onsets(5),0);
             StartEyelinkRecording(trialID,phase,cc(current_chain),tt,current_chain,isref(2),trial(2),delta_ref(2),delta_csp(2),abs_FGangle(2),fix(1,1),fix(1,2));
             %face trial(1)
@@ -249,8 +252,9 @@ title('CSN chain')
             Screen('Flip',p.ptb.w,onsets(6),0);
             Eyelink('Message', 'Stim Onset');
             Eyelink('Message', 'SYNCTIME');
-            %fixjump trial(1)
-            FixCross = [fix(2,1)-1,fix(2,2)-20,fix(2,1)+1,fix(2,2)+20;fix(2,1)-20,fix(2,2)-1,fix(2,1)+20,fix(2,2)+1];
+            %fixJUMP trial(1)
+            fix          = [p.ptb.CrossPosition_x p.ptb.CrossPosition_y(setdiff(1:2,fix_i))];%take the other position
+            FixCross     = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];
             Screen('DrawTexture',p.ptb.w,p.ptb.stim_sprites(trial(2)));
             Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');
             Screen('Flip',p.ptb.w,onsets(7),0);
@@ -260,8 +264,9 @@ title('CSN chain')
             StopEyelinkRecording;
             
         elseif fixjump ==0;
+            fix        = round(p.ptb.CrossPositions(tt,:));
             %fixation cross 1
-            FixCross = [fix(1)-1,fix(2)-20,fix(1)+1,fix(2)+20;fix(1)-20,fix(2)-1,fix(1)+20,fix(2)+1];
+            FixCross = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];
             Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');
             Eyelink('Message', 'FX Onset at %d %d',fix(1),fix(2));
             Screen('Flip',p.ptb.w,onsets(1),0);
@@ -278,7 +283,7 @@ title('CSN chain')
             %second face of the trial
             trialID=trialID+1;
             %fixation cross 2
-            FixCross = [fix(3)-1,fix(4)-20,fix(3)+1,fix(4)+20;fix(3)-20,fix(4)-1,fix(3)+20,fix(4)+1];
+            FixCross = [fix(3)-1,fix(4)-p.ptb.fc_size,fix(3)+1,fix(4)+p.ptb.fc_size;fix(3)-p.ptb.fc_size,fix(4)-1,fix(3)+p.ptb.fc_size,fix(4)+1];
             Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');
             Eyelink('Message', 'FX Onset at %d %d',fix(3),fix(4));
             Screen('Flip',p.ptb.w,onsets(4),0);
@@ -305,9 +310,9 @@ title('CSN chain')
         p.hostname                    = deblank(hostname);
         
         if strcmp(p.hostname,'etpc')
-           screenNumber=1;
+           p.ptb.screenNumber=1;
         else
-           screenNumber=max(screens);
+           p.ptb.screenNumber=max(screens);
         end
         
        
@@ -319,24 +324,44 @@ title('CSN chain')
         Screen('Preference', 'SkipSyncTests', 1);
         Screen('Preference', 'DefaultFontSize', p.text.fontsize);
         Screen('Preference', 'DefaultFontName', p.text.fontname);
+        Screen('Preference', 'TextAntiAliasing',2);%enable textantialiasing high quality
+        Screen('Preference', 'VisualDebuglevel', 0);
         %
-        [p.ptb.w ]                  = Screen('OpenWindow', screenNumber, p.stim.bg);
-        [p.ptb.width, p.ptb.height] = Screen('WindowSize', screenNumber);
-        %find the mid position.
-        p.ptb.midpoint              = [ p.ptb.width./2 p.ptb.height./2];
-        p.ptb.imrect                = [ p.ptb.midpoint(1)-p.stim.width/2 p.ptb.midpoint(2)-p.stim.height/2 p.stim.width p.stim.height];
-        %area of the slider
-        p.ptb.rect                  = [p.ptb.midpoint(1)*0.5  p.ptb.midpoint(2)*0.8 p.ptb.midpoint(1) p.ptb.midpoint(2)*0.2];
-        %compute the cross position.
-        [nx ny bb] = DrawFormattedText(p.ptb.w,'+','center','center');
-        Screen('FillRect',p.ptb.w,p.stim.bg);
-        if fixjump ==1
-            p.ptb.cross_shift           = [45 50];%upper and lower cross positions
-            p.ptb.CrossPosition_y       = [ny-p.ptb.cross_shift(1)  ny+p.ptb.cross_shift(2) ];
-            p.ptb.CrossPosition_x       = [bb(1) bb(1)];
-            p.ptb.CrossPositionET_x     = [p.ptb.midpoint(1) p.ptb.midpoint(1)];
-            p.ptb.CrossPositionET_y     = [p.ptb.midpoint(2)-p.ptb.cross_shift(2) p.ptb.midpoint(2)+p.ptb.cross_shift(2)];
+        if strcmp(p.hostname,'etpc')
+            res          = [1600 1200];
         else
+            res = [1920 1200];
+        end
+        p.ptb.oldres = Screen('Resolution',p.ptb.screenNumber,res(1),res(2));
+        %hide the cursor
+        %HideCursor(p.ptb.screenNumber);
+        %spit out the resolution 
+        if ~ismac
+            fprintf('Resolution of the screen is set to %dx%d...\n',res(1),res(2));
+        end
+        %Open a graphics window using PTB
+        p.ptb.w                     = Screen('OpenWindow', p.ptb.screenNumber, p.var.current_bg);
+        Screen('BlendFunction', p.ptb.w, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        Screen('Flip',p.ptb.w);%make the bg
+        p.ptb.slack                 = Screen('GetFlipInterval',p.ptb.w)./2;
+        [p.ptb.width, p.ptb.height] = Screen('WindowSize', p.ptb.screenNumber);
+        if sum([p.ptb.width p.ptb.height] - [1280 960]) ~= 0
+            fprintf('SET THE CORRECT SCREEN RESOLUTION\n');
+        end
+        %find the mid position on the screen.
+        p.ptb.midpoint              = [ p.ptb.width./2 p.ptb.height./2];
+        %NOTE about RECT:
+        %RectLeft=1, RectTop=2, RectRight=3, RectBottom=4.
+        p.ptb.imrect                = [ p.ptb.midpoint(1)-p.stim.width/2 p.ptb.midpoint(2)-p.stim.height/2 p.ptb.midpoint(1)-p.stim.width/2+p.stim.width p.ptb.midpoint(2)-p.stim.height/2+p.stim.height];       
+        p.ptb.cross_shift           = [180 -120];%incremental upper and lower cross positions
+        p.ptb.CrossPosition_x       = p.ptb.midpoint(1);%always the same
+        p.ptb.CrossPosition_y       = [p.ptb.midpoint(2)-p.ptb.cross_shift(2) p.ptb.midpoint(2)+p.ptb.cross_shift(2)];        
+        %cross position for the eyetracker screen.
+        p.ptb.CrossPositionET_x     = [p.ptb.midpoint(1) p.ptb.midpoint(1)];
+        p.ptb.CrossPositionET_y     = [p.ptb.midpoint(2)-p.ptb.cross_shift(2) p.ptb.midpoint(2)+p.ptb.cross_shift(2)];
+        p.ptb.fc_size               = 10;
+        % 
+        if fixjump == 0
             p.ptb.CrossPositions   = FixationCrossPool;
         end
 
@@ -366,8 +391,8 @@ title('CSN chain')
             
             %setting up fixation cross pool vector of size
             % totaltrials x 4 (face_1_x face_1_y face_2_x face_2_y)
-            cross_directions = round(rand(tchain*p.psi.settings.numtrials_chain,2))*180;
-            dummy            = cross_directions + rand(tchain*p.psi.settings.numtrials_chain,2)*30-15;
+            cross_directions = round(rand(tchain*p.psi.presentation.numtrials_chain,2))*180;
+            dummy            = cross_directions + rand(tchain*p.psi.presentation.numtrials_chain,2)*30-15;
             cross_positions  = [cosd(dummy(:,1))*radius+center(1) sind(dummy(:,1))*radius+center(2)...
                 cosd(dummy(:,2))*radius+center(1) sind(dummy(:,2))*radius+center(2)];
         end
@@ -495,15 +520,21 @@ title('CSN chain')
         csn_shift               = [0 180];
         tchain                  = 2;
         interval = 22.5;
+        maxdegree = 180;
         maxtrials = 100;
                
-        tsteps = 360./interval-1;
+        tsteps = (2*maxdegree./interval)+1;
+        if maxdegree == 180
+            tsteps = tsteps - 2;%spares out the CSN
+        end
         rep    = floor(maxtrials./(tsteps+1));%+1 so that zero can be doubled...
         steps  = [repmat(0:interval:180-interval,1,rep) repmat(0:interval:180-interval,1,rep)*-1];
         
         for n = 1:tchain
-            x(:,n)      = Shuffle(steps);
+            x(:,n)          = Shuffle(steps);
+            fix_start(:,n)  = seq_BalancedDist(x(:,n)',[1 2])';
         end
+        
         fprintf('This is the distribution of stimuli we will use:\n')
         histi = histc(x,unique(x));
         uniquex = unique(x);
@@ -513,12 +544,14 @@ title('CSN chain')
         fprintf('---------------------------\nTotal trials: %03d per chain.\n',sum(histi(:,1)))
         WaitSecs(3);
         %store everything in p
-        p.psi.settings.x = x;
-        p.psi.settings.interval        = interval;
-        p.psi.settings.numtrials_chain = length(x(:,1));
-        p.psi.settings.tsteps          = tsteps;
-        p.psi.settings.rep             = histi(:,1);
-        p.psi.settings.uniquex         = unique(x);
+        p.psi.presentation.x               = x;
+        p.psi.presentation.interval        = interval;
+        p.psi.presentation.numtrials_chain = length(x(:,1));
+        p.psi.presentation.tsteps          = tsteps;
+        p.psi.presentation.rep             = histi(:,1);
+        p.psi.presentation.uniquex         = unique(x);
+        p.psi.presentation.fix_start       = fix_start;
+        p.var.current_bg                   = p.stim.bg;%current background to be used.
         %Save the stuff
         save(p.path.path_param,'p');
         %
@@ -686,7 +719,7 @@ title('CSN chain')
             text = 'Experiment beendet!\n';
             
         elseif nInstruct==4%break
-            text = [sprintf('Sie haben bereits %g von %g Durchgängen geschafft!\n',tt-1,p.psi.settings.numtrials_chain*tchain)...
+            text = [sprintf('Sie haben bereits %g von %g Durchgängen geschafft!\n',tt-1,p.psi.presentation.numtrials_chain*tchain)...
                 'Machen Sie eine kurze Pause, lehnen Sie sich gern einen Moment zurück\n'...
                 'und schließen Sie die Augen, um diese zu entspannen.\n'...
                 'Drücken Sie anschließend die mittlere Taste, um weiterzumachen.\n'];
@@ -701,8 +734,8 @@ title('CSN chain')
         p.psi.log.refface    = NaN(tchain,length(x));
         p.psi.log.testface   = NaN(tchain,length(x));
         p.psi.log.response   = NaN(tchain,length(x));
-%         p.psi.log.xrounded   = NaN(p.stim.tFace/tchain+1,p.psi.settings.numtrials_chain,tchain);
-        p.psi.log.xrounded   = NaN(length(unique(x)),max(p.psi.settings.rep),tchain);
+%         p.psi.log.xrounded   = NaN(p.stim.tFace/tchain+1,p.psi.presentation.numtrials_chain,tchain);
+        p.psi.log.xrounded   = NaN(length(unique(x)),max(p.psi.presentation.rep),tchain);
         p.psi.log.sdt        = NaN(tchain,length(x));  
         p.psi.log.trial_counter  = zeros(length(unique(x)),tchain);
     end
