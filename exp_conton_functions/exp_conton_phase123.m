@@ -73,10 +73,10 @@ Screen('Close')
 clear targstim targtrial targettexture t_targ
 
 %% Start trial loop
-for trial=1:n.p2.test.t2b*2%n.(thephase{phasei}).(thepart{parti}).trials
+for trial=1:30;%n.(thephase{phasei}).(thepart{parti}).trials
     
     %Break
-    if (phasei==2 && rem(trial,n.(thephase{phasei}).test.tpb)==1 && trial>1) || (phasei ~= 2 && rem(trial,n.(thephase{phasei}).test.t2b)==1 && trial>1)%short break after every nth trial
+    if (phasei==2 && rem(trial,n.(thephase{phasei}).test.tpb)==1 && trial>1) || (phasei ~= 2 && rem(trial,n.(thephase{phasei}).test.t2b)==1 && trial>1)%short break after every nth trial and after every block in p2
         
         coverTexture                                        = Screen('MakeTexture',init.(thephase{phasei}).expWin,thecover);%cover the fixation cross
         Screen('DrawTexture',init.(thephase{phasei}).expWin,coverTexture);
@@ -103,10 +103,18 @@ for trial=1:n.p2.test.t2b*2%n.(thephase{phasei}).(thepart{parti}).trials
             Screen('Flip', init.(thephase{phasei}).expWin,fileX.(thephase{phasei}).(thepart{parti})(trial,11)+37-init.(thephase{phasei}).slack);
             Screen('Close')
             time2flip = 40;
+            if phasei == 2 %do drift correction and if necessary repeat calibration after the break
+                status = Eyelink('DriftCorrStart', init.(thephase{phasei}).mx, init.(thephase{phasei}).my , 1, 1, 1);%open setup for new calibration on press of escape
+                if status == 27
+                    [~, messageString] = Eyelink('CalMessage');
+                    Eyelink('Message','%s',messageString);%
+                    WaitSecs(0.05);
+                end
+            end
         else
             time2flip = 20;
         end
-        
+
         fixcross = Screen('MakeTexture',init.(thephase{phasei}).expWin,FixCr);
         Screen('DrawTexture',init.(thephase{phasei}).expWin,fixcross);
         t_fix    = Screen('Flip', init.(thephase{phasei}).expWin,fileX.(thephase{phasei}).(thepart{parti})(trial,11)+time2flip-init.(thephase{phasei}).slack);
@@ -127,7 +135,7 @@ for trial=1:n.p2.test.t2b*2%n.(thephase{phasei}).(thepart{parti}).trials
         Screen('DrawTexture',init.(thephase{phasei}).expWin,fixcross);
         t_fix    = Screen('Flip', init.(thephase{phasei}).expWin,fileX.(thephase{phasei}).(thepart{parti})(trial,12)+3-init.(thephase{phasei}).slack);
         if parti == 2
-        Eyelink('Message', 'FX Onset at %d %d',init.(thephase{phasei}).mx,init.(thephase{phasei}).my);
+        Eyelink('Message', 'FX Onset at %3d, %3d', init.(thephase{phasei}).mx, init.(thephase{phasei}).my);
         end
         Screen('Close')
     end
@@ -138,7 +146,7 @@ for trial=1:n.p2.test.t2b*2%n.(thephase{phasei}).(thepart{parti}).trials
     end
     
     %Scene presentation
-    scenetexture         = Screen('MakeTexture',init.(thephase{phasei}).expWin,thescene{trial});
+    scenetexture         = Screen('MakeTexture',init.(thephase{phasei}).expWin,imresize(thescene{trial},init.(thephase{phasei}).imgsizepix));
     Screen('DrawTexture',init.(thephase{phasei}).expWin,scenetexture);
     [t_scene,sceneOnset] = Screen('Flip', init.(thephase{phasei}).expWin,t_fix+time.(thephase{phasei}).fix-init.(thephase{phasei}).slack,1);%show scene and keep it in the back buffer for presentation with analogue scale
     if phasei == 2 && parti == 2
@@ -173,12 +181,12 @@ for trial=1:n.p2.test.t2b*2%n.(thephase{phasei}).(thepart{parti}).trials
     end
     
     %Scene offset
-    coverTexture = Screen('MakeTexture',init.(thephase{phasei}).expWin,thecover);%cover image in the backbufer to display just the fix cross (and rating scale) with next flip
+    coverTexture = Screen('MakeTexture',init.(thephase{phasei}).expWin,imresize(thecover,init.(thephase{phasei}).imgsizepix));%cover image in the backbufer to display just the fix cross (and rating scale) with next flip
     fixcross     = Screen('MakeTexture',init.(thephase{phasei}).expWin,FixCr);
     Screen('DrawTextures',init.(thephase{phasei}).expWin,[coverTexture,fixcross]);
     t_fix        = Screen('Flip', init.(thephase{phasei}).expWin,t_scene+time.(thephase{phasei}).pic-init.(thephase{phasei}).slack, 1);
     if phasei == 2 && parti == 2
-    Eyelink('Message', 'FX Onset at %d %d',init.(thephase{phasei}).mx,init.(thephase{phasei}).my);         
+    Eyelink('Message', 'FX Onset at %3d %3d',init.(thephase{phasei}).mx,init.(thephase{phasei}).my);         
     %record some more eye data after stimulus offset
     WaitSecs('UntilTime',t_fix+time.trackerOff);
     t_trackerOff    = StopEyelinkRecording;
@@ -253,7 +261,7 @@ for trial=1:n.p2.test.t2b*2%n.(thephase{phasei}).(thepart{parti}).trials
     clearvars -except fileX FixCr init inst2load key n parti phasei relnew t_fix thecat thecond thepart thescene time trial thephase texttodraw thecover thescenepath
     thescene{trial}=[];
 end
-
+keyboard
 if phasei == 2 && parti == 2
     %Wait for last scans and shut down eyelink
     if strcmp(init.p2.hostname,'triostim')

@@ -7,6 +7,10 @@ clear all;close all;clc;
 PsychDefaultSetup(2);
 sca;
 
+warning('scanner kommunikation in pause')
+warning('Bilder noch größer?')
+warning('In pause recorden für blink rate')
+warning('Change button to continue after train for button box')
 singdisp = input('Set to single display? Trial loop over all trials? Type y for yes.','s');
 
 if ~strcmp(singdisp,'y')
@@ -42,7 +46,7 @@ n.p1.train.t2b      = n.p1.train.trials;
 time.p2.pic         = time.p1.pic;
 time.p2.fix         = 2.15;%TBD 150ms to save everything & turn on tracker again, distribute trials across TR
 time.p2.resp        = 3;%TBD 
-time.trackerOff     = 1;
+time.trackerOff     = 1.8;%200 ms to turn off tracker before button presses are recorded
 
 relnew.p2           = 1;%amount of new pictures relative to old ones
 
@@ -127,12 +131,13 @@ switch init.(thephase{phasei}).hostname
     case 'isnf01faf2bafa4'
     init.(thephase{phasei}).thepath.project       = 'C:\Users\herweg\Documents\_Projekte\07_conton\MR';
     init.(thephase{phasei}).thepath.inst     = [init.(thephase{phasei}).thepath.project '\experiment\instructions\keyboard'];
+    init.(thephase{phasei}).whichmonitor = input('Which monitor? Type s for small, l for large, e for eyetracking.','s');
     case 'etpc'
     init.(thephase{phasei}).thepath.project       = 'C:\USER\herweg\07_conton\MR';
     init.(thephase{phasei}).thepath.inst     = [init.(thephase{phasei}).thepath.project '\experiment\instructions\keyboard'];
 end
-init.(thephase{phasei}).thepath.pics_inn = [init.(thephase{phasei}).thepath.project '\pics\inn_color\mean1275RGB'];
-init.(thephase{phasei}).thepath.pics_out = [init.(thephase{phasei}).thepath.project '\pics\out_color\mean1275RGB'];
+init.(thephase{phasei}).thepath.pics_inn = [init.(thephase{phasei}).thepath.project '\pics\inn_color\mean128RGB'];
+init.(thephase{phasei}).thepath.pics_out = [init.(thephase{phasei}).thepath.project '\pics\out_color\mean128RGB'];
 init.(thephase{phasei}).thepath.results  = [init.(thephase{phasei}).thepath.project '\data'];
 
 %init.thepath.scripts  = [init.thepath.project '\experiment'];
@@ -294,11 +299,11 @@ init.(thephase{phasei}).screenNumber = max(init.(thephase{phasei}).screens);%The
 if init.debug
     PsychDebugWindowConfiguration([],0.7)
 else HideCursor;
-    Screen('Preference', 'SkipSyncTests', 1);
-    skipsync = input('You are skipping the sync test. Don''t this during real testing!!! Type y if you understood.','s');
-    if ~strcmp(skipsync,'y')
-        error('Experiment aborted');
-    end
+%     Screen('Preference', 'SkipSyncTests', 1);
+%     skipsync = input('You are skipping the sync test. Don''t this during real testing!!! Type y if you understood.','s');
+%     if ~strcmp(skipsync,'y')
+%         error('Experiment aborted');
+%     end
 end
             
 try
@@ -313,6 +318,9 @@ init.(thephase{phasei}).refresh = Screen('GetFlipInterval', init.(thephase{phase
 init.(thephase{phasei}).slack   = init.(thephase{phasei}).refresh/2;
 [init.(thephase{phasei}).mx, init.(thephase{phasei}).my] = RectCenter(init.(thephase{phasei}).rect);
 init.(thephase{phasei}).device = -1;%query all devices and report their merged state
+
+%Calculate stimulus size
+init.(thephase{phasei}).imgsizepix = calcstimsize(init,thephase,phasei);
 
 %Load mex files now to not do it in the trial loop
 KbCheck(init.(thephase{phasei}).device);
@@ -349,7 +357,7 @@ if phasei == 2 && parti == 2
     if ~EyelinkInit(init.el.recmode,1);%enable callback = 1 is default; if initialization does not work
         error('Initialization not successful')
     end
-    [init.el.v,init.el.vs]=Eyelink('GetTrackerVersion');
+    [init.el.v,init.el.vs] = Eyelink('GetTrackerVersion');
     
     Eyelink('Openfile',[fileX.fileName(8:end-3),'edf']);
     
@@ -361,6 +369,9 @@ if phasei == 2 && parti == 2
     clear insttexture
     
     EyelinkDoTrackerSetup(init.el.el);
+    [~, messageString] = Eyelink('CalMessage');
+    Eyelink('Message','%s',messageString);%
+    WaitSecs(0.05);
 
     Eyelink('StartRecording');
 end
@@ -372,10 +383,9 @@ for numsession = 1:6-((phasei*2)+parti-3)
     Screen('Flip',init.(thephase{phasei}).expWin);
     cd (init.(thephase{phasei}).thepath.results);
     exp_conton_phase123
-    if parti == 2
+    if parti == 2 && init.continuous == 1
         phasei = phasei+1;
-    end
-    if parti == 2 && init.continuous == 0
+    elseif parti == 2 && init.continuous == 0
         break
     end
     parti = 2/parti;
