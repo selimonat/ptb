@@ -1,4 +1,4 @@
-function [final]=BalancedDist(stim_seq , Categories)
+function [final]=seq_BalancedDist(stim_seq , Categories)
 %Distributes values in CATEGORIES,  in
 %a balanced way to the stimulus sequence so that levels given in
 %CATEGORIES are distributed in such a way that they are equally
