@@ -6,7 +6,7 @@ function [p]=FearGen_eyelab(subject,phase,csp,PainThreshold)
 % 
 % 
 
-debug = 1;%debug mode
+debug = 0;%debug mode
 %replace parallel port function with a dummy function
 if ismac
 % outp = @(x,y) fprintf('pp\n');
@@ -370,15 +370,15 @@ cleanup;
         %% %%%%%%%%%%%%%%%%%%%%%%%%%
         %Communication business
         %parallel port
-        p.com.lpt.address              = 888;
-        %codes for different events
-        p.com.lpt.InitExperiment       = 64;%which is all channels without digitimer
-        p.com.lpt.FixOnset             = 4;
-        p.com.lpt.StimOnset            = 64;
-        p.com.lpt.shock                = 16;
-        p.com.lpt.oddball              = 32;
-        p.com.lpt.keypress             = 2;
-        p.com.lpt.digitimer            = 8;
+       p.com.lpt.address = 888;
+%codes for different events
+p.com.lpt.InitExperiment = 64;%which is all channels without digitimer
+p.com.lpt.FixOnset = 4;
+p.com.lpt.StimOnset = 64;
+p.com.lpt.shock = 16;
+p.com.lpt.oddball = 32;
+p.com.lpt.keypress = 2;
+p.com.lpt.digitimer = 8;
         %
         %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %timing business
@@ -662,13 +662,14 @@ cleanup;
                         '(Sie müssen also sehr schnell und aufmerksam sein).' ...
                     ];
             elseif nInstruct == 3%third Instr. of the training phase.
-                text = ['Two important notes before the start of the experiment:\n'...
+                text = ['Noch zwei wichtige Anmerkungen bevor das Experiment startet:\n'...
                     'Es ist sehr wichtig, dass Sie Ihren Kopf während \n' ...
                     'des Experiments nicht bewegen. \n' ...
                     'Das ist besonders wichtig für die Qualität der Messung.\n' ...
-%                     'Also please note it is normal for the scanner to stop and restart...
-%                     'This should however not interfer with your task.
-%                     'Even if the scanner stops please follow the instructions as precisely as always...
+                    'Es kann außerdem vorkommen, dass der Scanner stoppt und wieder startet...\n' ...
+                    'Das hat für dich keine Bedeutung, bitte konzentriere dich einfach weiter auf deine Aufgabe.\n'...
+                    'Auch wenn der Scanner kurz stoppt sollst du also einfach weiterhin wie besprochen \n'...
+                    'die Aufgabe ausführen und deinen Kopf weiterhin stillhalten...'...
                     ];
             elseif nInstruct == 4%third Instr. of the training phase.
                 text = ['Vor dem Experiment legen wir nun \n' ...
@@ -762,12 +763,8 @@ cleanup;
         %set the resolution correctly        
         if strcmp(p.hostname,'triostim1') 
             res          = [1600 1200];
-<<<<<<< HEAD
-%             p.ptb.oldres = Screen('resolution',p.ptb.screenNumber,res(1),res(2));
-=======
-            p.ptb.oldres = Screen('resolution',p.ptb.screenNumber,res(1),res(2));
+%             p.ptb.oldres = Screen('resolution',p.ptb.screenNumber,res(1),res(2));            
             %p.ptb.oldres = Screen('resolution',p.ptb.screenNumber,res(1),res(2));
->>>>>>> f5379a365274eff80776c4e646162baa828767ac
             %hide the cursor
             %HideCursor(p.ptb.screenNumber);
         elseif strcmp(p.hostname,'etpc')
@@ -969,10 +966,6 @@ cleanup;
         el.drift_correction_failed_beep = [0 0 0];
         el.drift_correction_success_beep= [0 0 0];
         EyelinkUpdateDefaults(el);
-<<<<<<< HEAD
-        el
-=======
->>>>>>> f5379a365274eff80776c4e646162baa828767ac
         PsychEyelinkDispatchCallback(el)
                             
         % open file.
@@ -1013,7 +1006,7 @@ cleanup;
         sca;
         %set back the old resolution
         if strcmp(p.hostname,'triostim1')
-            Screen('Resolution',p.ptb.screenNumber, p.ptb.oldres.width, p.ptb.oldres.height );
+%            Screen('Resolution',p.ptb.screenNumber, p.ptb.oldres.width, p.ptb.oldres.height );
             %show the cursor
             ShowCursor(p.ptb.screenNumber);
         end
@@ -1058,11 +1051,11 @@ cleanup;
             p.var.event_count                = p.var.event_count + 1;
             p.out.log(p.var.event_count,:)   = [ptb_time(iii) event_type event_info(iii) p.var.ExpPhase];        
         end
-        plot(p.out.log(1:p.var.event_count,1) - p.out.log(1,1),p.out.log(1:p.var.event_count,2),'o','markersize',10);        
-        ylim([-2 8]);
-        set(gca,'ytick',[-2:8],'yticklabel',{'Rating On','Text','Pulse','Tracker+','Cross+','Stim+','CrossMov','UCS','Stim-','Key+','Tracker-'});
-        grid on
-        drawnow;
+%         plot(p.out.log(1:p.var.event_count,1) - p.out.log(1,1),p.out.log(1:p.var.event_count,2),'o','markersize',10);        
+%         ylim([-2 8]);
+%         set(gca,'ytick',[-2:8],'yticklabel',{'Rating On','Text','Pulse','Tracker+','Cross+','Stim+','CrossMov','UCS','Stim-','Key+','Tracker-'});
+%         grid on
+%         drawnow;
         
     end
     function [secs]=WaitPulse(keycode,n)
