@@ -658,6 +658,9 @@ cleanup;
                 text = ['Es ist sehr wichtig, dass Sie Ihren Kopf während \n' ...
                     'des Experiments nicht bewegen. \n' ...
                     'Das ist besonders wichtig für die Qualität der Messung.\n' ...
+%                     'Also please note it is normal for the scanner to stop and restart...
+%                     'This should however not interfer with your task.
+%                     'Even if the scanner stops please follow the instructions as precisely as always...
                     ];
             elseif nInstruct == 4%third Instr. of the training phase.
                 text = ['Vor dem Experiment legen wir nun \n' ...
@@ -749,17 +752,17 @@ cleanup;
         Screen('Preference', 'SkipSyncTests', 1);
         Screen('Preference', 'SuppressAllWarnings', 1);
         %set the resolution correctly        
-        if strcmp(p.hostname,'triostim1') 
+%         if strcmp(p.hostname,'triostim1') 
             res          = [1600 1200];
-            p.ptb.oldres = Screen('resolution',p.ptb.screenNumber,res(1),res(2));
+%             p.ptb.oldres = Screen('resolution',p.ptb.screenNumber,res(1),res(2));
             %hide the cursor
             HideCursor(p.ptb.screenNumber);
-        elseif strcmp(p.hostname,'etpc')
-            res          = [1600 1200];
-            p.ptb.oldres = Screen('resolution',p.ptb.screenNumber,res(1),res(2));
-            %hide the cursor
-            HideCursor(p.ptb.screenNumber);
-        end
+%         elseif strcmp(p.hostname,'etpc')
+%             res          = [1600 1200];
+%             p.ptb.oldres = Screen('resolution',p.ptb.screenNumber,res(1),res(2));
+%             %hide the cursor
+%             HideCursor(p.ptb.screenNumber);
+%         end
         %spit out the resolution 
         if ~ismac
             fprintf('Resolution of the screen is set to %dx%d...\n',res(1),res(2));
@@ -958,7 +961,7 @@ cleanup;
         % open file.
         res = Eyelink('Openfile', p.path.edf);
         %
-        Eyelink('command', 'add_file_preamble_text ''Recorded by EyelinkToolbox FearCloud Experiment''');
+        Eyelink('command', 'add_file_preamble_text ''Recorded by EyelinkToolbox FearAmy Experiment (Selim Onat)''');                
         Eyelink('command', 'screen_pixel_coords = %ld %ld %ld %ld', 0, 0, p.ptb.width-1, p.ptb.height-1);
         Eyelink('message', 'DISPLAY_COORDS %ld %ld %ld %ld', 0, 0, p.ptb.width-1, p.ptb.height-1);
         % set calibration type.
@@ -998,8 +1001,7 @@ cleanup;
             ShowCursor(p.ptb.screenNumber);
         end
         %       
-        commandwindow;
-        ListenChar(0);        
+        commandwindow;        
         KbQueueStop(p.ptb.device);
         KbQueueRelease(p.ptb.device);
     end
