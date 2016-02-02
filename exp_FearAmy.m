@@ -8,9 +8,9 @@ function [p]=FearGen_eyelab(subject,phase,csp,PainThreshold)
 
 debug = 0;%debug mode
 %replace parallel port function with a dummy function
-% if ismac
+if ismac
 % outp = @(x,y) fprintf('pp\n');
-% end
+end
 if nargin ~= 4
     fprintf('Wrong number of inputs\n');
     keyboard;
@@ -64,12 +64,10 @@ if phase == 0
     PresentStimuli;
     
 elseif phase == 1
-    %
-    KbQueueStop(p.ptb.device);
-    KbQueueRelease(p.ptb.device);
+    %    
     p.var.ExpPhase  = phase;            
-%    CalibrateEL;
-%     ShowInstruction(3,1);
+    CalibrateEL;   
+    ShowInstruction(3,1);
     PresentStimuli;    
     AskStimRating;%make sure that scanner doesnt stop prematurely asa the stim offset  
 end
@@ -131,15 +129,13 @@ cleanup;
     end
     function PresentStimuli 
         %Enter the presentation loop and wait for the first pulse to
-        %arrive.    
-        KbQueueStop;
-        KbQueueRelease;
-        %wait for the dummy scans
+        %arrive.            
+        %wait for the dummy scans        
         [secs] = WaitPulse(p.keys.pulse,p.mrt.dummy_scan);%will log it
-        KbQueueStop;
+        KbQueueStop(p.ptb.device);
         WaitSecs(.05);
-        KbQueueCreate;
-        KbQueueStart;
+        KbQueueCreate(p.ptb.device);
+        KbQueueStart(p.ptb.device);
         %log the pulse timings.        
         TimeEndStim                 = secs(end);%take the first valid pulse as the end of the last stimulus.
         for nTrial  = 1:p.presentation.tTrial;
@@ -305,13 +301,13 @@ cleanup;
         p.path.stim                   = [p.path.baselocation filesep 'stimuli' filesep];
         p.path.stim24                 = [p.path.stim '24bit' filesep];
         %
-        p.subID                       = sprintf('sub%02d',subject);        
+        p.subID                       = sprintf('s%02d',subject);        
         timestamp                     = datestr(now,30);
         p.path.subject                = [p.path.experiment  'tmp' filesep p.subID '_' timestamp filesep ];
         p.path.finalsubject           = [p.path.experiment  p.subID '_' timestamp filesep ];
         p.path.path_edf               = [p.path.subject  'eye' filesep];
         p.path.edf                    = sprintf([p.subID 'p%02d.edf' ],phase);
-        p.path.path_param             = [p.path.subject 'stimulation' filesep sprintf([p.subID 'p%02d.edf' ],phase)];
+        p.path.path_param             = [p.path.subject 'stimulation' filesep 'data.mat'];
         %create folder hierarchy
         mkdir(p.path.subject);
         mkdir([p.path.subject 'scr']);
@@ -364,21 +360,25 @@ cleanup;
         p.keys.pulse                   = KbName('5%');
         p.keys.el_calib                = KbName('v');
         p.keys.el_valid                = KbName('c');
-        p.keys.escape                  = KbName('esc');
+        if ismac
+            p.keys.escape                  = KbName('escape');
+        else
+            p.keys.escape                  = KbName('esc');
+        end
         p.keys.enter                   = KbName('return');
                 
         %% %%%%%%%%%%%%%%%%%%%%%%%%%
         %Communication business
         %parallel port
-        p.com.lpt.address              = 888;
-        %codes for different events
-        p.com.lpt.InitExperiment       = 64;%which is all channels without digitimer
-        p.com.lpt.FixOnset             = 4;
-        p.com.lpt.StimOnset            = 64;
-        p.com.lpt.shock                = 16;
-        p.com.lpt.oddball              = 32;
-        p.com.lpt.keypress             = 2;
-        p.com.lpt.digitimer            = 8;
+       p.com.lpt.address = 888;
+%codes for different events
+p.com.lpt.InitExperiment = 64;%which is all channels without digitimer
+p.com.lpt.FixOnset = 4;
+p.com.lpt.StimOnset = 64;
+p.com.lpt.shock = 16;
+p.com.lpt.oddball = 32;
+p.com.lpt.keypress = 2;
+p.com.lpt.digitimer = 8;
         %
         %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %timing business
@@ -446,15 +446,16 @@ cleanup;
         pos1_seq       = [];
         idx            = [];        
         face_order     = 1:p.stim.tFace
-        pos_order      = Shuffle([0 0 0 0 1 1 1 1])
+        pos_order      = Shuffle([0 0 0 0 1 1 1 1]);
         while nseq < p.rating.repetition
             nseq                    = nseq + 1;        
             [dummy idx]             = Shuffle( face_order );
             rating_seq              = [rating_seq dummy];            
             %this balances both directions
             pos1_seq                = [pos1_seq double(pos_order(idx) == rem(nseq,2))+1];%+1 to make [0 1] --> [1 2]
-        end         
-        pos1_seq                = ones(1,16);
+        end    
+        rating_seq = rating_seq(:);
+        pos1_seq   = pos1_seq(:);
         %%
         message     = GetText(11);
         SliderTextL = GetText(13);
@@ -643,6 +644,7 @@ cleanup;
                     'es werden keine elektrischen Reize verabreicht.\n' ...
                     'Eine wichtige grundsätzliche Regel ist, dass Sie das Fixationskreuz (das „+“)\n' ... 
                     'wenn es zu sehen ist, mit Ihren Augen fixieren. \n' ...
+                    '\n'...
                     'Drücken Sie die obere Taste um fortzufahren.\n' ...
                     ];
              elseif nInstruct == 101%first Instr. of the training phase.
@@ -660,9 +662,14 @@ cleanup;
                         '(Sie müssen also sehr schnell und aufmerksam sein).' ...
                     ];
             elseif nInstruct == 3%third Instr. of the training phase.
-                text = ['Es ist sehr wichtig, dass Sie Ihren Kopf während \n' ...
+                text = ['Noch zwei wichtige Anmerkungen bevor das Experiment startet:\n'...
+                    'Es ist sehr wichtig, dass Sie Ihren Kopf während \n' ...
                     'des Experiments nicht bewegen. \n' ...
                     'Das ist besonders wichtig für die Qualität der Messung.\n' ...
+                    'Es kann außerdem vorkommen, dass der Scanner stoppt und wieder startet...\n' ...
+                    'Das hat für dich keine Bedeutung, bitte konzentriere dich einfach weiter auf deine Aufgabe.\n'...
+                    'Auch wenn der Scanner kurz stoppt sollst du also einfach weiterhin wie besprochen \n'...
+                    'die Aufgabe ausführen und deinen Kopf weiterhin stillhalten...'...
                     ];
             elseif nInstruct == 4%third Instr. of the training phase.
                 text = ['Vor dem Experiment legen wir nun \n' ...
@@ -756,9 +763,10 @@ cleanup;
         %set the resolution correctly        
         if strcmp(p.hostname,'triostim1') 
             res          = [1600 1200];
+%             p.ptb.oldres = Screen('resolution',p.ptb.screenNumber,res(1),res(2));            
             %p.ptb.oldres = Screen('resolution',p.ptb.screenNumber,res(1),res(2));
             %hide the cursor
-            HideCursor(p.ptb.screenNumber);
+            %HideCursor(p.ptb.screenNumber);
         elseif strcmp(p.hostname,'etpc')
             res          = [1600 1200];
             p.ptb.oldres = Screen('resolution',p.ptb.screenNumber,res(1),res(2));
@@ -771,7 +779,7 @@ cleanup;
         end
         %Open a graphics window using PTB
         p.ptb.w                     = Screen('OpenWindow', p.ptb.screenNumber, p.var.current_bg);
-        Screen('BlendFunction', p.ptb.w, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        %Screen('BlendFunction', p.ptb.w, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         Screen('Flip',p.ptb.w);%make the bg
         p.ptb.slack                 = Screen('GetFlipInterval',p.ptb.w)./2;
         [p.ptb.width, p.ptb.height] = Screen('WindowSize', p.ptb.screenNumber);
@@ -798,9 +806,9 @@ cleanup;
         %InitializePsychSound(0)
         %sound('Open')
 %         Beeper(1000)
-               
+               LoadPsychHID
         %%%%%%%%%%%%%%%%%%%%%%%%%%%Prepare the keypress queue listening.
-        p.ptb.device        = -1;
+        p.ptb.device        = [];
         %get all the required keys in a vector 
         p.ptb.keysOfInterest = [];for i = fields(p.keys)';p.ptb.keysOfInterest = [p.ptb.keysOfInterest p.keys.(i{1})];end         
         fprintf('Key listening will be restricted to %d\n',p.ptb.keysOfInterest)
@@ -824,15 +832,15 @@ cleanup;
         %CORRECT
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
         %test whether CED receives the triggers correctly...
-        k = 0;
-        while ~(k == 25 | k == 86 );
-            outp(p.com.lpt.address,p.com.lpt.InitExperiment);
-            pause(0.1);
-            outp(p.com.lpt.address,0);%247 means all but the UCS channel (so that we dont shock the subject during initialization).
-            fprintf('=================\nDid the trigger test work?\nPress c to send it again, v to continue...\n')
-            [~, k] = KbStrokeWait(p.ptb.device);
-            k = find(k);
-        end
+% % %         k = 0;
+% % %         while ~(k == 25 | k == 86 );
+% % %             outp(p.com.lpt.address,p.com.lpt.InitExperiment);
+% % %             pause(0.1);
+% % %             outp(p.com.lpt.address,0);%247 means all but the UCS channel (so that we dont shock the subject during initialization).
+% % %             fprintf('=================\nDid the trigger test work?\nPress c to send it again, v to continue...\n')
+% % %             [~, k] = KbStrokeWait(p.ptb.device);
+% % %             k = find(k);
+% % %         end
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
         %load the pictures to the memory.
@@ -958,12 +966,12 @@ cleanup;
         el.drift_correction_failed_beep = [0 0 0];
         el.drift_correction_success_beep= [0 0 0];
         EyelinkUpdateDefaults(el);
-        %PsychEyelinkDispatchCallback(el)
+        PsychEyelinkDispatchCallback(el)
                             
         % open file.
         res = Eyelink('Openfile', p.path.edf);
         %
-        Eyelink('command', 'add_file_preamble_text ''Recorded by EyelinkToolbox FearCloud Experiment''');
+        Eyelink('command', 'add_file_preamble_text ''Recorded by EyelinkToolbox FearAmy Experiment (Selim Onat)''');                
         Eyelink('command', 'screen_pixel_coords = %ld %ld %ld %ld', 0, 0, p.ptb.width-1, p.ptb.height-1);
         Eyelink('message', 'DISPLAY_COORDS %ld %ld %ld %ld', 0, 0, p.ptb.width-1, p.ptb.height-1);
         % set calibration type.
@@ -998,13 +1006,12 @@ cleanup;
         sca;
         %set back the old resolution
         if strcmp(p.hostname,'triostim1')
-            Screen('Resolution',p.ptb.screenNumber, p.ptb.oldres.width, p.ptb.oldres.height );
+%            Screen('Resolution',p.ptb.screenNumber, p.ptb.oldres.width, p.ptb.oldres.height );
             %show the cursor
             ShowCursor(p.ptb.screenNumber);
         end
         %       
-        commandwindow;
-        ListenChar(0);        
+        commandwindow;        
         KbQueueStop(p.ptb.device);
         KbQueueRelease(p.ptb.device);
     end
@@ -1031,7 +1038,7 @@ cleanup;
         %Pulse Detection      :     0    info: NaN;
         %Tracker Onset        :     1 
         %Cross Onset          :     2    info: position
-        %Stimulus Onset       :     3    info: stim_id
+        %Stimulus Onset       :     3    info: dist_id
         %Cross Movement       :     4    info: NaN;
         %UCS Delivery         :     5    info: NaN;
         %Stimulus Offset      :     6    info: NaN;        
@@ -1044,11 +1051,11 @@ cleanup;
             p.var.event_count                = p.var.event_count + 1;
             p.out.log(p.var.event_count,:)   = [ptb_time(iii) event_type event_info(iii) p.var.ExpPhase];        
         end
-        plot(p.out.log(1:p.var.event_count,1) - p.out.log(1,1),p.out.log(1:p.var.event_count,2),'o','markersize',10);        
-        ylim([-2 8]);
-        set(gca,'ytick',[-2:8],'yticklabel',{'Rating On','Text','Pulse','Tracker+','Cross+','Stim+','CrossMov','UCS','Stim-','Key+','Tracker-'});
-        grid on
-        drawnow;
+%         plot(p.out.log(1:p.var.event_count,1) - p.out.log(1,1),p.out.log(1:p.var.event_count,2),'o','markersize',10);        
+%         ylim([-2 8]);
+%         set(gca,'ytick',[-2:8],'yticklabel',{'Rating On','Text','Pulse','Tracker+','Cross+','Stim+','CrossMov','UCS','Stim-','Key+','Tracker-'});
+%         grid on
+%         drawnow;
         
     end
     function [secs]=WaitPulse(keycode,n)
@@ -1063,6 +1070,8 @@ cleanup;
         %   level event queues, which are much less likely to skip short events. A
         %   nice discussion on the topic can be found here:
         %   http://ftp.tuebingen.mpg.de/pub/pub_dahl/stmdev10_D/Matlab6/Toolboxes/Psychtoolbox/PsychDocumentation/KbQueue.html        
+        
+        %KbQueueFlush;KbQueueStop;KbQueueRelease;WaitSecs(1);
         fprintf('Will wait for %i dummy pulses...\n',n);
         if n ~= 0
             secs  = nan(1,n);
