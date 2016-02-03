@@ -5,7 +5,7 @@ function [p]=exp_fearamy_PFfitting_constant(subject,phase,csp_degree)
 % Enter the subject Number as well as the CS+ Face in Degrees (where 00 is
 % 1st face, and so), optional input choses version (fixcrossjumps vs. free
 % viewing)
-simulation_mode = 1;
+simulation_mode = 0;
 fixjump         = 1;
 % make a break every ....th Trial
 breakpoint      = 50;
@@ -27,6 +27,7 @@ SetPTB;
 
 InitEyeLink;
 WaitSecs(2);
+ShowInstruction(1);
 %calibrate if we are at the scanner computer.
 if strcmp(p.hostname,'triostim1') || strcmp(p.hostname,'etpc');
      CalibrateEL;
@@ -34,14 +35,14 @@ end
 SetupLog;
 %save the parameter file
 save(p.path.path_param,'p');
-
+ShowInstruction(3);
 % counter for within chain trials (cc) and global trials (tt)
 cc = zeros(1,tchain);
 tt = 0;
 %trialID is counting every single face (2 per Trial_YN), need that for
 %Eyelink
 trialID = 0;
-ShowInstruction(1);
+
 
 STOP = 0;
 while ~STOP
@@ -49,7 +50,7 @@ while ~STOP
   if length(chains) == 1
       current_chain = chains;
   elseif length(chains) >1
-      current_chain = randsample(chains,1);
+      current_chain = RandSample(chains,[1 1]);
   end
   if tt~=tchain*p.psi.presentation.numtrials_chain
       tt=tt+1;
@@ -146,12 +147,12 @@ StopEyelink(p.path.edf);
 cleanup;
 %move the folder to appropriate location
 movefile(p.path.subject,p.path.finalsubject);
-subplot(2,1,1)
-errorbar(p.psi.presentation.uniquex,nanmean(p.psi.log.xrounded(:,:,1),2),nanstd(p.psi.log.xrounded(:,:,1),0,2),'b.','MarkerSize',20)
-title('CSP chain')
-subplot(2,1,2)
-errorbar(p.psi.presentation.uniquex,nanmean(p.psi.log.xrounded(:,:,2),2),nanstd(p.psi.log.xrounded(:,:,2),0,2),'r.','MarkerSize',20)
-title('CSN chain')
+% subplot(2,1,1)
+% errorbar(p.psi.presentation.uniquex,nanmean(p.psi.log.xrounded(:,:,1),2),nanstd(p.psi.log.xrounded(:,:,1),0,2),'b.','MarkerSize',20)
+% title('CSP chain')
+% subplot(2,1,2)
+% errorbar(p.psi.presentation.uniquex,nanmean(p.psi.log.xrounded(:,:,2),2),nanstd(p.psi.log.xrounded(:,:,2),0,2),'r.','MarkerSize',20)
+% title('CSN chain')
 
     function  [test_face,ref_face,signal,trialID] = Trial_YN(trialID,ref_stim,test_stim,last_face_of_circle,tt)
         Screen('Textsize', p.ptb.w,p.text.fixsize);
@@ -352,7 +353,7 @@ title('CSN chain')
         p.ptb.midpoint              = [ p.ptb.width./2 p.ptb.height./2];
         %NOTE about RECT:
         %RectLeft=1, RectTop=2, RectRight=3, RectBottom=4.
-        p.ptb.imrect                = [ p.ptb.midpoint(1)-p.stim.width/2 p.ptb.midpoint(2)-p.stim.height/2 p.ptb.midpoint(1)-p.stim.width/2+p.stim.width p.ptb.midpoint(2)-p.stim.height/2+p.stim.height];       
+        p.ptb.imrect                = [ p.ptb.midpoint(1)-p.stim.width/2 p.ptb.midpoint(2)-p.stim.height/2 p.stim.width p.stim.height];
         p.ptb.cross_shift           = [180 -120];%incremental upper and lower cross positions
         p.ptb.CrossPosition_x       = p.ptb.midpoint(1);%always the same
         p.ptb.CrossPosition_y       = [p.ptb.midpoint(2)-p.ptb.cross_shift(2) p.ptb.midpoint(2)+p.ptb.cross_shift(2)];        
@@ -414,12 +415,14 @@ title('CSN chain')
             p.path.baselocation       = 'C:\USER\onat\Experiments\';
         elseif strcmp(p.hostname,'etpc')
             p.path.baselocation       = 'C:\Users\onat\Documents\Experiments\';
+        elseif strcmp(p.hostname,'isn3464a9d59588')
+            p.path.baselocation       = 'C:\Users\user\Documents\Experiments\';
         else
             p.path.baselocation       = 'C:\Users\onat\Documents\Experiments\';
         end
         
-        p.path.experiment             = [p.path.baselocation 'feargen_master\'];
-        p.path.stimfolder             = 'stim\32discrimination';
+        p.path.experiment             = [p.path.baselocation 'FearAmy\'];
+        p.path.stimfolder             = 'stim';
         p.path.stim                   = [p.path.experiment  p.path.stimfolder '\'];
         p.path.stim24                 = [p.path.experiment  p.path.stimfolder '\' '24bits' '\'];
         %
@@ -522,13 +525,14 @@ title('CSN chain')
         interval = 22.5;
         maxdegree = 180;
         maxtrials = 100;
+        addzeros  = 18;
                
         tsteps = (2*maxdegree./interval)+1;
         if maxdegree == 180
             tsteps = tsteps - 2;%spares out the CSN
         end
         rep    = floor(maxtrials./(tsteps+1));%+1 so that zero can be doubled...
-        steps  = [repmat(0:interval:180-interval,1,rep) repmat(0:interval:180-interval,1,rep)*-1];
+        steps  = [repmat(0:interval:180-interval,1,rep) repmat(0:interval:180-interval,1,rep)*-1 zeros(1,addzeros)];
         
         for n = 1:tchain
             x(:,n)          = Shuffle(steps);
@@ -686,34 +690,40 @@ title('CSN chain')
                         'müssen wir jetzt den Eye-Tracker kalibrieren.\n' ...
                         'Dazu zeigen wir Ihnen einige Punkte auf dem Bildschirm, \n' ...
                         'bei denen Sie sich wie folgt verhalten:\n' ...
-                        'Bitte fixieren Sie das Fixationskreuz und \n' ...
-                        'bleiben Sie so lange darauf, wie es zu sehen ist.\n' ...
-                        'Bitte drücken Sie jetzt den mittleren Knopf, \n' ...
+                        'Bitte fixieren Sie den Fixationspunkt und \n' ...
+                        'bleiben Sie so lange darauf, wie er zu sehen ist.\n' ...
+                        'Bitte drücken Sie jetzt den oberen Knopf, \n' ...
                         'um mit der Kalibrierung weiterzumachen.\n' ...
                     ];
         
         elseif nInstruct == 1
-            text = ['Sie sehen nun nacheinander zwei Gesichter.\n'...
+            text = ['In diesem Experiment sehen Sie nacheinander zwei Gesichter.\n'...
                 '\n'...
                 'Danach werden Sie gefragt, ob die Gesichter unterschiedlich oder gleich waren.\n'...
                 '\n'...
                 'Benutzen Sie dazu die Pfeiltasten (links, rechts) und die obere Taste zum Bestätigen.\n'...
                 '\n'...
+                'Sie werden alle ' num2str(breakpoint) ' Durchgänge eine Pause machen können,\nnach der der Eyetracker neu kalibriert wird.\n'...
+                '\n'...
                 'Wenn Sie noch Fragen haben, können Sie jetzt die Versuchsleiterin fragen.\n'...
                 'Wir können Sie jederzeit hören.\n'...
                 '\n'...
-                'Drücken Sie ansonsten die mittlere Taste,\n'...
+                'Drücken Sie ansonsten die obere Taste,\n'...
                 '   um das Experiment zu starten.\n' ...
                 ];
         elseif nInstruct == 3
-            text = ['You will now see two faces after each other.\n'...
+            text = ['Der Eyetracker ist nun kalibiert.\n'...
                 '\n'...
-                'Please state, if they were different (left) or the same (right).\n'...
+                'Bitte verändern Sie Ihre Kopfposition nun nicht mehr.\n'...
                 '\n'...
-                'Use the arrow keys to move the marker and confirm with the UP button.\n'...
+                'Im Experiment sehen Sie jeweils zwei Gesichter und geben anschließend an,\n'...
                 '\n'...
-                'Please press UP\n'...
-                '   to start the experiment!\n' ...
+                'ob die Gesichter gleich oder unterschiedlich waren.\n'...
+                '\n'...
+                'Benutzen Sie dazu die Pfeiltasten (links, rechts) und die obere Taste zum Bestätigen.\n'...
+                '\n'...
+                'Drücken Sie nun die obere Taste,\n'...
+                '   um das Experiment zu starten!\n' ...
                 ];
         elseif nInstruct == 2%end
             text = 'Experiment beendet!\n';
@@ -819,8 +829,9 @@ function [t]=StartEyelinkRecording(trialID,phase,cc,tt,current_chain,isref,file,
         % clear tracker display and draw box at center
         Eyelink('Command', 'clear_screen %d', 0);
         %draw the image on the screen
-        Eyelink('ImageTransfer',p.stim.files24(file,:),p.ptb.imrect(1),p.ptb.imrect(2),p.ptb.imrect(3),p.ptb.imrect(4),p.ptb.imrect(1),p.ptb.imrect(2));
-        Eyelink('Command', 'draw_cross %d %d 15',fixx,fixy);
+        Eyelink('ImageTransfer',p.stim.files24(file,:),p.ptb.imrect(1),p.ptb.imrect(2),p.ptb.imrect(3),p.ptb.imrect(4),p.ptb.imrect(1),p.ptb.imrect(2));        
+        Eyelink('Command', 'draw_cross %d %d %d',p.ptb.midpoint(1),p.ptb.CrossPositionET_y(1),p.ptb.fc_size);        
+        Eyelink('Command', 'draw_cross %d %d %d',p.ptb.midpoint(1),p.ptb.CrossPositionET_y(2),p.ptb.fc_size);
         %
         %drift correction
         %EyelinkDoDriftCorrection(el,crosspositionx,crosspositiony,0,0);
@@ -907,7 +918,7 @@ function InitEyeLink
         Eyelink('command', 'screen_pixel_coords = %ld %ld %ld %ld', 0, 0, p.ptb.width-1, p.ptb.height-1);
         Eyelink('message', 'DISPLAY_COORDS %ld %ld %ld %ld', 0, 0, p.ptb.width-1, p.ptb.height-1);
         % set calibration type.
-        Eyelink('command', 'calibration_type = HV13');
+        Eyelink('command', 'calibration_type = HV5');
         Eyelink('command','auto_calibration_messages = YES');
         Eyelink('command', 'select_parser_configuration = 1');
         %what do we want to record
