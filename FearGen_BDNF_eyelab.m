@@ -56,7 +56,7 @@ InitEyeLink;
 WaitSecs(2);
 %calibrate if we are at the scanner computer.
 %need to exclude 2, because there the ConfirmIntensity will come first.
-if (phase~=2 && (strcmp(p.hostname,'triostim1') || strcmp(p.hostname,'etpc')));
+if ( (strcmp(p.hostname,'triostim1') || strcmp(p.hostname,'etpc')));
      CalibrateEL;
 end
 %save again the parameter file
@@ -69,11 +69,11 @@ elseif phase == 2
     
 
     %
-    p_var_ExpPhase  = phase;
+   p_var_ExpPhase  = phase;
     ShowInstruction(4,1);
-    ConfirmIntensity;
+   ConfirmIntensity;
     ShowInstruction(101,1);
-    ShowInstruction(2,1);
+   ShowInstruction(2,1);
     ShowInstruction(3,1);
     
     %calibrate if we are at the scanner or ET computer.
@@ -929,7 +929,7 @@ cleanup;
         WaitSecs(0.01);
         % clear tracker display and draw box at center
         Eyelink('Command', 'clear_screen %d', 0);
-        %draw the image on the screen but also the two crosses
+        %draw the image on the screen but also the two crosses        
         if (nStim <= 16 && nStim>0)
             Eyelink('ImageTransfer',p.stim.files24(nStim,:),p.ptb.imrect(1),p.ptb.imrect(2),p.ptb.imrect(3),p.ptb.imrect(4),p.ptb.imrect(1),p.ptb.imrect(2));
             
