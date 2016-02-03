@@ -92,10 +92,12 @@ plot(macroblock,'o-')
 %% much simpler approach
 csp            = 6;
 cond_id            = [];
+mblock         = [];
 n_micro        = 0;
 n_meso         = 0;
 n_micro_ucs    = 0;
 n_micro_odd    = 0;
+
 condpool       = 0:8;
 %
 meso_i = find(store(:,2) == 1 & store(:,18) == 4,1);
@@ -116,6 +118,7 @@ while length(cond_id) < length(unique(condpool))*64
             micro   = Shuffle(condpool);
         end
         meso    = [meso micro];        
+        mblock  = [mblock repmat(n_micro,1,9)];
     end
     cond_id  = [cond_id meso];
     isi  = [isi seq_BalancedDist(meso,[3 4 5 6])];
@@ -130,16 +133,23 @@ fprintf('There are a total %g microblocks and %g UCS microblocks\n',length(cond_
 plot(cond_id,'o-')
 
 %%
-seq.cond_id       = cond_id;
-seq.isi           = isi;
-seq.ucs           = cond_id == 9;
-seq.oddball       = cond_id == 10;
-seq.stim_id       = seq.cond_id;
+seq.cond_id              = cond_id;
+seq.mblock               = mblock
+seq.isi                  = isi;
+seq.ucs                  = cond_id == 9;
+seq.oddball              = cond_id == 10;
+seq.stim_id              = seq.cond_id;
 seq.stim_id(seq.ucs)     = csp;
 seq.stim_id(seq.oddball) = 9;
-seq.tTrial        = length(seq.cond_id);
-seq.dist          = MinimumAngle((seq.stim_id-1)*45,(csp-1)*45);
+seq.tTrial               = length(seq.cond_id);
+seq.dist                 = MinimumAngle((seq.stim_id-1)*45,(csp-1)*45);
+seq.dist(seq.cond_id==0)=NaN;
+%oddball=1000
+seq.dist(seq.cond_id==max(seq.cond_id))=1000;
+%ucs=500
+seq.dist(seq.cond_id==max(seq.cond_id)-1)=500;
 for ncond = unique(cond_id)
+    ncond
     i                    = find(cond_id == ncond);
     cp                   = seq_BalancedDist(ones(1,length(i)),[1 2]);
     seq.CrossPosition(i) = cp;
