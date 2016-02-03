@@ -52,5 +52,6 @@ switch init.(thephase{phasei}).hostname
                 key.old   = KbName('LeftArrow');
                 key.new   = KbName('DownArrow');
         end
-
+    otherwise 
+        error('add behavioral lab')
 end
