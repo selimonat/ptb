@@ -6,10 +6,10 @@ function [p]=FearGen_eyelab(subject,phase,csp,PainThreshold)
 %
 %
 
-debug = 0;%debug mode
+debug = 1;%debug mode
 %replace parallel port function with a dummy function
 if ismac
-    %outp = @(x,y) fprintf('[%i %i]\n',x,y);
+    outp = @(x,y) fprintf('[%i %i]\n',x,y);
 end
 if nargin ~= 4
     fprintf('Wrong number of inputs\n');
@@ -65,13 +65,14 @@ if phase == 0
     
 elseif phase == 1
     %
-    p.var.ExpPhase  = phase;
-    CalibrateEL;
-    for ninst = [3 301:306]
-        ShowInstruction(ninst,1);
-    end
-    PresentStimuli;
-    AskStimRating;%make sure that scanner doesnt stop prematurely asa the stim offset
+% % %     p.var.ExpPhase  = phase;
+% % %     CalibrateEL;
+% % %     for ninst = [3 301:306]
+% % %         ShowInstruction(ninst,1);
+% % %     end
+% % %     PresentStimuli;
+% % %     AskStimRating;%make sure that scanner doesnt stop prematurely asa the stim offset
+    AskDetection;
 end
 
 %get the eyelink file back to this computer
@@ -87,6 +88,44 @@ save(p.path.path_param,'p');
 movefile(p.path.subject,p.path.finalsubject);
 %close everything down
 cleanup;
+
+    function AskDetection
+        p.var.ExpPhase = 3;
+        %% show a fixation cross
+        fix          = p.ptb.midpoint;
+        FixCross     = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];
+        Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.imrect ); %always create a gray background
+        Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');%draw the prestimus cross atop
+        
+        Screen('DrawingFinished',p.ptb.w,0);
+        Screen('Flip',p.ptb.w);
+        StartEyelinkRecording(1,0,p.var.ExpPhase,0,0,0,fix);
+        WaitSecs(1);
+        %%
+        pic = 0;
+        w = p.stim.width./4;
+        h = p.stim.height./4;
+        for a = unique(p.presentation.dist(p.presentation.dist < 500))
+            pic    = pic + 1;
+            [x y]  = pol2cart(a./180*pi,400);
+            left   = x+p.ptb.midpoint(1)-w/2;
+            top    = y+p.ptb.midpoint(2)-h/2;
+            right  = left+w;
+            bottom = top+h;
+            round([left top right bottom])
+            Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(pic),[],[left top right bottom]); 
+        end     
+        %%Stimulus onset
+        Screen('Flip',p.ptb.w)
+        Eyelink('Message', 'Stim Onset');
+        Eyelink('Message', 'SYNCTIME');        
+        %%
+        WaitSecs(10);
+        Screen('Flip',p.ptb.w)
+        Eyelink('Message', 'Stim Offset');
+        Eyelink('Message', 'BLANK_SCREEN');
+        StopEyelinkRecording;
+    end
 
     function ConfirmIntensity
         %Compute the intensity we want to deliver to the subject.
@@ -733,31 +772,18 @@ cleanup;
         Screen('Preference', 'SkipSyncTests', 1);
         Screen('Preference', 'SuppressAllWarnings', 1);
         %set the resolution correctly
-        if strcmp(p.hostname,'triostim1')
-            res          = [1600 1200];
-            %             p.ptb.oldres = Screen('resolution',p.ptb.screenNumber,res(1),res(2));
-            %p.ptb.oldres = Screen('resolution',p.ptb.screenNumber,res(1),res(2));
-            %hide the cursor
-            %HideCursor(p.ptb.screenNumber);
-        elseif strcmp(p.hostname,'etpc')
-            res          = [1600 1200];
-            p.ptb.oldres = Screen('resolution',p.ptb.screenNumber,res(1),res(2));
-            %hide the cursor
-            HideCursor(p.ptb.screenNumber);
-        end
-        %spit out the resolution
-        if ~ismac
-            fprintf('Resolution of the screen is set to %dx%d...\n',res(1),res(2));
-        end
+        res = Screen('resolution',p.ptb.screenNumber)
+        HideCursor(p.ptb.screenNumber);        
+        %spit out the resolution        
+        fprintf('Resolution of the screen is set to %dx%d...\n',res.width,res.height);
+        
         %Open a graphics window using PTB
-        p.ptb.w                     = Screen('OpenWindow', p.ptb.screenNumber, p.var.current_bg);
+        [p.ptb.w p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, p.var.current_bg);
         %Screen('BlendFunction', p.ptb.w, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         Screen('Flip',p.ptb.w);%make the bg
         p.ptb.slack                 = Screen('GetFlipInterval',p.ptb.w)./2;
         [p.ptb.width, p.ptb.height] = Screen('WindowSize', p.ptb.screenNumber);
-        if sum([p.ptb.width p.ptb.height] - [1280 960]) ~= 0
-            fprintf('SET THE CORRECT SCREEN RESOLUTION\n');
-        end
+        
         %find the mid position on the screen.
         p.ptb.midpoint              = [ p.ptb.width./2 p.ptb.height./2];
         %NOTE about RECT:
