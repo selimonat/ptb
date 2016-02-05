@@ -65,13 +65,13 @@ if phase == 0
     
 elseif phase == 1
     %
-% % %     p.var.ExpPhase  = phase;
-% % %     CalibrateEL;
-% % %     for ninst = [3 301:306]
-% % %         ShowInstruction(ninst,1);
-% % %     end
-% % %     PresentStimuli;
-% % %     AskStimRating;%make sure that scanner doesnt stop prematurely asa the stim offset
+    p.var.ExpPhase  = phase;
+    CalibrateEL;
+    for ninst = [3 301:306]
+        ShowInstruction(ninst,1);
+    end
+    PresentStimuli;
+    AskStimRating;%make sure that scanner doesnt stop prematurely asa the stim offset
     AskDetection;
 end
 
@@ -789,7 +789,7 @@ cleanup;
         %NOTE about RECT:
         %RectLeft=1, RectTop=2, RectRight=3, RectBottom=4.
         p.ptb.imrect                = [ p.ptb.midpoint(1)-p.stim.width/2 p.ptb.midpoint(2)-p.stim.height/2 p.ptb.midpoint(1)-p.stim.width/2+p.stim.width p.ptb.midpoint(2)-p.stim.height/2+p.stim.height];
-        p.ptb.cross_shift           = [180 -120];%incremental upper and lower cross positions
+        p.ptb.cross_shift           = [180 -120]./2.5;%incremental upper and lower cross positions
         p.ptb.CrossPosition_x       = p.ptb.midpoint(1);%bb(1);%always the same
         p.ptb.CrossPosition_y       = p.ptb.midpoint(2)+p.ptb.cross_shift;%bb(1);%always the same
         %cross position for the eyetracker screen.
