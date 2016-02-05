@@ -72,7 +72,7 @@ elseif phase == 1
 % % %     end
 % % %     PresentStimuli;
 % % %     AskStimRating;%make sure that scanner doesnt stop prematurely asa the stim offset
-% % %     AskDetection;
+    AskDetection;    
     AskDetectionSelectable;
 end
 
@@ -103,57 +103,48 @@ function AskDetectionSelectable
         Screen('Flip',p.ptb.w);        
         WaitSecs(1);
         %%
-        ok = 1
-        while ok
-        pic = 0;
-        w = p.stim.width/2;
-        h = p.stim.height/2;
-        for a = unique(p.presentation.dist(p.presentation.dist < 500))
-            pic    = pic + 1;
-            [x y]  = pol2cart(a./180*pi,280);
-            left   = x+p.ptb.midpoint(1)-w/2;
-            top    = y+p.ptb.midpoint(2)-h/2;
-            right  = left+w;
-            bottom = top+h;
-            round([left top right bottom])
-            Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(pic),[],[left top right bottom]);
-            rect(pic,:) = [left top right bottom];
-        end
-        %%Stimulus onset
-        Screen('Flip',p.ptb.w)
-        %%
-        keyboard
-        %draw a circle
-        Screen('FrameOval', p.ptb.w, [1 0 0], rect(1,:), 5);
-        %observe key presses get the position for the circle
         ok = 1;
-        while ok == 1
-            [secs, keyCode, ~] = KbStrokeWait(p.ptb.device);
-            keyCode            = find(keyCode);            
-            if length(keyCode) == 1%this loop avoids crashes to accidential presses of meta keys
-                if (keyCode == up) || (keyCode == down)
-                    next = position + increment(keyCode);
-                    if next < (tSection+1) && next > 0
-                        position = position + increment(keyCode);
-                    end
-                    Screen('FrameOval', p.ptb.w, [1 0 0], rec(randsample(1:8,1),:), 5);
-                elseif keyCode == confirm
-                    WaitSecs(0.1);
-                    ok = 0;
-                    Screen('FillRect',p.ptb.w,p.var.current_bg);
-                    t=Screen('Flip',p.ptb.w);
-                end
+        currents = 1:8;
+        while ok            
+            %333111133311111111111
+            pic = 0;
+            w   = p.stim.width/2;
+            h   = p.stim.height/2;            
+            for a = unique(p.presentation.dist(p.presentation.dist < 500))
+                pic    = pic + 1;
+                [x y]  = pol2cart(a./180*pi,280);
+                left   = x+p.ptb.midpoint(1)-w/2;
+                top    = y+p.ptb.midpoint(2)-h/2;
+                right  = left+w;
+                bottom = top+h;
+                round([left top right bottom])
+                Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(pic),[],[left top right bottom]);
+                rect(pic,:) = [left top right bottom];
             end
-        end
-        
-        
-        
-        end
-        Screen('Flip',p.ptb.w);
+            %Stimulus onset
+            Screen('FrameOval', p.ptb.w, [1 1 0], rect(currents(1),:), 2);
+            Screen('Flip',p.ptb.w)
+            %draw a circle            
+            %observe key presses get the position for the circle            
+            increment([p.keys.increase p.keys.decrease]) = [1 -1];%delta
+            [secs, keyCode, ~] = KbStrokeWait(p.ptb.device);
+            keyCode            = find(keyCode);
+            if length(keyCode) == 1%this loop avoids crashes to accidential presses of meta keys
+                if (keyCode == p.keys.increase) 
+                    currents  = circshift(currents,[0 1]);
+                elseif (keyCode == p.keys.decrease)
+                    currents  = circshift(currents,[0 -1]);
+                elseif keyCode == p.keys.confirm
+                    WaitSecs(0.1);
+                    ok = 0;                    
+                end            
+            end
+        end         
     end
 
 
     function AskDetection
+        %        
         p.var.ExpPhase = 3;
         %% show a fixation cross
         fix          = p.ptb.midpoint;
