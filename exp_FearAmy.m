@@ -6,10 +6,10 @@ function [p]=FearGen_eyelab(subject,phase,csp,PainThreshold)
 %
 %
 
-debug = 1;%debug mode
+debug = 0;%debug mode
 %replace parallel port function with a dummy function
 if ismac
-    outp = @(x,y) fprintf('[%i %i]\n',x,y);
+    %outp = @(x,y) fprintf('[%i %i]\n',x,y);
 end
 if nargin ~= 4
     fprintf('Wrong number of inputs\n');
@@ -103,11 +103,11 @@ cleanup;
         WaitSecs(1);
         %%
         pic = 0;
-        w = p.stim.width./4;
-        h = p.stim.height./4;
+        w = p.stim.width/2;
+        h = p.stim.height/2;
         for a = unique(p.presentation.dist(p.presentation.dist < 500))
             pic    = pic + 1;
-            [x y]  = pol2cart(a./180*pi,400);
+            [x y]  = pol2cart(a./180*pi,280);
             left   = x+p.ptb.midpoint(1)-w/2;
             top    = y+p.ptb.midpoint(2)-h/2;
             right  = left+w;
