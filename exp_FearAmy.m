@@ -6,10 +6,10 @@ function [p]=FearGen_eyelab(subject,phase,csp,PainThreshold)
 %
 %
 
-debug = 0;%debug mode
+debug = 1;%debug mode
 %replace parallel port function with a dummy function
 if ismac
-    %outp = @(x,y) fprintf('[%i %i]\n',x,y);
+    outp = @(x,y) fprintf('[%i %i]\n',x,y);
 end
 if nargin ~= 4
     fprintf('Wrong number of inputs\n');
@@ -65,14 +65,15 @@ if phase == 0
     
 elseif phase == 1
     %
-    p.var.ExpPhase  = phase;
-    CalibrateEL;
-    for ninst = [3 301:306]
-        ShowInstruction(ninst,1);
-    end
-    PresentStimuli;
-    AskStimRating;%make sure that scanner doesnt stop prematurely asa the stim offset
-    AskDetection;
+% % %     p.var.ExpPhase  = phase;
+% % %     CalibrateEL;
+% % %     for ninst = [3 301:306]
+% % %         ShowInstruction(ninst,1);
+% % %     end
+% % %     PresentStimuli;
+% % %     AskStimRating;%make sure that scanner doesnt stop prematurely asa the stim offset
+% % %     AskDetection;
+    AskDetectionSelectable;
 end
 
 %get the eyelink file back to this computer
@@ -88,6 +89,69 @@ save(p.path.path_param,'p');
 movefile(p.path.subject,p.path.finalsubject);
 %close everything down
 cleanup;
+
+function AskDetectionSelectable
+        p.var.ExpPhase = 4;
+        ShowInstruction(8,1);
+        %% show a fixation cross
+        fix          = p.ptb.midpoint;
+        FixCross     = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];
+        Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.imrect ); %always create a gray background
+        Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');%draw the prestimus cross atop
+        
+        Screen('DrawingFinished',p.ptb.w,0);
+        Screen('Flip',p.ptb.w);        
+        WaitSecs(1);
+        %%
+        ok = 1
+        while ok
+        pic = 0;
+        w = p.stim.width/2;
+        h = p.stim.height/2;
+        for a = unique(p.presentation.dist(p.presentation.dist < 500))
+            pic    = pic + 1;
+            [x y]  = pol2cart(a./180*pi,280);
+            left   = x+p.ptb.midpoint(1)-w/2;
+            top    = y+p.ptb.midpoint(2)-h/2;
+            right  = left+w;
+            bottom = top+h;
+            round([left top right bottom])
+            Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(pic),[],[left top right bottom]);
+            rect(pic,:) = [left top right bottom];
+        end
+        %%Stimulus onset
+        Screen('Flip',p.ptb.w)
+        %%
+        keyboard
+        %draw a circle
+        Screen('FrameOval', p.ptb.w, [1 0 0], rect(1,:), 5);
+        %observe key presses get the position for the circle
+        ok = 1;
+        while ok == 1
+            [secs, keyCode, ~] = KbStrokeWait(p.ptb.device);
+            keyCode            = find(keyCode);            
+            if length(keyCode) == 1%this loop avoids crashes to accidential presses of meta keys
+                if (keyCode == up) || (keyCode == down)
+                    next = position + increment(keyCode);
+                    if next < (tSection+1) && next > 0
+                        position = position + increment(keyCode);
+                    end
+                    Screen('FrameOval', p.ptb.w, [1 0 0], rec(randsample(1:8,1),:), 5);
+                elseif keyCode == confirm
+                    WaitSecs(0.1);
+                    ok = 0;
+                    Screen('FillRect',p.ptb.w,p.var.current_bg);
+                    t=Screen('Flip',p.ptb.w);
+                end
+            end
+        end
+        
+        
+        
+        end
+        Screen('Flip',p.ptb.w);
+    end
+
 
     function AskDetection
         p.var.ExpPhase = 3;
@@ -728,6 +792,12 @@ cleanup;
                 'Bewegen Sie den Zeiger mit der rechten und linken Taste\n'...
                 'und bestätigen Sie Ihre Einschätzung mit der oberen Taste.\n'...
                 ];
+        elseif nInstruct == 8;%AskDetectionSelectable
+            text = ['herehereh\n'...
+                'herehereh\n'...
+                ];
+            
+            
         elseif nInstruct == 9%
             %=================================================================================================================%
             text = ['Bitte geben Sie an, ob die Reizstärke des folgenden Schocks\n für Sie erträglich ist.\n'...
