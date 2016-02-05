@@ -72,7 +72,7 @@ elseif phase == 1
 % % %     end
 % % %     PresentStimuli;
 % % %     AskStimRating;%make sure that scanner doesnt stop prematurely asa the stim offset
-    AskDetection;    
+% % %     AskDetection;    
     AskDetectionSelectable;
 end
 
@@ -90,59 +90,72 @@ movefile(p.path.subject,p.path.finalsubject);
 %close everything down
 cleanup;
 
-function AskDetectionSelectable
+    function AskDetectionSelectable
         p.var.ExpPhase = 4;
         ShowInstruction(8,1);
         %% show a fixation cross
         fix          = p.ptb.midpoint;
         FixCross     = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];
         Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.imrect ); %always create a gray background
-        Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');%draw the prestimus cross atop
-        
         Screen('DrawingFinished',p.ptb.w,0);
-        Screen('Flip',p.ptb.w);        
+        Screen('Flip',p.ptb.w);
         WaitSecs(1);
         %%
-        ok = 1;
-        currents = 1:8;
-        while ok            
-            %333111133311111111111
-            pic = 0;
-            w   = p.stim.width/2;
-            h   = p.stim.height/2;            
-            for a = unique(p.presentation.dist(p.presentation.dist < 500))
-                pic    = pic + 1;
-                [x y]  = pol2cart(a./180*pi,280);
-                left   = x+p.ptb.midpoint(1)-w/2;
-                top    = y+p.ptb.midpoint(2)-h/2;
-                right  = left+w;
-                bottom = top+h;
-                round([left top right bottom])
-                Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(pic),[],[left top right bottom]);
-                rect(pic,:) = [left top right bottom];
+        positions          = circshift(1:8,[1 RandSample(1:8,[1 1])]);%position of the marker
+        conditions         = unique(p.presentation.dist(p.presentation.dist < 500));%conditions
+        locations          = Shuffle(conditions)';%
+        ok                 = 1;
+        while ok
+            w         = p.stim.width/2;
+            h         = p.stim.height/2;
+            file_id   = [];
+            for nface = 1:length(conditions) %[-135:45:180]
+                %
+                %for each distance a filename, file_id(4) = CS+ index
+                file_id(nface)  = unique(p.presentation.stim_id(p.presentation.dist == conditions(nface)));
+                %so we have distances and file_id in register.
+                % coordinate business
+                rect(nface,:)   = angle2rect(locations(nface));%location of the condition that is drawn
+                Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(file_id(nface)),[],rect(nface,:));
+                %
+                Screen('DrawText', p.ptb.w, [sprintf(['degree:%i\nfile:%i' ],conditions(nface),file_id(nface)) ],left+w/2 ,top+h/2);
             end
             %Stimulus onset
-            Screen('FrameOval', p.ptb.w, [1 1 0], rect(currents(1),:), 2);
-            Screen('Flip',p.ptb.w)
-            %draw a circle            
-            %observe key presses get the position for the circle            
+            conditions(file_id == positions(1))
+            conditions(positions(1))
+            Screen('FrameOval', p.ptb.w, [1 1 0], angle2rect(conditions(positions(1))), 2);
+            Screen('Flip',p.ptb.w);
+            %draw a circle
+            %observe key presses get the position for the circle
             increment([p.keys.increase p.keys.decrease]) = [1 -1];%delta
-            [secs, keyCode, ~] = KbStrokeWait(p.ptb.device);
-            keyCode            = find(keyCode);
+            [secs, keyCode, ~]                           = KbStrokeWait(p.ptb.device);
+            keyCode                                      = find(keyCode);
             if length(keyCode) == 1%this loop avoids crashes to accidential presses of meta keys
-                if (keyCode == p.keys.increase) 
-                    currents  = circshift(currents,[0 1]);
-                elseif (keyCode == p.keys.decrease)
-                    currents  = circshift(currents,[0 -1]);
+                if (keyCode == p.keys.increase);
+                    positions  = circshift(positions,[0 1]);
+                elseif (keyCode == p.keys.decrease);
+                    positions  = circshift(positions,[0 -1]);
                 elseif keyCode == p.keys.confirm
-                    WaitSecs(0.1);
-                    ok = 0;                    
-                end            
+                    WaitSecs(0.1);11114
+                    ok = 0;
+                end
             end
-        end         
+        end                
+        
+        %%
+        p.out.selected_face = distances(file_id == positions(1));
+        %%
+        function [myrect] = angle2rect(A)
+            [x y]           = pol2cart(A./180*pi,280);%randomly shift the circle
+            left            = x+p.ptb.midpoint(1)-w/2;
+            top             = y+p.ptb.midpoint(2)-h/2;
+            right           = left+w;
+            bottom          = top+h;
+            myrect          = [left top right bottom];
+        end
+        
     end
-
-
+  
     function AskDetection
         %        
         p.var.ExpPhase = 3;
@@ -166,17 +179,16 @@ function AskDetectionSelectable
             left   = x+p.ptb.midpoint(1)-w/2;
             top    = y+p.ptb.midpoint(2)-h/2;
             right  = left+w;
-            bottom = top+h;
-            round([left top right bottom])
+            bottom = top+h;            
             Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(pic),[],[left top right bottom]); 
         end     
         %%Stimulus onset
-        Screen('Flip',p.ptb.w)
+        Screen('Flip',p.ptb.w);
         Eyelink('Message', 'Stim Onset');
         Eyelink('Message', 'SYNCTIME');        
         %%
         WaitSecs(10);
-        Screen('Flip',p.ptb.w)
+        Screen('Flip',p.ptb.w);
         Eyelink('Message', 'Stim Offset');
         Eyelink('Message', 'BLANK_SCREEN');
         StopEyelinkRecording;
@@ -209,7 +221,7 @@ function AskDetectionSelectable
         response = RatingSlider(rect,2,1,p.keys.increase,p.keys.decrease,p.keys.confirm,{ 'nicht\nerträglich' 'erträglich'},message,0);
         if response == 2
             fprintf('All is fine :)\n');
-            fprintf('Subject confirmed the shock intensity inside the scanner...\n')
+            fprintf('Subject confirmed the shock intensity inside the scanner...\n');
             fprintf('INTENSITY TO BE USED FOR THE MAIN EXPERIMENT: %g mA\n',p.var.ShockIntensity);
             p.out.ShockIntensity = p.var.ShockIntensity;
             return;
@@ -699,8 +711,7 @@ function AskDetectionSelectable
         
         function ShowText(text)
             
-            Screen('FillRect',p.ptb.w,p.var.current_bg);
-            %DrawFormattedText(p.ptb.w, text, p.text.start_x, 'center',p.stim.white,[],[],[],2,[]);
+            Screen('FillRect',p.ptb.w,p.var.current_bg);            
             DrawFormattedText(p.ptb.w, text, 'center', 'center',p.stim.white,[],[],[],2,[]);
             t=Screen('Flip',p.ptb.w);
             Log(t,-1,nInstruct);
