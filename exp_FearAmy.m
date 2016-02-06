@@ -66,12 +66,13 @@ if phase == 0
 elseif phase == 1
     %
     p.var.ExpPhase  = phase;
-% % %     CalibrateEL;
-% % %     for ninst = [3 301:306]
-% % %         ShowInstruction(ninst,1);
-% % %     end
-% % %     PresentStimuli;
-% % %     AskStimRating;%make sure that scanner doesnt stop prematurely asa the stim offset
+    CalibrateEL;
+    for ninst = [3 301:306]
+        ShowInstruction(ninst,1);
+    end
+    PresentStimuli;
+    AskStimRating;%make sure that scanner doesnt stop prematurely asa the stim offset
+    CalibrateEL;
     AskDetection;    
     AskDetectionSelectable;
 end
@@ -139,7 +140,7 @@ cleanup;
         p.var.ExpPhase = 3;
         ShowInstruction(801,1);        
         %% show a fixation cross
-        fix          = p.ptb.midpoint;
+        fix          = [p.ptb.CrossPosition_x p.ptb.CrossPosition_y(1)];%show the fixation cross at the lip position to ease the subsequent drift correction.
         FixCross     = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];
         Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.imrect ); %always create a gray background
         Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');%draw the prestimus cross atop
@@ -514,14 +515,13 @@ cleanup;
         rating_seq     = [];
         pos1_seq       = [];
         idx            = [];
-        face_order     = 1:p.stim.tFace
-        pos_order      = Shuffle([0 0 0 0 1 1 1 1]);
+        face_order     = 1:p.stim.tFace;        
         while nseq < p.rating.repetition
             nseq                    = nseq + 1;
             [dummy idx]             = Shuffle( face_order );
             rating_seq              = [rating_seq dummy];
             %this balances both directions
-            pos1_seq                = [pos1_seq double(pos_order(idx) == rem(nseq,2))+1];%+1 to make [0 1] --> [1 2]
+            pos1_seq                = [pos1_seq ones(1,p.stim.tFace)];%+1 to make [0 1] --> [1 2]
         end
         rating_seq = rating_seq(:);
         pos1_seq   = pos1_seq(:);
@@ -770,7 +770,7 @@ cleanup;
                 ];
         elseif nInstruct == 801;%AskDetectionSelectable
             text = ['Sie sehen nun eine Übersicht der verschiedenen Gesichter.\n'...                
-                'Bitte schauen Sie sich die Gesichter aufmerksam an.\n'...                
+                'Bitte schauen Sie sich die Gesichter aufmerksam an.44\n'...                
                 'Bitte drücken Sie zum Start die obere Taste und fixieren Sie das anschließend erscheindende Fixationskreuz.\n'...
                 ];
             
