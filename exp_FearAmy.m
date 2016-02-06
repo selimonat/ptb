@@ -61,18 +61,18 @@ if phase == 0
     %test
     ShowInstruction(1,1);
     ShowInstruction(2,1);
-    PresentStimuli;
+    PresentStimuli;4
     
 elseif phase == 1
     %
-% % %     p.var.ExpPhase  = phase;
+    p.var.ExpPhase  = phase;
 % % %     CalibrateEL;
 % % %     for ninst = [3 301:306]
 % % %         ShowInstruction(ninst,1);
 % % %     end
 % % %     PresentStimuli;
 % % %     AskStimRating;%make sure that scanner doesnt stop prematurely asa the stim offset
-% % %     AskDetection;    
+    AskDetection;    
     AskDetectionSelectable;
 end
 
@@ -91,74 +91,53 @@ movefile(p.path.subject,p.path.finalsubject);
 cleanup;
 
     function AskDetectionSelectable
-        p.var.ExpPhase = 4;
-        ShowInstruction(8,1);
-        %% show a fixation cross
-        fix          = p.ptb.midpoint;
-        FixCross     = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];
-        Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.imrect ); %always create a gray background
-        Screen('DrawingFinished',p.ptb.w,0);
-        Screen('Flip',p.ptb.w);
-        WaitSecs(1);
-        %%
+        %asks subjects to select the face that was associated with a shocks
         positions          = circshift(1:8,[1 RandSample(1:8,[1 1])]);%position of the marker
-        conditions         = unique(p.presentation.dist(p.presentation.dist < 500));%conditions
-        locations          = Shuffle(conditions)';%
+        p.var.ExpPhase = 4;
+        ShowInstruction(8,1);        
+        %%                
+        increment([p.keys.increase p.keys.decrease]) = [1 -1];%key to increment mapping        
+        %%
         ok                 = 1;
-        while ok
-            w         = p.stim.width/2;
-            h         = p.stim.height/2;
-            file_id   = [];
-            for nface = 1:length(conditions) %[-135:45:180]
-                %
-                %for each distance a filename, file_id(4) = CS+ index
-                file_id(nface)  = unique(p.presentation.stim_id(p.presentation.dist == conditions(nface)));
-                %so we have distances and file_id in register.
-                % coordinate business
-                rect(nface,:)   = angle2rect(locations(nface));%location of the condition that is drawn
-                Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(file_id(nface)),[],rect(nface,:));
-                %
-                Screen('DrawText', p.ptb.w, [sprintf(['degree:%i\nfile:%i' ],conditions(nface),file_id(nface)) ],left+w/2 ,top+h/2);
-            end
-            %Stimulus onset
-            conditions(file_id == positions(1))
-            conditions(positions(1))
-            Screen('FrameOval', p.ptb.w, [1 1 0], angle2rect(conditions(positions(1))), 2);
-            Screen('Flip',p.ptb.w);
-            %draw a circle
-            %observe key presses get the position for the circle
-            increment([p.keys.increase p.keys.decrease]) = [1 -1];%delta
-            [secs, keyCode, ~]                           = KbStrokeWait(p.ptb.device);
-            keyCode                                      = find(keyCode);
+        while ok                        
+            DrawCircle;
+            Screen('FrameOval', p.ptb.w, [1 1 0], p.stim.circle_rect(positions(1),:), 2);%draw the marker circle somewhere random initially.
+            Screen('Flip',p.ptb.w);                                    
+            [~, keyCode, ~]  = KbStrokeWait(p.ptb.device);%observe key presses 
+            keyCode          = find(keyCode);
             if length(keyCode) == 1%this loop avoids crashes to accidential presses of meta keys
-                if (keyCode == p.keys.increase);
-                    positions  = circshift(positions,[0 1]);
-                elseif (keyCode == p.keys.decrease);
-                    positions  = circshift(positions,[0 -1]);
+                if (keyCode == p.keys.increase) || (keyCode == p.keys.decrease)
+                    positions  = circshift(positions,[0 increment(keyCode)]);
                 elseif keyCode == p.keys.confirm
-                    WaitSecs(0.1);11114
+                    WaitSecs(0.1);
                     ok = 0;
                 end
             end
-        end                
-        
-        %%
-        p.out.selected_face = distances(file_id == positions(1));
-        %%
-        function [myrect] = angle2rect(A)
-            [x y]           = pol2cart(A./180*pi,280);%randomly shift the circle
-            left            = x+p.ptb.midpoint(1)-w/2;
-            top             = y+p.ptb.midpoint(2)-h/2;
-            right           = left+w;
-            bottom          = top+h;
-            myrect          = [left top right bottom];
         end
-        
+        %%
+        p.out.selectedface = p.stim.circle_order(positions(1));
     end
-  
+    function DrawCircle        
+        for npos = 1:p.stim.tFace
+            Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(p.stim.circle_file_id(npos)),[],p.stim.circle_rect(npos,:));
+            Screen('DrawText', p.ptb.w, sprintf('%i_%i_%i',p.stim.circle_order(npos),p.stim.circle_file_id(npos),npos),mean(p.stim.circle_rect(npos,[1 3])) ,mean(p.stim.circle_rect(npos,[2 4])));
+        end
+    end
+
+    function [myrect]=angle2rect(A)
+        factor          = 2;%factor resize the images
+        [x y]           = pol2cart(A./180*pi,280);%randomly shift the circle
+        left            = x+p.ptb.midpoint(1)-p.stim.width/2/factor;
+        top             = y+p.ptb.midpoint(2)-p.stim.height/2/factor;
+        right           = left+p.stim.width/factor;
+        bottom          = top+p.stim.height/factor;
+        myrect          = [left top right bottom];
+    end
+
     function AskDetection
-        %        
+        %
         p.var.ExpPhase = 3;
+        ShowInstruction(801,1);        
         %% show a fixation cross
         fix          = p.ptb.midpoint;
         FixCross     = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];
@@ -168,26 +147,15 @@ cleanup;
         Screen('DrawingFinished',p.ptb.w,0);
         Screen('Flip',p.ptb.w);
         StartEyelinkRecording(1,0,p.var.ExpPhase,0,0,0,fix);
-        WaitSecs(1);
+        WaitSecs(2);
         %%
-        pic = 0;
-        w = p.stim.width/2;
-        h = p.stim.height/2;
-        for a = unique(p.presentation.dist(p.presentation.dist < 500))
-            pic    = pic + 1;
-            [x y]  = pol2cart(a./180*pi,280);
-            left   = x+p.ptb.midpoint(1)-w/2;
-            top    = y+p.ptb.midpoint(2)-h/2;
-            right  = left+w;
-            bottom = top+h;            
-            Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(pic),[],[left top right bottom]); 
-        end     
-        %%Stimulus onset
+        DrawCircle;
+        %Stimulus onset
         Screen('Flip',p.ptb.w);
         Eyelink('Message', 'Stim Onset');
         Eyelink('Message', 'SYNCTIME');        
         %%
-        WaitSecs(10);
+        WaitSecs(20);
         Screen('Flip',p.ptb.w);
         Eyelink('Message', 'Stim Offset');
         Eyelink('Message', 'BLANK_SCREEN');
@@ -195,10 +163,8 @@ cleanup;
     end
 
     function ConfirmIntensity
-        %Compute the intensity we want to deliver to the subject.
-        
-        p.var.ShockIntensity = p.out.PainThreshold*p.out.ShockFactor;
-        
+        %Compute the intensity we want to deliver to the subject.        
+        p.var.ShockIntensity = p.out.PainThreshold*p.out.ShockFactor;        
         %
         ShowInstruction(9,1);
         %
@@ -439,7 +405,7 @@ cleanup;
             keyboard;
         end
         %bg of the rating screen.
-        p.stim.bg_rating               = [0 128 0];
+        p.stim.bg_rating               = p.stim.bg;
         p.stim.white                   = [255 255 255];
         %% font size and background gray level
         p.text.fontname                = 'Times New Roman';
@@ -510,14 +476,15 @@ cleanup;
         elseif phase == 1
             load([fileparts(which('exp_FearAmy.m')) '/bin/fearamy_seq.mat']);
         end
-        clear seqpool
-        %create the randomized design
+        %this will deal all the presentation sequence related information
+        p.presentation                 = seq;
+        clear seq
+        %% create the randomized design
         p.stim.cs_plus                 = csp;%index of cs stimulus, this is the one paired to shock
         p.stim.cs_neg                  = csn;
         %Record which Phase are we going to run in this run.
         p.stim.phase                   = phase;
-        %this will deal all the presentation sequence related information
-        p.presentation                 = seq;
+        
         
         p.out.rating                  = [];
         p.out.log                     = zeros(1000000,4).*NaN;
@@ -801,6 +768,11 @@ cleanup;
                 'und drücken Sie die obere Taste zum Bestätigen.\n\n'...
                 'Bitte zum Starten die obere Taste drücken.\n'...
                 ];
+        elseif nInstruct == 801;%AskDetectionSelectable
+            text = ['Sie sehen nun eine Übersicht der verschiedenen Gesichter.\n'...                
+                'Bitte schauen Sie sich die Gesichter aufmerksam an.\n'...                
+                'Bitte drücken Sie zum Start die obere Taste und fixieren Sie das anschließend erscheindende Fixationskreuz.\n'...
+                ];
             
         elseif nInstruct == 9%
             %=================================================================================================================%
@@ -916,7 +888,28 @@ cleanup;
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
         %load the pictures to the memory.
         p.ptb.stim_sprites = CreateStimSprites(p.stim.files);%
+        %% take care of the circle presentation
+        %order of faces on the circle that will be shown at the end.
         
+        circle_order = Shuffle(unique(p.presentation.dist(p.presentation.dist < 500)));%
+        circle_order(end+1)=circle_order(1);
+        while any(abs(diff(circle_order)) < 50);%check that neighbors will not be neighbors in the next order.
+            circle_order        = Shuffle(unique(p.presentation.dist(p.presentation.dist < 500)));
+            circle_order(end+1) = circle_order(1);%to be successful the check has to consider the circularity.
+        end
+        p.stim.circle_order   = circle_order(1:end-1);%conditions in distances from CSP, 0 = CS+, randomized                        
+        p.stim.circle_angles  = sort(p.stim.circle_order);%this is just angles with steps of 45
+        %transform the angles to rects
+        for nc = 1:p.stim.tFace
+            p.stim.circle_rect(nc,:)   = angle2rect(p.stim.circle_angles(nc));
+            p.stim.circle_file_id(nc)  = unique(p.presentation.stim_id(p.presentation.dist == p.stim.circle_order(nc)));%the file that corresponds to different conditions
+        end        
+        %one to one mappings:
+        %now we have: circle_order ==> file_id
+        %circle_angles ==> circle_rect
+        
+        
+        %%
         function [out]=CreateStimSprites(files)
             %loads all the stims to video memory
             for nStim = 1:p.stim.tFile
