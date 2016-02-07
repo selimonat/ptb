@@ -22,6 +22,6 @@ Eyelink('ImageTransfer',thescenepath{thetrial},init.(thephase{phasei}).mx, init.
 %start recording following mode transition and a short pause.
 Eyelink('Command', 'set_idle_mode');
 WaitSecs(0.01);
-WaitSecs('UntilTime',t_fix+time.p2.fix-0.1);
+WaitSecs('UntilTime',t_fix+time.p2.fix-0.3);
 Eyelink('StartRecording');
 t = GetSecs;
