@@ -52,6 +52,27 @@ switch init.(thephase{phasei}).hostname
                 key.old   = KbName('LeftArrow');
                 key.new   = KbName('DownArrow');
         end
-    otherwise 
-        error('add behavioral lab')
+    otherwise
+        switch fileX.keycond
+            case '1'
+                key.in    = KbName('LeftArrow');
+                key.out   = KbName('DownArrow');
+                key.old   = KbName('LeftArrow');
+                key.new   = KbName('DownArrow');
+            case '2'
+                key.in    = KbName('LeftArrow');
+                key.out   = KbName('DownArrow');
+                key.old   = KbName('DownArrow');
+                key.new   = KbName('LeftArrow');
+            case '3'
+                key.in    = KbName('DownArrow');
+                key.out   = KbName('LeftArrow');
+                key.old   = KbName('DownArrow');
+                key.new   = KbName('LeftArrow');
+            case '4'
+                key.in    = KbName('DownArrow');
+                key.out   = KbName('LeftArrow');
+                key.old   = KbName('LeftArrow');
+                key.new   = KbName('DownArrow');
+        end
 end

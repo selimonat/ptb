@@ -82,6 +82,12 @@ for trial=1:n.(thephase{phasei}).(thepart{parti}).trials
         
         if rem(trial,n.(thephase{phasei}).test.t2b)==1
             Screen('DrawText', init.(thephase{phasei}).expWin, texttodraw{1,1},texttodraw{1,2},texttodraw{1,3}, [1 1 1]);
+             %Wait for last scans 
+             if phasei == 2 && parti == 2 &&strcmp(init.p2.hostname,'triostim') && rem(trial,n.(thephase{phasei}).test.tpr)==1
+                 disp('Waiting for last pulses...');
+                 fileX.MRtiming.end.(['block',num2str(floor(trial/n.(thephase{phasei}).test.tpr))]) = WaitPulse(KbName('5%'),init.mr.ndummy+1);
+             end
+            
             fileX.(thephase{phasei}).(thepart{parti})(trial,11) = Screen('Flip', init.(thephase{phasei}).expWin, t_fix+time.(thephase{phasei}).fix-init.(thephase{phasei}).slack);%t_pause
         else
             fixcross = Screen('MakeTexture',init.(thephase{phasei}).expWin,FixCr);
@@ -139,9 +145,9 @@ for trial=1:n.(thephase{phasei}).(thepart{parti}).trials
         fixcross = Screen('MakeTexture',init.(thephase{phasei}).expWin,FixCr);
         Screen('DrawTexture',init.(thephase{phasei}).expWin,fixcross);
         t_fix    = Screen('Flip', init.(thephase{phasei}).expWin,fileX.(thephase{phasei}).(thepart{parti})(trial,12)+3-init.(thephase{phasei}).slack);
-        if parti == 2
-        Eyelink('Message', 'FX Onset at %3d, %3d', init.(thephase{phasei}).mx, init.(thephase{phasei}).my);
-        end
+%         if parti == 2
+%         Eyelink('Message', 'FX Onset at %3d, %3d', init.(thephase{phasei}).mx, init.(thephase{phasei}).my);
+%         end
         Screen('Close')
     end
     
@@ -227,7 +233,7 @@ for trial=1:n.(thephase{phasei}).(thepart{parti}).trials
     end
     
     if phasei ~= 3
-    WaitSecs('UntilTime',t_fix+time.(thephase{phasei}).resp);
+    WaitSecs('UntilTime',t_scene+time.(thephase{phasei}).resp);
     [keyIsDown, firstPress, firstRelease, lastPress, lastRelease] = KbQueueCheck(init.(thephase{phasei}).device);
     KbQueueStop(init.(thephase{phasei}).device);%Although a call to KbQueueStart should suffice to flush a queue that is not actively receiving events, KbQueueFlush should be used preferentially to flush events from an actively running queue. 
     KbQueueFlush(init.(thephase{phasei}).device);
@@ -272,8 +278,8 @@ end
 if phasei == 2 && parti == 2
     %Wait for last scans and shut down eyelink
     if strcmp(init.p2.hostname,'triostim')
-        disp('Waiting for dummy pulses...');
-        fileX.MRtiming.end = WaitPulse(KbName('5%'),init.mr.ndummy+1);
+        disp('Waiting for last pulses...');
+        fileX.MRtiming.end.(['block',num2str(floor(trial/n.(thephase{phasei}).test.tpr))]) = WaitPulse(KbName('5%'),init.mr.ndummy+1);
     end
     try
         disp('Trying to stop the Eyelink system with StopEyelink');
