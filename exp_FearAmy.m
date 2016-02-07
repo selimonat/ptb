@@ -1,4 +1,4 @@
-function [p]=FearGen_eyelab(subject,phase,csp,PainThreshold)
+function [p]=exp_FearAmy(subject,phase,csp,PainThreshold)
 %[p]=FearGen_eyelab(subject,phase,csp,PainThreshold)
 %
 %Used for fearamy project, based on the FearGen_eyelab code. It increments
@@ -6,10 +6,10 @@ function [p]=FearGen_eyelab(subject,phase,csp,PainThreshold)
 %
 %
 
-debug = 1;%debug mode
+debug = 0;%debug mode
 %replace parallel port function with a dummy function
 if ismac
-    outp = @(x,y) fprintf('[%i %i]\n',x,y);
+   % outp = @(x,y) fprintf('[%i %i]\n',x,y);
 end
 if nargin ~= 4
     fprintf('Wrong number of inputs\n');
@@ -42,7 +42,6 @@ TimeEndStim               = [];
 TimeStartShock            = [];
 TimeTrackerOff            = [];
 TimeCrossOn               = [];
-current_microblock        = [];
 p.var.event_count         = 0;
 %%
 InitEyeLink;
@@ -52,7 +51,7 @@ KbQueueRelease(p.ptb.device);
 %save again the parameter file
 save(p.path.path_param,'p');
 if phase == 0
-    %
+    %    
     p.mrt.dummy_scan = 0;%for the training we don't want any pulses
     p.var.ExpPhase = phase;
     %UCS check
@@ -61,7 +60,7 @@ if phase == 0
     %test
     ShowInstruction(1,1);
     ShowInstruction(2,1);
-    PresentStimuli;4
+    PresentStimuli;
     
 elseif phase == 1
     %
@@ -93,7 +92,7 @@ cleanup;
 
     function AskDetectionSelectable
         %asks subjects to select the face that was associated with a shocks
-        positions          = circshift(1:8,[1 RandSample(1:8,[1 1])]);%position of the marker
+        positions          = circshift(1:8,[1 PsychRandSample(1:8,[1 1])]);%position of the marker
         p.var.ExpPhase = 4;
         ShowInstruction(8,1);        
         %%                
@@ -116,17 +115,20 @@ cleanup;
             end
         end
         %%
+        Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.imrect );
+        Screen('Flip',p.ptb.w);
+        ShowInstruction(14,0);
         p.out.selectedface = p.stim.circle_order(positions(1));
     end
     function DrawCircle        
         for npos = 1:p.stim.tFace
             Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(p.stim.circle_file_id(npos)),[],p.stim.circle_rect(npos,:));
-            Screen('DrawText', p.ptb.w, sprintf('%i_%i_%i',p.stim.circle_order(npos),p.stim.circle_file_id(npos),npos),mean(p.stim.circle_rect(npos,[1 3])) ,mean(p.stim.circle_rect(npos,[2 4])));
+            %Screen('DrawText', p.ptb.w, sprintf('%i_%i_%i',p.stim.circle_order(npos),p.stim.circle_file_id(npos),npos),mean(p.stim.circle_rect(npos,[1 3])) ,mean(p.stim.circle_rect(npos,[2 4])));
         end
     end
 
     function [myrect]=angle2rect(A)
-        factor          = 2;%factor resize the images
+        factor          = 1.75;%factor resize the images
         [x y]           = pol2cart(A./180*pi,280);%randomly shift the circle
         left            = x+p.ptb.midpoint(1)-p.stim.width/2/factor;
         top             = y+p.ptb.midpoint(2)-p.stim.height/2/factor;
@@ -148,7 +150,7 @@ cleanup;
         Screen('DrawingFinished',p.ptb.w,0);
         Screen('Flip',p.ptb.w);
         StartEyelinkRecording(1,0,p.var.ExpPhase,0,0,0,fix);
-        WaitSecs(2);
+        WaitSecs(1.5);
         %%
         DrawCircle;
         %Stimulus onset
@@ -156,7 +158,7 @@ cleanup;
         Eyelink('Message', 'Stim Onset');
         Eyelink('Message', 'SYNCTIME');        
         %%
-        WaitSecs(20);
+        WaitSecs(30);
         Screen('Flip',p.ptb.w);
         Eyelink('Message', 'Stim Offset');
         Eyelink('Message', 'BLANK_SCREEN');
@@ -212,8 +214,8 @@ cleanup;
         KbQueueStart(p.ptb.device);
         %log the pulse timings.
         mblock_jumps    = logical([0 diff(p.presentation.mblock)]);
-        TimeEndStim     = secs(end);%take the first valid pulse as the end of the last stimulus.        
-        for nTrial  = 37:57%p.presentation.tTrial;
+        TimeEndStim     = secs(end)- p.ptb.slack;%take the first valid pulse as the end of the last stimulus.        
+        for nTrial  = 1:p.presentation.tTrial;
             
             %Get the variables that Trial function needs.
             stim_id      = p.presentation.stim_id(nTrial);
@@ -224,15 +226,16 @@ cleanup;
             prestimdur   = p.duration.prestim+rand(1)*.25;
             dist         = p.presentation.dist(nTrial);            
             mblock_jump  = mblock_jumps(nTrial);
-            %prestimdur   = p_presentation_prestim_dur(nTrial);            
-            fprintf('%d of %d, S: %d, ISI: %d, UCS: %d, ODD: %d.\n',nTrial,p.presentation.tTrial,stim_id,ISI,ucs,oddball);
+            %prestimdur   = p_presentation_prestim_dur(nTrial);                       
             %
-            OnsetTime     = TimeEndStim + ISI-p.duration.stim ;
+            OnsetTime     = TimeEndStim + ISI-p.duration.stim - p.ptb.slack;
+            fprintf('%d of %d, S: %d, ISI: %d, UCS: %d, ODD: %d, OnsetTime: %05.8gs, ',nTrial,p.presentation.tTrial,stim_id,ISI,ucs,oddball, OnsetTime);
             
             %Start with the trial, here is time-wise sensitive must be
             %optimal
             [TimeEndStim] = Trial(nTrial,OnsetTime, prestimdur, stim_id , ucs  , fix_y,  oddball,dist,mblock_jump);
             %(nTrial,TimeStimOnset , prestimdur, stim_id , ucs  , fix_i, oddball, dist )
+            fprintf('OffsetTime: %05.8gs, Difference of %05.8gs\n',TimeEndStim,TimeEndStim-OnsetTime-p.duration.stim);
             %
             %dump it
             [keycode, secs] = KbQueueDump;%this contains both the pulses and keypresses.
@@ -264,7 +267,7 @@ cleanup;
         %get all the times
         TimeCrossOnset     = TimeStimOnset  - prestimdur;
         TimeCrossJump      = TimeStimOnset  + p.duration.stim/2;
-        TimeEndStim        = TimeStimOnset  + p.duration.stim;
+        TimeEndStim        = TimeStimOnset  + p.duration.stim- p.ptb.slack;
         TimeStartShock     = TimeStimOnset  + p.duration.onset2shock;
         TimeTrackerOff     = TimeStimOnset  + p.duration.keep_recording;
         
@@ -466,14 +469,16 @@ cleanup;
         %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %stimulus sequence
         if phase == 0
-            seq.cond_id       = Shuffle([0 1 2 3 4 5 6 7 8 9]);
+            seq.cond_id       = Shuffle([0 1 2 3 4 5 6 7 8 10]);
             seq.tTrial        = length(seq.cond_id);
             seq.ucs           = zeros(1,seq.tTrial);
             seq.oddball       = seq.cond_id == 10;
             seq.isi           = PsychRandSample([3 4.5],[1 seq.tTrial]);
             seq.stim_id       = seq.cond_id;
+            seq.stim_id(seq.cond_id == 10) = 9;
             seq.dist          = 1:10;
-            seq.CrossPosition = PsychRandSample(1:2,[1 seq.tTrial]);
+            seq.CrossPosition = ones(1,seq.tTrial);
+            seq.mblock        = ones(1,seq.tTrial);
         elseif phase == 1
             load([fileparts(which('exp_FearAmy.m')) '/bin/fearamy_seq.mat']);
         end
@@ -668,7 +673,7 @@ cleanup;
             Screen('FillRect',p.ptb.w,p.var.current_bg);
             t = Screen('Flip',p.ptb.w);
         else
-            if nInstruct ~= 10%this is for the Reiz kommnt
+            if ~ismember(nInstruct,[10 14]);%this is for the Reiz kommnt and danke message at the end
                 KbStrokeWait(p.ptb.device);
             else
                 WaitSecs(1+rand(1));
@@ -684,8 +689,7 @@ cleanup;
             Log(t,-1,nInstruct);
             %show the messages at the experimenter screen
             fprintf('=========================================================\n');
-            fprintf('Text shown to the subject:\n');
-            fprintf('=========================================================\n');
+            fprintf('Text shown to the subject:\n');            
             fprintf(text);
             fprintf('=========================================================\n');
             
@@ -750,7 +754,7 @@ cleanup;
         elseif nInstruct == 4%third Instr. of the training phase.
             text = ['Vor dem Experiment legen wir nun \n' ...
                 'die Schockintensität für den Rest des Experiments fest. \n' ...
-                'Drücken Sie die obere Taste um fortzufahren.' ...
+                'Drücken Sie die obere Taste um fortzufahren.\n' ...
                 ];
             
         elseif nInstruct == 7;%rating
@@ -763,15 +767,16 @@ cleanup;
                 ];
         elseif nInstruct == 8;%AskDetectionSelectable
             text = ['Sie sehen nun noch einmal eine Übersicht der verschiedenen Gesichter.\n'...
-                'Bitte geben Sie an, welches der Gesichter Ihrer Meinung nach mit dem Schock gepaart wurde.\n\n'...
-                'Nutzen Sie die linke und rechte Taste, um die Markierung zum richtigen Gesicht zu navigieren,\n'...
+                'Bitte geben Sie an, welches der Gesichter Ihrer Meinung nach\n mit dem Schock gepaart wurde.\n\n'...
+                'Nutzen Sie die linke und rechte Taste, um die Markierung\n zum richtigen Gesicht zu navigieren,\n'...
                 'und drücken Sie die obere Taste zum Bestätigen.\n\n'...
                 'Bitte zum Starten die obere Taste drücken.\n'...
                 ];
         elseif nInstruct == 801;%AskDetectionSelectable
             text = ['Sie sehen nun eine Übersicht der verschiedenen Gesichter.\n'...                
-                'Bitte schauen Sie sich die Gesichter aufmerksam an.44\n'...                
-                'Bitte drücken Sie zum Start die obere Taste und fixieren Sie das anschließend erscheindende Fixationskreuz.\n'...
+                'Bitte schauen Sie sich die Gesichter aufmerksam an.\n'...                
+                'Bitte drücken Sie zum Start die obere Taste und\n' ...
+                'fixieren Sie das anschließend erscheindende Fixationskreuz.\n'...
                 ];
             
         elseif nInstruct == 9%
@@ -793,6 +798,8 @@ cleanup;
             text = {'Sehr\nwahrscheinlich'};
         elseif nInstruct == 13
             text = {'Überhaupt\nnicht\nwahrscheinlich'};
+        elseif nInstruct == 14
+            text = ['Danke...'];
         else
             text = {''};
         end
@@ -800,15 +807,7 @@ cleanup;
     function SetPTB
         %KbName('UnifyKeyNames');
         %Sets the parameters related to the PTB toolbox. Including
-        %fontsizes, font names.
-        %Find the number of the screen to be opened
-        screens                     =  Screen('Screens');
-        p.ptb.screenNumber          =  max(screens);%the maximum is the second monitor
-        %Make everything transparent for debugging purposes.
-        if debug
-            commandwindow;
-            PsychDebugWindowConfiguration;
-        end
+        %fontsizes, font names.        
         %Default parameters
         Screen('Preference', 'SkipSyncTests', 1);
         Screen('Preference', 'DefaultFontSize', p.text.fontsize);
@@ -817,11 +816,19 @@ cleanup;
         Screen('Preference', 'VisualDebuglevel', 0);
         Screen('Preference', 'SkipSyncTests', 1);
         Screen('Preference', 'SuppressAllWarnings', 1);
+        %%Find the number of the screen to be opened
+        screens                     =  Screen('Screens');
+        p.ptb.screenNumber          =  max(screens);%the maximum is the second monitor
+        %Make everything transparent for debugging purposes.
+        if debug
+            commandwindow;
+            PsychDebugWindowConfiguration;
+        end        
         %set the resolution correctly
-        res = Screen('resolution',p.ptb.screenNumber)
+        res = Screen('resolution',p.ptb.screenNumber);
         HideCursor(p.ptb.screenNumber);        
         %spit out the resolution        
-        fprintf('Resolution of the screen is set to %dx%d...\n',res.width,res.height);
+        fprintf('Resolution of the screen is %dx%d...\n',res.width,res.height);
         
         %Open a graphics window using PTB
         [p.ptb.w p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, p.var.current_bg);
@@ -856,7 +863,7 @@ cleanup;
         %get all the required keys in a vector
         p.ptb.keysOfInterest = [];for i = fields(p.keys)';p.ptb.keysOfInterest = [p.ptb.keysOfInterest p.keys.(i{1})];end
         fprintf('Key listening will be restricted to %d\n',p.ptb.keysOfInterest)
-        %         RestrictKeysForKbCheck(p.ptb.keysOfInterest);
+        RestrictKeysForKbCheck(p.ptb.keysOfInterest);
         
         p.ptb.keysOfInterest=zeros(1,256);
         p.ptb.keysOfInterest(p.keys.confirm) = 1;
@@ -875,39 +882,39 @@ cleanup;
         
         %CORRECT
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
-        %test whether CED receives the triggers correctly...
+        %test whether CED receives the triggers correctly...        
         k = 0;
         while ~(k == 25 | k == 86 );
             pause(0.1);
             outp(p.com.lpt.address,244);%244 means all but the UCS channel (so that we dont shock the subject during initialization).
-            fprintf('=================\nDid the trigger test work?\nPress c to send it again, v to continue...\n')
+            fprintf('=================\nDid the trigger test work?\n\n!!!!!!You MUST observe 5 pulses on the PHYSIOCOMPUTER!!!!!\n\nPress c to send it again, v to continue...\n')
             [~, k] = KbStrokeWait(p.ptb.device);
             k = find(k);
-        end
-        
+        end        
+        fprintf('Continuing...\n');
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
         %load the pictures to the memory.
         p.ptb.stim_sprites = CreateStimSprites(p.stim.files);%
         %% take care of the circle presentation
         %order of faces on the circle that will be shown at the end.
-        
-        circle_order = Shuffle(unique(p.presentation.dist(p.presentation.dist < 500)));%
-        circle_order(end+1)=circle_order(1);
-        while any(abs(diff(circle_order)) < 50);%check that neighbors will not be neighbors in the next order.
-            circle_order        = Shuffle(unique(p.presentation.dist(p.presentation.dist < 500)));
-            circle_order(end+1) = circle_order(1);%to be successful the check has to consider the circularity.
+        if phase ~= 0
+            circle_order = Shuffle(unique(p.presentation.dist(p.presentation.dist < 500)));%
+            circle_order(end+1)=circle_order(1);
+            while any(abs(diff(circle_order)) < 50);%check that neighbors will not be neighbors in the next order.
+                circle_order        = Shuffle(unique(p.presentation.dist(p.presentation.dist < 500)));
+                circle_order(end+1) = circle_order(1);%to be successful the check has to consider the circularity.
+            end
+            p.stim.circle_order   = circle_order(1:end-1);%conditions in distances from CSP, 0 = CS+, randomized
+            p.stim.circle_angles  = sort(p.stim.circle_order);%this is just angles with steps of 45
+            %transform the angles to rects
+            for nc = 1:p.stim.tFace
+                p.stim.circle_rect(nc,:)   = angle2rect(p.stim.circle_angles(nc));
+                p.stim.circle_file_id(nc)  = unique(p.presentation.stim_id(p.presentation.dist == p.stim.circle_order(nc)));%the file that corresponds to different conditions
+            end
+            %one to one mappings:
+            %now we have: circle_order ==> file_id
+            %circle_angles ==> circle_rect
         end
-        p.stim.circle_order   = circle_order(1:end-1);%conditions in distances from CSP, 0 = CS+, randomized                        
-        p.stim.circle_angles  = sort(p.stim.circle_order);%this is just angles with steps of 45
-        %transform the angles to rects
-        for nc = 1:p.stim.tFace
-            p.stim.circle_rect(nc,:)   = angle2rect(p.stim.circle_angles(nc));
-            p.stim.circle_file_id(nc)  = unique(p.presentation.stim_id(p.presentation.dist == p.stim.circle_order(nc)));%the file that corresponds to different conditions
-        end        
-        %one to one mappings:
-        %now we have: circle_order ==> file_id
-        %circle_angles ==> circle_rect
-        
         
         %%
         function [out]=CreateStimSprites(files)
@@ -959,9 +966,10 @@ cleanup;
         Eyelink('Command', 'clear_screen %d', 0);
         %draw the image on the screen but also the two crosses
         if (nStim <= 16 && nStim>0)
-            Eyelink('ImageTransfer',p.stim.files24(nStim,:),p.ptb.imrect(1),p.ptb.imrect(2),p.stim.width,p.stim.height,p.ptb.imrect(1),p.ptb.imrect(2));
+            Eyelink('ImageTransfer',p.stim.files24(nStim,:),p.ptb.imrect(1),p.ptb.imrect(2),p.stim.width,p.stim.height,p.ptb.imrect(1),p.ptb.imrect(2),0);
         end
         Eyelink('Command', 'draw_cross %d %d 15',fix(1),fix(2));
+        Eyelink('Command', 'draw_cross %d %d 15',fix(1),fix(2)+diff(p.ptb.cross_shift));        
         
         %
         %drift correction
@@ -1031,7 +1039,7 @@ cleanup;
         el.drift_correction_failed_beep = [0 0 0];
         el.drift_correction_success_beep= [0 0 0];
         EyelinkUpdateDefaults(el);
-        PsychEyelinkDispatchCallback(el)
+        PsychEyelinkDispatchCallback(el);
         
         % open file.
         res = Eyelink('Openfile', p.path.edf);
@@ -1159,18 +1167,18 @@ cleanup;
         keycode = [];
         secs    = [];
         pressed = [];
-        fprintf('there are %03d events\n',KbEventAvail(p.ptb.device));
+        %fprintf('there are %03d events\n',KbEventAvail(p.ptb.device));
         while KbEventAvail(p.ptb.device)
             [evt, n]   = KbEventGet(p.ptb.device);
             n          = n + 1;
             keycode(n) = evt.Keycode;
             pressed(n) = evt.Pressed;
             secs(n)    = evt.Time;
-            fprintf('Event is: %d\n',keycode(n));
+         %   fprintf('Event is: %d\n',keycode(n));
         end
         i           = pressed == 1;
         keycode(~i) = [];
         secs(~i)    = [];
-        fprintf('there are %03d events found...\n',length(keycode));
+        %fprintf('there are %03d events found...\n',length(keycode));
     end
 end
