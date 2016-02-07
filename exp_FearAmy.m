@@ -69,9 +69,9 @@ elseif phase == 1
     for ninst = [3 301:306]
         ShowInstruction(ninst,1);
     end
-    PresentStimuli;
-    AskStimRating;%make sure that scanner doesnt stop prematurely asa the stim offset
-    CalibrateEL;
+    %PresentStimuli;
+    %AskStimRating;%make sure that scanner doesnt stop prematurely asa the stim offset
+    %CalibrateEL;
     AskDetection;    
     AskDetectionSelectable;
 end
@@ -122,13 +122,13 @@ cleanup;
     end
     function DrawCircle        
         for npos = 1:p.stim.tFace
-            Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(p.stim.circle_file_id(npos)),[],p.stim.circle_rect(npos,:));
+            Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites_cut(p.stim.circle_file_id(npos)),[],p.stim.circle_rect(npos,:));
             %Screen('DrawText', p.ptb.w, sprintf('%i_%i_%i',p.stim.circle_order(npos),p.stim.circle_file_id(npos),npos),mean(p.stim.circle_rect(npos,[1 3])) ,mean(p.stim.circle_rect(npos,[2 4])));
         end
     end
 
     function [myrect]=angle2rect(A)
-        factor          = 1.75;%factor resize the images
+        factor          = 1.9;%factor resize the images
         [x y]           = pol2cart(A./180*pi,280);%randomly shift the circle
         left            = x+p.ptb.midpoint(1)-p.stim.width/2/factor;
         top             = y+p.ptb.midpoint(2)-p.stim.height/2/factor;
@@ -372,8 +372,9 @@ cleanup;
         end
         
         p.path.experiment             = [p.path.baselocation  filesep];
-        p.path.stim                   = [p.path.baselocation filesep 'stimuli' filesep];
+        p.path.stim                   = [p.path.baselocation filesep 'stimuli' filesep];        
         p.path.stim24                 = [p.path.stim '24bit' filesep];
+        p.path.stim_cut               = [p.path.stim 'cut' filesep];
         %
         p.subID                       = sprintf('s%02d',subject);
         timestamp                     = datestr(now,30);
@@ -390,7 +391,8 @@ cleanup;
         mkdir([p.path.subject 'midlevel']);
         %% %%%%%%%%%%%%%%%%%%%%%%%%%
         %get stim files
-        [p.stim.files p.stim.label]   = FileMatrix([p.path.stim '*.bmp']);
+        [p.stim.files     p.stim.label]   = FileMatrix([p.path.stim '*.bmp']);
+        [p.stim.files_cut p.stim.label]   = FileMatrix([p.path.stim_cut '*.bmp']);
         p.stim.tFile                  = size(p.stim.files,1);%number of different files (including the UCS symbol)
         p.stim.tFace                  = 8;%number of faces.
         %
@@ -894,7 +896,8 @@ cleanup;
         fprintf('Continuing...\n');
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
         %load the pictures to the memory.
-        p.ptb.stim_sprites = CreateStimSprites(p.stim.files);%
+        p.ptb.stim_sprites     = CreateStimSprites(p.stim.files);%
+        p.ptb.stim_sprites_cut = CreateStimSprites(p.stim.files_cut);%
         %% take care of the circle presentation
         %order of faces on the circle that will be shown at the end.
         if phase ~= 0
