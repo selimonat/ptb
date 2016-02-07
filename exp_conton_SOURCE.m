@@ -7,14 +7,8 @@ clear all;close all;clc;
 PsychDefaultSetup(2);
 sca;
 
-warning('Throw error when name is too long')
-warning('change instruction after end of phasex')
-singdisp = input('Set to single display? Trial loop over all trials? Type y for yes.','s');
-
-if ~strcmp(singdisp,'y')
-    error('Don''t run experiment in multidisplay mode!')
-end
-
+warning('replace images 45 and 129 outdoor')
+warning('Mal im debug mode durch start eyelink function gehen?!')
 %seed random number generator based on the current time
 rng('shuffle');
 
@@ -109,6 +103,9 @@ thephase{3} = 'p3';
 %% LOAD/CREATE FILEX
 %enter subject ID
 subID    = input('Enter subject ID: ','s');
+if size(subID,2)>7
+    error('ID is too long!')
+end
 fileName = ['CONTON_' num2str(subID) '.mat'];
 
 %Enter session number
@@ -338,7 +335,6 @@ FixCr(10:11,:)=1;FixCr(:,10:11)=1;
 
 %% INITIALIZE EYELINK
 if phasei == 2 && parti == 2
-    warning('Do I need the max priority setting?')
     
     init.el.recmode = init.(thephase{phasei}).debug;%1 = no EL connected, dummy mode; 0 = EL connected
     init.el.el = EyelinkInitDefaults(init.(thephase{phasei}).expWin);
@@ -388,7 +384,7 @@ for numsession = 1:6-((phasei*2)+parti-3)
     exp_conton_phase123
     if parti == 2 && init.continuous == 1
         phasei = phasei+1;
-    elseif parti == 2 && init.continuous == 0
+    elseif parti == 2 && init.continuous == 0 || phasei == 2
         break
     end
     parti = 2/parti;
