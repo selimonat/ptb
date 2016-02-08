@@ -1,4 +1,4 @@
-function [secs]=WaitPulseKbQueue(n,device)
+function [secs]=WaitPulse(n,device)
 %[secs]=WaitPulse(keycode,n)
 %
 %   This function waits for the Nth upcoming pulse. If N=1, it will wait for
@@ -12,7 +12,6 @@ function [secs]=WaitPulseKbQueue(n,device)
 %   http://ftp.tuebingen.mpg.de/pub/pub_dahl/stmdev10_D/Matlab6/Toolboxes/Psychtoolbox/PsychDocumentation/KbQueue.html
 
 try %to relase running queue
-    keyboard
     KbQueueCheck(device);%this should throw an error if no queue is running
     queuerunning = 1;
     KbQueueRelease(device);
