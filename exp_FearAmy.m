@@ -69,9 +69,9 @@ elseif phase == 1
     for ninst = [3 301:306]
         ShowInstruction(ninst,1);
     end
-    %PresentStimuli;
-    %AskStimRating;%make sure that scanner doesnt stop prematurely asa the stim offset
-    %CalibrateEL;
+    PresentStimuli;
+    AskStimRating;%make sure that scanner doesnt stop prematurely asa the stim offset
+    CalibrateEL;
     AskDetection;    
     AskDetectionSelectable;
 end
