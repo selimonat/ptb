@@ -213,7 +213,7 @@ cleanup;
         KbQueueCreate(p.ptb.device);
         KbQueueStart(p.ptb.device);
         %log the pulse timings.
-        mblock_jumps    = logical([0 diff(p.presentation.mblock)]);
+        mblock_jumps    = logical([1 diff(p.presentation.mblock)]);
         TimeEndStim     = secs(end)- p.ptb.slack;%take the first valid pulse as the end of the last stimulus.        
         for nTrial  = 1:p.presentation.tTrial;
             
@@ -226,6 +226,7 @@ cleanup;
             prestimdur   = p.duration.prestim+rand(1)*.25;
             dist         = p.presentation.dist(nTrial);            
             mblock_jump  = mblock_jumps(nTrial);
+            block_id     = p.presentation.mblock(nTrial);            
             %prestimdur   = p_presentation_prestim_dur(nTrial);                       
             %
             OnsetTime     = TimeEndStim + ISI-p.duration.stim - p.ptb.slack;
@@ -233,7 +234,7 @@ cleanup;
             
             %Start with the trial, here is time-wise sensitive must be
             %optimal
-            [TimeEndStim] = Trial(nTrial,OnsetTime, prestimdur, stim_id , ucs  , fix_y,  oddball,dist,mblock_jump);
+            [TimeEndStim] = Trial(nTrial,OnsetTime, prestimdur, stim_id , ucs  , fix_y,  oddball,dist,mblock_jump,block_id);
             %(nTrial,TimeStimOnset , prestimdur, stim_id , ucs  , fix_i, oddball, dist )
             fprintf('OffsetTime: %05.8gs, Difference of %05.8gs\n',TimeEndStim,TimeEndStim-OnsetTime-p.duration.stim);
             %
@@ -263,7 +264,7 @@ cleanup;
         KbQueueStop(p.ptb.device);
         KbQueueRelease(p.ptb.device);
     end
-    function [TimeEndStim]=Trial(nTrial,TimeStimOnset , prestimdur, stim_id , ucs  , fix_i, oddball, dist,microblock_jump)
+    function [TimeEndStim]=Trial(nTrial,TimeStimOnset , prestimdur, stim_id , ucs  , fix_i, oddball, dist,microblock_jump,mblock_id)
         %get all the times
         TimeCrossOnset     = TimeStimOnset  - prestimdur;
         TimeCrossJump      = TimeStimOnset  + p.duration.stim/2;
@@ -281,7 +282,7 @@ cleanup;
         TimeCrossOn  = Screen('Flip',p.ptb.w,TimeCrossOnset,0);        
         Log(TimeCrossOn,1,fix_i);%cross onset.
         %turn the eye tracker on
-        StartEyelinkRecording(nTrial,stim_id,p.var.ExpPhase,dist,oddball,ucs,fix);
+        StartEyelinkRecording(nTrial,stim_id,p.var.ExpPhase,dist,oddball,ucs,fix,mblock_id);
         %% Draw the stimulus to the buffer
         if ~stim_id==0
             Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(stim_id));
@@ -303,6 +304,7 @@ cleanup;
         end
         if microblock_jump
             MarkCED( p.com.lpt.address, p.com.lpt.mBlock );
+			Log(TimeStimOnset,9,mblock_id)
         end
         Log(TimeStimOnset,3,dist);%log the stimulus onset
         
@@ -944,13 +946,13 @@ cleanup;
         Log(t,8,NaN);
     end
 
-    function [t]=StartEyelinkRecording(nTrial,nStim,phase,dist,oddball,ucs,fix)
+    function [t]=StartEyelinkRecording(nTrial,nStim,phase,dist,oddball,ucs,fix,blockid)
         t = [];
         if isnan(dist)
             dist=3000;
         end
         nStim = double(nStim);
-        Eyelink('Message', 'TRIALID: %04d, PHASE: %04d, FILE: %04d, DELTACSP: %04d, ODDBALL: %04d, UCS: %04d, FIXX: %04d, FIXY %04d', nTrial, phase, nStim, dist, double(oddball), double(ucs),fix(1),fix(2));
+        Eyelink('Message', 'TRIALID: %04d, PHASE: %04d, FILE: %04d, DELTACSP: %04d, ODDBALL: %04d, UCS: %04d, FIXX: %04d, FIXY %04d, MBLOCK %04d', nTrial, phase, nStim, dist, double(oddball), double(ucs),fix(1),fix(2),block_id);
         Eyelink('Message', 'FX Onset at %d %d',fix(1),fix(2));
         % an integration message so that an image can be loaded as
         % overlay background when performing Data Viewer analysis.
@@ -1120,7 +1122,8 @@ cleanup;
         %Stimulus Offset      :     6    info: NaN;
         %Key Presses          :     7    info: NaN;
         %Tracker Offset       :     8    info: NaN;
-        %
+        %MicroBlock			  :     9    info:rank
+		%
         %Text on the screen   :     -1    info: Which Text?
         %RatingScreen Onset   :     -2    info: NaN;
         for iii = 1:length(ptb_time)
