@@ -6,6 +6,11 @@ resolution = init.(thephase{phasei}).rect(1,3:4);
 switch init.(thephase{phasei}).hostname
     case 'triostim1'
         warning('remeasure ET params!')
+        if resolution(1) ~= 1024
+            warning('Resolution not as expected. Image size might deviate from requested visual angle')
+        end
+        vdist = 94.5;
+        screen_width = 38;
         
     case 'etpc'
         warning('remeasure ET params!')

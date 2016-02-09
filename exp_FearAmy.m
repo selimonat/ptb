@@ -69,9 +69,9 @@ elseif phase == 1
     for ninst = [3 301:306]
         ShowInstruction(ninst,1);
     end
-    %PresentStimuli;
-    %AskStimRating;%make sure that scanner doesnt stop prematurely asa the stim offset
-    %CalibrateEL;
+    PresentStimuli;
+    AskStimRating;%make sure that scanner doesnt stop prematurely asa the stim offset
+    CalibrateEL;
     AskDetection;    
     AskDetectionSelectable;
 end
@@ -780,7 +780,7 @@ cleanup;
             text = ['Sie sehen nun eine Übersicht der verschiedenen Gesichter.\n'...                
                 'Bitte schauen Sie sich die Gesichter aufmerksam an.\n'...                
                 'Bitte drücken Sie zum Start die obere Taste und\n' ...
-                'fixieren Sie das anschließend erscheindende Fixationskreuz.\n'...
+                'fixieren Sie das anschließend erscheinende Fixationskreuz.\n'...
                 ];
             
         elseif nInstruct == 9%
