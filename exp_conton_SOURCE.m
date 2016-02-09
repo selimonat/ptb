@@ -7,14 +7,9 @@ clear all;close all;clc;
 PsychDefaultSetup(2);
 sca;
 
-warning('Throw error when name is too long')
-warning('change instruction after end of phasex')
-singdisp = input('Set to single display? Trial loop over all trials? Type y for yes.','s');
-
-if ~strcmp(singdisp,'y')
-    error('Don''t run experiment in multidisplay mode!')
-end
-
+warning('replace images 45 and 129 outdoor')
+warning('Mal im debug mode durch start eyelink function gehen?!')
+warning('Priority mode testen')
 %seed random number generator based on the current time
 rng('shuffle');
 
@@ -41,7 +36,7 @@ n.p1.train.t2b      = n.p1.train.trials;
 %Phase 2: Interleaved encoding/retrieval
 time.p2.pic         = time.p1.pic;
 time.p2.fix         = 2.3;%TBD 300ms to save everything & turn on tracker again, distribute trials across TR
-time.p2.resp        = 3;%TBD
+time.p2.resp        = 2.9;%TBD
 time.trackerOff     = 1.8;%200 ms to turn off tracker before button presses are recorded
 
 relnew.p2           = 1;%amount of new pictures relative to old ones
@@ -109,6 +104,9 @@ thephase{3} = 'p3';
 %% LOAD/CREATE FILEX
 %enter subject ID
 subID    = input('Enter subject ID: ','s');
+if size(subID,2)>7
+    error('ID is too long!')
+end
 fileName = ['CONTON_' num2str(subID) '.mat'];
 
 %Enter session number
@@ -302,11 +300,11 @@ init.(thephase{phasei}).screenNumber = max(init.(thephase{phasei}).screens);%The
 if init.(thephase{phasei}).debug
     PsychDebugWindowConfiguration([],0.7)
 else HideCursor;
-    %     Screen('Preference', 'SkipSyncTests', 1);
-    %     skipsync = input('You are skipping the sync test. Don''t this during real testing!!! Type y if you understood.','s');
-    %     if ~strcmp(skipsync,'y')
-    %         error('Experiment aborted');
-    %     end
+%         Screen('Preference', 'SkipSyncTests', 1);
+%         skipsync = input('You are skipping the sync test. Type y if you want to continue.','s');
+%         if ~strcmp(skipsync,'y')
+%             error('Experiment aborted');
+%         end
 end
 
 try
@@ -338,7 +336,6 @@ FixCr(10:11,:)=1;FixCr(:,10:11)=1;
 
 %% INITIALIZE EYELINK
 if phasei == 2 && parti == 2
-    warning('Do I need the max priority setting?')
     
     init.el.recmode = init.(thephase{phasei}).debug;%1 = no EL connected, dummy mode; 0 = EL connected
     init.el.el = EyelinkInitDefaults(init.(thephase{phasei}).expWin);
@@ -388,7 +385,7 @@ for numsession = 1:6-((phasei*2)+parti-3)
     exp_conton_phase123
     if parti == 2 && init.continuous == 1
         phasei = phasei+1;
-    elseif parti == 2 && init.continuous == 0
+    elseif parti == 2 && init.continuous == 0 || phasei == 2
         break
     end
     parti = 2/parti;

@@ -1,4 +1,4 @@
-function [t]=StartEyelinkRecording(thetrial,init,fileX,thescenepath,thephase,phasei,thepart,parti,t_fix,time)%change this if we only record during testing TBD
+function [tpre, tpost]=StartEyelinkRecording(thetrial,init,fileX,thescenepath,thephase,phasei,thepart,parti,t_fix,time)%change this if we only record during testing TBD
 
 Eyelink('Message', 'TRIALID: %04d, NEWOLD: %d, ENCRET: %d, FIXX: %04d, FIXY %04d', thetrial, fileX.p2.(thepart{parti})(thetrial,3), fileX.p2.(thepart{parti})(thetrial,4), init.(thephase{phasei}).mx, init.(thephase{phasei}).my);
 % an integration message so that an image can be loaded as
@@ -23,5 +23,6 @@ Eyelink('ImageTransfer',thescenepath{thetrial},init.(thephase{phasei}).mx, init.
 Eyelink('Command', 'set_idle_mode');
 WaitSecs(0.01);
 WaitSecs('UntilTime',t_fix+time.p2.fix-0.3);
+tpre = GetSecs;
 Eyelink('StartRecording');
-t = GetSecs;
+tpost = GetSecs;
