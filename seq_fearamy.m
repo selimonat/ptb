@@ -54,46 +54,12 @@ while ok
         end
     end
 end
-% transform mesoblock seq to a stim sequence
-repeat = 1;
-while repeat
-    seq        = [];
-    csp        = 4;
-    macroblock = [];
-    isi        = [];
-    
-    for meso_id = store(randsample(size(store,1),1),:);
-        %build a mesoblock
-        mesoblock = [];        
-        n          = max(store(:));%length of a mesoblock
-        while n
-            n         = n - 1;
-            micro     = Shuffle(0:8);                      
-            mesoblock = [mesoblock micro];
-        end
-        isi                                            = [isi seq_BalancedDist(mesoblock,[3 4.5 6])];
-        mesoblock(max(find(mesoblock == csp,meso_id))) = 9;%assign UCS
-        macroblock                                     = [macroblock  mesoblock];
-    end
-    %constrains
-    if 1
-        %         macroblock(1:100) == 9
-        repeat = 0;
-    end
-end
-run_length = length(macroblock)./3;
-length(macroblock)*mean(isi)/60
-mean(isi)
-plot(macroblock,'o-')
-%%
-% macroblock(RandSample(find(macroblock == 9),[1 3])) = 10;
-
 
 %% much simpler approach
 csp            = 6;
 cond_id            = [];
 mblock         = [];
-n_micro        = 0;
+n_micro        = 1;
 n_meso         = 0;
 n_micro_ucs    = 0;
 n_micro_odd    = 0;
@@ -115,16 +81,17 @@ while length(cond_id) < length(unique(condpool))*64
             micro     = [csp Shuffle(setdiff(condpool,csp))];
             micro(1)  = 9;
         else
-            micro   = Shuffle(condpool);
+            micro     = Shuffle(condpool);
         end
         meso    = [meso micro];        
         mblock  = [mblock repmat(n_micro,1,9)];
     end
     cond_id  = [cond_id meso];
-    isi  = [isi seq_BalancedDist(meso,[3 4 5 6])];
+    isi      = [isi     seq_BalancedDist(meso,[3 4 5 6])];
 end
-cond_id = [Shuffle(condpool)                     cond_id];
-isi = [seq_BalancedDist(condpool,[3 4 5 6])  isi]
+cond_id = [Shuffle(condpool) cond_id];
+isi     = [seq_BalancedDist(condpool,[3 4 5 6])  isi]
+mblock  = [mblock repmat(1,1,9)];
 cond_id(find(cond_id == 9,1,'last')) = 10;
 cond_id(max(find(cond_id == 9,2,'first'))) = 10;
 for n = 0:10;fprintf('%g: %g\n',n,sum(cond_id== n));end
@@ -148,10 +115,6 @@ seq.dist(seq.cond_id==0)=NaN;
 seq.dist(seq.cond_id==max(seq.cond_id))=1000;
 %ucs=500
 seq.dist(seq.cond_id==max(seq.cond_id)-1)=500;
-for ncond = unique(cond_id)
-    ncond
-    i                    = find(cond_id == ncond);
-    cp                   = seq_BalancedDist(ones(1,length(i)),[1 2]);
-    seq.CrossPosition(i) = cp;
-end
+seq.CrossPosition        = ones(1,seq.tTrial);
+
 save([fileparts(which('exp_FearAmy.m')) '/bin/fearamy_seq.mat'],'seq');
