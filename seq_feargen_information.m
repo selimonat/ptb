@@ -16,16 +16,21 @@ if nargin > 1
     fig     = varargin{1}(1);
     verbose = varargin{1}(2);
 end
-
+%%set some constants
 nummods = 10;%number of time bin in the FIR matrix
+odd_id  = 9;
+ucs_id  = 10;
+null_id = 0;
+%%
 s = s(:);
-tcond     = max(s)+1;%with the null event
-tstimcond = max(s);
-conds     = 0:tstimcond;
-out.ttrial    = length(s);
+tcond      = length(unique(s));%with the null event
+tstimcond  = max(unique(s));%stimulus showing conditions i.e. without the null
+conds      = 0:tstimcond;
+out.ttrial = length(s);
 if verbose
     fprintf('\n\n\n\n\n');
     fprintf('Total trial: %g\n',out.ttrial);
+    fprintf('%g and %g are considered as UCS and oddball, respectively\n',ucs_id,odd_id);
     fprintf('Probability of different conditions:\n');
 end
 count     = zeros(1,tstimcond);
@@ -36,11 +41,11 @@ for c = 1:tcond
     end
 end
 
-ucs     = sum(s == tstimcond-1);
+ucs     = sum(s == ucs_id);
 csp     = sum(s == 2);
 out.rr  = ucs./(ucs+csp)*100;
 
-odd     = sum(s == (tstimcond));
+odd     = sum(s == odd_id);
 out.or  = odd./out.ttrial*100;
 if verbose
     fprintf('=====================================\n');
@@ -158,7 +163,6 @@ if fig
     subplot(nr,nc,11)
     hist(diff(find(s ~= 0)));
     title('Distribution of ISIs')
-    xlabel('seconds');
     box off;    
 end
 %% create output
