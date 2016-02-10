@@ -487,7 +487,7 @@ cleanup;
             load([fileparts(which('exp_FearAmy.m')) '/bin/fearamy_seq.mat']);
         end
         %this will deal all the presentation sequence related information
-        p.presentation                 = seq;
+        p.presentation                 = seq(subject,phase);
         clear seq
         %% create the randomized design
         p.stim.cs_plus                 = csp;%index of cs stimulus, this is the one paired to shock

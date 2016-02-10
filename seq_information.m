@@ -141,6 +141,7 @@ if fig
     %
     subplot(nr,nc,4);
     imagesc(n);
+    colormap jet
     thincolorbar('vertical');
     title(sprintf('2nd order Transition Matrix (%g)',sopt));
     set(gca,'ytick',1:tstimcond+1,'yticklabel',{'N' '1' '2' '3' '4' '5' '6' '7' '8' 'UCS' 'ODD'})
@@ -194,14 +195,18 @@ if fig
     title(sprintf('covariance (rank: %g (%g))',rank(cov(X)),size(X,2)));axis off;
     %
     try
-    subplot(nr,nc,10)
-    plot(diag(v),'ok-')
-    title('Eigenvalue spectrum')
-    box off;
+        subplot(nr,nc,10)
+        plot(diag(v),'ok-')
+        title('Eigenvalue spectrum')
+        box off;
     end
     %
-    subplot(nr,nc,11)
-    hist(diff(find(s ~= 0)));
+    subplot(nr,nc,11)    
+    if length(unique(isi)) > 1
+       hist(isi);
+    else
+       hist(diff(find(s ~= 0)));
+    end    
     title('Distribution of ISIs')
     box off;    
     %
