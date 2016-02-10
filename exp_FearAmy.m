@@ -66,6 +66,8 @@ elseif phase == 1
     %
     p.var.ExpPhase  = phase;
     CalibrateEL;
+    ShowInstruction(299,0);
+          %exp presses button to get next instruction
     for ninst = [3 301:306]
         ShowInstruction(ninst,1);
     end
@@ -74,6 +76,7 @@ elseif phase == 1
     CalibrateEL;
     AskDetection;    
     AskDetectionSelectable;
+    ShowInstruction(14,1);
 end
 
 %get the eyelink file back to this computer
@@ -669,15 +672,15 @@ cleanup;
         %let subject read it and ask confirmation to proceed. But we don't
         %need that in the case of INSTRUCT = 5;
         if waitforkeypress
-            if nInstruct ~= 10%this is for the Reiz kommnt
+            if nInstruct ~= 10%this is for all except Reiz kommt
                 KbStrokeWait(p.ptb.device);
             else
-                WaitSecs(2.5+rand(1));
+                WaitSecs(2.5+rand(1));%reiz kommt
             end
             Screen('FillRect',p.ptb.w,p.var.current_bg);
             t = Screen('Flip',p.ptb.w);
         else
-            if ~ismember(nInstruct,[10 14]);%this is for the Reiz kommnt and danke message at the end
+            if ~ismember(nInstruct,[10 14]);%this is for the Reiz kommt and danke message at the end
                 KbStrokeWait(p.ptb.device);
             else
                 WaitSecs(1+rand(1));
@@ -731,6 +734,10 @@ cleanup;
                 '(Sie müssen also sehr schnell und aufmerksam sein).\n\n' ...
                 'Drücken Sie die obere Taste um fortzufahren.\n' ...
                 ];
+        elseif nInstruct == 299%short instruction before localizer
+            text = ['Die Kalibrierung war erfolgreich.\n'...
+                'Es startet nun eine kurze Vormessung (~2 min), während der Sie nichts tun müssen.\n\n'...
+                ];
         elseif nInstruct == 3%third Instr. of the training phase.
             text = ['Wir sind jetzt kurz vor Beginn des Experiments.\n'...
                 'Wir möchten Sie nun noch einmal an die wichtigsten Punkte erinnern.\n\n'...
@@ -754,6 +761,7 @@ cleanup;
         elseif nInstruct == 306%third Instr. of the training phase.
             text = ['Drücken Sie jetzt die obere Taste, das Experiment startet dann in wenigen Sekunden.\n' ...
                 ];
+            
             
         elseif nInstruct == 4%third Instr. of the training phase.
             text = ['Vor dem Experiment legen wir nun \n' ...
@@ -803,7 +811,9 @@ cleanup;
         elseif nInstruct == 13
             text = {'Überhaupt\nnicht\nwahrscheinlich'};
         elseif nInstruct == 14
-            text = ['Danke...'];
+            text = ['Danke. Den aktiven Teil des Experiment haben Sie nun geschafft.\n'...
+                'Es folgt nun noch eine strukturelle Messung, die ca. 7 Minuten dauert.\n'...
+                'Sie können dabei ruhig die Augen schließen und sich entspannen.\n'];
         else
             text = {''};
         end
