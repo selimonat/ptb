@@ -6,10 +6,10 @@ function [p]=exp_FearAmy(subject,phase,csp,PainThreshold)
 %
 %
 
-debug = 0;%debug mode
+debug = 1;%debug mode
 %replace parallel port function with a dummy function
 if ismac
-%    outp = @(x,y) fprintf('[%i %i]\n',x,y);
+   outp = @(x,y) fprintf('[%i %i]\n',x,y);
 end
 if nargin ~= 4
     fprintf('Wrong number of inputs\n');
@@ -63,9 +63,9 @@ if phase == 0
     PresentStimuli;
     
 elseif phase == 1
-    %
-    p.var.ExpPhase  = phase;
+    %    
     CalibrateEL;
+    p.var.ExpPhase  = phase;%set this after the calibration;
     ShowInstruction(299,0,5);    
     %% Vormessung
     k = 0;
@@ -81,6 +81,7 @@ elseif phase == 1
         ShowInstruction(ninst,1);
     end
     PresentStimuli;
+    WaitSecs(2.5);
     AskStimRating;%make sure that scanner doesnt stop prematurely asa the stim offset
     CalibrateEL;
     AskDetection;    
@@ -226,7 +227,7 @@ cleanup;
         %log the pulse timings.
         mblock_jumps    = logical([1 diff(p.presentation.mblock)]);
         TimeEndStim     = secs(end)- p.ptb.slack;%take the first valid pulse as the end of the last stimulus.        
-        for nTrial  = 1:p.presentation.tTrial;
+        for nTrial  = p.presentation.tTrial-10:p.presentation.tTrial;
             
             %Get the variables that Trial function needs.
             stim_id      = p.presentation.stim_id(nTrial);
@@ -269,9 +270,10 @@ cleanup;
         KbQueueRelease(p.ptb.device);
         %wait 6 seconds for the BOLD signal to come back to the baseline...
         if p.var.ExpPhase > 0
-            WaitPulse(p.keys.pulse,ceil(6./p.mrt.tr));%
-        end
+            WaitPulse(p.keys.pulse,p.mrt.dummy_scan);%
+        end        
         %stop the queue
+        WaitSecs(.5);
         KbQueueStop(p.ptb.device);
         KbQueueRelease(p.ptb.device);
     end
