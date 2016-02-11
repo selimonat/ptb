@@ -9,7 +9,7 @@ function [p]=exp_FearAmy(subject,phase,csp,PainThreshold)
 debug = 1;%debug mode
 %replace parallel port function with a dummy function
 if ismac
-   outp = @(x,y) fprintf('[%i %i]\n',x,y);
+%    outp = @(x,y) fprintf('[%i %i]\n',x,y);
 end
 if nargin ~= 4
     fprintf('Wrong number of inputs\n');
@@ -227,7 +227,7 @@ cleanup;
         %log the pulse timings.
         mblock_jumps    = logical([1 diff(p.presentation.mblock)]);
         TimeEndStim     = secs(end)- p.ptb.slack;%take the first valid pulse as the end of the last stimulus.        
-        for nTrial  = p.presentation.tTrial-10:p.presentation.tTrial;
+        for nTrial  = 1:p.presentation.tTrial;
             
             %Get the variables that Trial function needs.
             stim_id      = p.presentation.stim_id(nTrial);
@@ -271,11 +271,12 @@ cleanup;
         %wait 6 seconds for the BOLD signal to come back to the baseline...
         if p.var.ExpPhase > 0
             WaitPulse(p.keys.pulse,p.mrt.dummy_scan);%
-        end        
-        %stop the queue
-        WaitSecs(.5);
+            fprintf('OK!! Stop the Scanner\n');
+        end                
+        %stop the queue        
         KbQueueStop(p.ptb.device);
         KbQueueRelease(p.ptb.device);
+        WaitSecs(10);
     end
     function [TimeEndStim]=Trial(nTrial,TimeStimOnset , prestimdur, stim_id , ucs  , fix_i, oddball, dist,microblock_jump,mblock_id)
         %get all the times
