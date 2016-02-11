@@ -533,6 +533,8 @@ movefile(p.path.subject,p.path.finalsubject);
         end
         rep    = floor(maxtrials./(tsteps+1));%+1 so that zero can be doubled...
         steps  = [repmat(0:interval:180-interval,1,rep) repmat(0:interval:180-interval,1,rep)*-1 zeros(1,addzeros)];
+        steps(steps==  157.5)  = 11.25;
+        steps(steps== -157.5)  = -11.25;
         
         for n = 1:tchain
             x(:,n)          = Shuffle(steps);
@@ -659,9 +661,11 @@ movefile(p.path.subject,p.path.finalsubject);
         [text]=GetText(nInstruct);
         ShowText(text);
         %let subject read it and ask confirmation to proceed.
-        
-        KbStrokeWait;
-        
+        if nInstruct ~= 2
+            KbStrokeWait;
+        else
+            WaitSecs(2)
+        end
         Screen('FillRect',p.ptb.w,p.stim.bg);
         Screen('Flip',p.ptb.w);
         
@@ -734,7 +738,6 @@ movefile(p.path.subject,p.path.finalsubject);
                 ];
         elseif nInstruct == 2%end
             text = 'Experiment beendet!\n';
-            
         elseif nInstruct==4%break
             text = [sprintf('Sie haben bereits %g von %g Durchgängen geschafft!\n',tt-1,p.psi.presentation.numtrials_chain*tchain)...
                 'Machen Sie eine kurze Pause, lehnen Sie sich gern einen Moment zurück\n'...
