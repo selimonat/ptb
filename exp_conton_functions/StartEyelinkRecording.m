@@ -17,7 +17,7 @@ WaitSecs(0.01);
 Eyelink('Command', 'clear_screen %d', 0);
 
 %draw the image on the screen
-Eyelink('ImageTransfer',thescenepath{thetrial},init.(thephase{phasei}).mx, init.(thephase{phasei}).my, [], [], init.(thephase{phasei}).mx, init.(thephase{phasei}).my);    
+Eyelink('ImageTransfer',thescenepath{thetrial},round(init.(thephase{phasei}).mx-init.(thephase{phasei}).imgsizepix(2)/2), round(init.(thephase{phasei}).my-init.(thephase{phasei}).imgsizepix(1)/2), round(init.(thephase{phasei}).imgsizepix(2)), round(init.(thephase{phasei}).imgsizepix(1)),round(init.(thephase{phasei}).mx-init.(thephase{phasei}).imgsizepix(2)/2), round(init.(thephase{phasei}).my-init.(thephase{phasei}).imgsizepix(1)/2),0);    
 
 %start recording following mode transition and a short pause.
 Eyelink('Command', 'set_idle_mode');

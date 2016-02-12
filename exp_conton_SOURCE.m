@@ -135,7 +135,7 @@ init.(thephase{phasei}).thepath.pics_inn = [init.(thephase{phasei}).thepath.proj
 init.(thephase{phasei}).thepath.pics_out = [init.(thephase{phasei}).thepath.project '\pics\out_color\mean127RGB'];
 init.(thephase{phasei}).thepath.results  = [init.(thephase{phasei}).thepath.project '\data'];
 
-init.(thephase{phasei}).debug      = 1; %debug mode = 1, testing = 0
+init.(thephase{phasei}).debug      = 0; %debug mode = 1, testing = 0
 
 %init.thepath.scripts  = [init.thepath.project '\experiment'];
 %addpath(fullfile(init.thepath.project,'experiment\functions'));
@@ -299,7 +299,7 @@ end
 init.(thephase{phasei}).screens      = Screen('Screens');
 init.(thephase{phasei}).screenNumber = max(init.(thephase{phasei}).screens);%The highest display number is a best guess about where you want the stimulus displayed
 if init.(thephase{phasei}).debug
-    %PsychDebugWindowConfiguration([],0.7)
+    PsychDebugWindowConfiguration([],0.7)
 else HideCursor;
 %         Screen('Preference', 'SkipSyncTests', 1);
 %         skipsync = input('You are skipping the sync test. Type y if you want to continue.','s');
@@ -313,6 +313,8 @@ try
 catch
     [init.(thephase{phasei}).expWin,init.(thephase{phasei}).rect] = PsychImaging('OpenWindow',init.(thephase{phasei}).screenNumber,[0.5 0.5 0.5]);%open onscreen Window
 end
+
+Priority(1);
 
 Screen('TextSize', init.(thephase{phasei}).expWin,24);
 Screen('TextFont', init.(thephase{phasei}).expWin, 'Helvetica');
@@ -355,6 +357,7 @@ if phasei == 2 && parti == 2
     init.el.el.waitformodereadytime     = 25;%ms
     
     EyelinkUpdateDefaults(init.el.el);
+    PsychEyelinkDispatchCallback(init.el.el);
     
     if ~EyelinkInit(init.el.recmode,1);%enable callback = 1 is default; if initialization does not work
         error('Initialization not successful')
@@ -362,7 +365,22 @@ if phasei == 2 && parti == 2
     [init.el.v,init.el.vs] = Eyelink('GetTrackerVersion');
     
     Eyelink('Openfile',[fileX.fileName(8:end-3),'edf']);
+    Eyelink('command', 'add_file_preamble_text ''Recorded by EyelinkToolbox CONTON Experiment (Nora Herweg)''');
+    Eyelink('command', 'screen_pixel_coords = %ld %ld %ld %ld', 0, 0, init.p2.rect(3)-1, init.p2.rect(4)-1);
+    Eyelink('message', 'DISPLAY_COORDS %ld %ld %ld %ld', 0, 0, init.p2.rect(3)-1, init.p2.rect(4)-1);
+    % set calibration type.
+    Eyelink('command','auto_calibration_messages = YES');
+    Eyelink('command', 'calibration_type = HV13');
+    Eyelink('command', 'select_parser_configuration = 1');%this the psychophysical setup, choose 0 for cognitive/standard
+    %what do we want to record
+    Eyelink('command', 'file_sample_data  = LEFT,RIGHT,GAZE,HREF,AREA,GAZERES,STATUS,INPUT,HTARGET');
+    Eyelink('command', 'file_event_filter = LEFT,RIGHT,FIXATION,SACCADE,BLINK,MESSAGE,BUTTON,INPUT');
+    Eyelink('command', 'use_ellipse_fitter = no');
+    Eyelink('command', 'pupil_size_diameter = NO');
     
+    % set sample rate in camera setup screen
+    Eyelink('command', 'sample_rate = %d',1000);
+
     insttexture = Screen('MakeTexture',init.(thephase{phasei}).expWin,uint8(imread(fullfile(init.(thephase{phasei}).thepath.inst,'calibration.png'))));
     Screen('DrawTexture',init.(thephase{phasei}).expWin,insttexture);
     Screen('Flip', init.(thephase{phasei}).expWin);
@@ -372,7 +390,7 @@ if phasei == 2 && parti == 2
     
     EyelinkDoTrackerSetup(init.el.el);
     [~, messageString] = Eyelink('CalMessage');
-    Eyelink('Message','%s',messageString);%
+    Eyelink('Message','%s',messageString);
     WaitSecs(0.05);
     
     [ init.(thephase{phasei}).calibratePupil.sequenceComp,init.(thephase{phasei}).calibratePupil.targetMatX,init.(thephase{phasei}).calibratePupil.targetMatY  ] = calibratePupil(round(init.(thephase{phasei}).imgsizepix),ones(3,4),init.(thephase{phasei}).expWin,2,init.el.el,init.(thephase{phasei}).mx,init.(thephase{phasei}).my,fullfile(init.p2.thepath.inst,'calibration_pupil.png'),fullfile(init.(thephase{phasei}).thepath.results,[fileX.fileName(1:end-3),'png']),init.(thephase{phasei}).device);

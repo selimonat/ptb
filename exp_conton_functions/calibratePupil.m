@@ -68,9 +68,9 @@ imwrite(targetImg,imgpath);
 
 StopEyelinkRecording;
 
-DrawFormattedText(win, 'Kalibrierung beendet. Gleich startet das Experiment','center','center');
+DrawFormattedText(win, 'Kalibrierung beendet. Es folgt eine kurze erste Messung, danach startet das Experiment.','center','center');
 Screen('Flip',win);
-display('Press space to continue');
+display('Start the localizer now. Press space when finished.');
 
 RestrictKeysForKbCheck(KbName('space'));
 KbWait(device, 2);
