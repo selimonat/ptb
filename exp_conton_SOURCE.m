@@ -8,8 +8,6 @@ PsychDefaultSetup(2);
 sca;
 
 warning('replace images 45 and 129 outdoor')
-warning('Mal im debug mode durch start eyelink function gehen?!')
-warning('Priority mode testen')
 %seed random number generator based on the current time
 rng('shuffle');
 
@@ -122,23 +120,26 @@ switch init.(thephase{phasei}).hostname
     case 'triostim1'
         init.(thephase{phasei}).thepath.project       = 'C:\USER\herweg\07_conton\MR';
         init.(thephase{phasei}).thepath.inst     = [init.(thephase{phasei}).thepath.project '\experiment\instructions\buttonbox'];
+        addpath('C:\USER\herweg\ptb\exp_conton_functions');
     case 'isnf01faf2bafa4'
         init.(thephase{phasei}).thepath.project       = 'C:\Users\herweg\Documents\_Projekte\07_conton\MR';
         init.(thephase{phasei}).thepath.inst     = [init.(thephase{phasei}).thepath.project '\experiment\instructions\keyboard'];
         init.(thephase{phasei}).whichmonitor = input('Which monitor? Type s for small, l for large, e for eyetracking.','s');
+        addpath('C:\Users\herweg\Documents\GitHub\ptb\exp_conton_functions');
     case 'etpc'
         init.(thephase{phasei}).thepath.project       = 'C:\USER\herweg\07_conton\MR';
         init.(thephase{phasei}).thepath.inst     = [init.(thephase{phasei}).thepath.project '\experiment\instructions\keyboard'];
+        addpath('C:\USER\herweg\ptb\exp_conton_functions');
 end
 init.(thephase{phasei}).thepath.pics_inn = [init.(thephase{phasei}).thepath.project '\pics\inn_color\mean127RGB'];
 init.(thephase{phasei}).thepath.pics_out = [init.(thephase{phasei}).thepath.project '\pics\out_color\mean127RGB'];
 init.(thephase{phasei}).thepath.results  = [init.(thephase{phasei}).thepath.project '\data'];
 
-init.(thephase{phasei}).debug      = 0; %debug mode = 1, testing = 0
+init.(thephase{phasei}).debug      = 1; %debug mode = 1, testing = 0
 
 %init.thepath.scripts  = [init.thepath.project '\experiment'];
 %addpath(fullfile(init.thepath.project,'experiment\functions'));
-addpath('C:\Users\herweg\Documents\GitHub\ptb\exp_conton_functions');
+
 
 %check if fileX already exists and warn, if overwriting is confirmed load
 if exist(fullfile(init.(thephase{phasei}).thepath.results,fileName),'file')
@@ -298,7 +299,7 @@ end
 init.(thephase{phasei}).screens      = Screen('Screens');
 init.(thephase{phasei}).screenNumber = max(init.(thephase{phasei}).screens);%The highest display number is a best guess about where you want the stimulus displayed
 if init.(thephase{phasei}).debug
-    PsychDebugWindowConfiguration([],0.7)
+    %PsychDebugWindowConfiguration([],0.7)
 else HideCursor;
 %         Screen('Preference', 'SkipSyncTests', 1);
 %         skipsync = input('You are skipping the sync test. Type y if you want to continue.','s');
@@ -342,7 +343,8 @@ if phasei == 2 && parti == 2
     
     init.el.el.targetbeep               = 0;  % sound a beep when a target is presented
     init.el.el.feedbackbeep             = 0;
-    init.el.el.backgroundcolour         = WhiteIndex(init.(thephase{phasei}).expWin)/2;warning('Is this really grey?')
+    init.el.el.backgroundcolour         = WhiteIndex(init.(thephase{phasei}).expWin)/2;
+    init.el.el.foregroundcolour         = WhiteIndex(init.(thephase{phasei}).expWin);
     init.el.el.msgfontcolour            = WhiteIndex(init.(thephase{phasei}).expWin);
     init.el.el.imgtitlecolour           = WhiteIndex(init.(thephase{phasei}).expWin);
     init.el.el.calibrationtargetcolour  = WhiteIndex(init.(thephase{phasei}).expWin);
@@ -373,7 +375,7 @@ if phasei == 2 && parti == 2
     Eyelink('Message','%s',messageString);%
     WaitSecs(0.05);
     
-    %Eyelink('StartRecording');
+    [ init.(thephase{phasei}).calibratePupil.sequenceComp,init.(thephase{phasei}).calibratePupil.targetMatX,init.(thephase{phasei}).calibratePupil.targetMatY  ] = calibratePupil(round(init.(thephase{phasei}).imgsizepix),ones(3,4),init.(thephase{phasei}).expWin,2,init.el.el,init.(thephase{phasei}).mx,init.(thephase{phasei}).my,fullfile(init.p2.thepath.inst,'calibration_pupil.png'),fullfile(init.(thephase{phasei}).thepath.results,[fileX.fileName(1:end-3),'png']),init.(thephase{phasei}).device);
 end
 
 %% START SESSIONS

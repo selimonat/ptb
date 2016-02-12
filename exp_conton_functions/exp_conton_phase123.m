@@ -54,8 +54,9 @@ else
     t_targ = GetSecs-12;
 end
 
-if phasei == 2 && parti == 2 && strcmp(init.p2.hostname,'triostim')
+if phasei == 2 && parti == 2 && strcmp(init.p2.hostname,'triostim1')
     %Wait for dummy scans
+    disp('Waiting for dummy pulses...');
     fileX.MRtiming.start.block1 = WaitPulse(init.mr.ndummy+1,init.(thephase{phasei}).device);%Waits for 6 dummys scans, the 7th is the first scan for analysis
 end
 if phasei ~= 3
@@ -83,7 +84,7 @@ for trial=1:n.(thephase{phasei}).(thepart{parti}).trials
         if rem(trial,n.(thephase{phasei}).test.t2b)==1
             Screen('DrawText', init.(thephase{phasei}).expWin, texttodraw{1,1},texttodraw{1,2},texttodraw{1,3}, [1 1 1]);
             %Wait for last scans
-            if phasei == 2 && parti == 2 &&strcmp(init.p2.hostname,'triostim') && rem(trial,n.(thephase{phasei}).test.tpr)==1
+            if phasei == 2 && parti == 2 &&strcmp(init.p2.hostname,'triostim1') && rem(trial,n.(thephase{phasei}).test.tpr)==1
                 disp('Waiting for last pulses...');
                 fileX.MRtiming.end.(['block',num2str(floor(trial/n.(thephase{phasei}).test.tpr))]) = WaitPulse(init.mr.ndummy+1,init.(thephase{phasei}).device);
             end
@@ -130,8 +131,9 @@ for trial=1:n.(thephase{phasei}).(thepart{parti}).trials
         else
             time2flip = 20;
         end
-        if phasei == 2 && parti == 2 && strcmp(init.p2.hostname,'triostim') && rem(trial,n.(thephase{phasei}).test.tpr)==1
+        if phasei == 2 && parti == 2 && strcmp(init.p2.hostname,'triostim1') && rem(trial,n.(thephase{phasei}).test.tpr)==1
             %Wait for dummy scans
+            disp('Waiting for dummy pulses...');
             fileX.MRtiming.start.(['block',num2str(1+floor(trial/n.(thephase{phasei}).test.tpr))]) = WaitPulse(init.mr.ndummy+1,init.(thephase{phasei}).device);%Waits for 6 dummys scans, the 7th is the first scan for analysis
         end
         
@@ -287,7 +289,7 @@ end
 
 if phasei == 2 && parti == 2
     %Wait for last scans and shut down eyelink
-    if strcmp(init.p2.hostname,'triostim')
+    if strcmp(init.p2.hostname,'triostim1')
         disp('Waiting for last pulses...');
         fileX.MRtiming.end.(['block',num2str(floor(trial/n.(thephase{phasei}).test.tpr))]) = WaitPulse(init.mr.ndummy+1,init.(thephase{phasei}).device);
     end

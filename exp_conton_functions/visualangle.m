@@ -1,17 +1,20 @@
-function [pixelyx] = calcstimsize(init, thephase, phasei)
+function [ px ] = visualangle( desang,init )
+%UNTITLED Summary of this function goes here
+%   resolution should be a vector with [horizontal,vertical]
+%   init should be a structure with field p2.hostname specifying the host
 
-desang = 16;
-resolution = init.(thephase{phasei}).rect(1,3:4);
-
-switch init.(thephase{phasei}).hostname
+resolution = init.p2.rect(1,3:4);
+switch init.p2.hostname
     case 'triostim1'
+        warning('remeasure ET params!')
         if resolution(1) ~= 1024
             warning('Resolution not as expected. Image size might deviate from requested visual angle')
         end
         vdist = 94.5;
-        screen_width = 38.2;
+        screen_width = 38;
         
     case 'etpc'
+        warning('remeasure ET params!')
         
         vdist = 50;
         screen_width = 40.7;
@@ -19,7 +22,7 @@ switch init.(thephase{phasei}).hostname
     case 'isnf01faf2bafa4'
 
         vdist = 55;
-        switch init.(thephase{phasei}).whichmonitor
+        switch init.p2.whichmonitor
             case 's'
             screen_width = 31;
             case 'l'
@@ -29,14 +32,13 @@ switch init.(thephase{phasei}).hostname
             screen_width = 40.7;
         
         end
- 
     otherwise
-        error('add behavioral lab')
-        
+        error('add behavioral lab')       
 end
 
-stim_cm = tand(desang) * vdist;
-pixelx  = stim_cm /(screen_width/resolution(1));
-pixely  = 300/500 * pixelx;%300/500 is the original size of the images in pixels
-pixelyx = [pixely,pixelx];
-        
+cm = tand(desang)*vdist;
+px = cm/(screen_width/resolution(1));
+
+end
+
+
