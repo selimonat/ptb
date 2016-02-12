@@ -6,10 +6,10 @@ function [p]=exp_FearAmy(subject,phase,csp,PainThreshold)
 %
 %
 
-debug = 1;%debug mode
+debug = 0;%debug mode
 %replace parallel port function with a dummy function
 if ismac
-   outp = @(x,y) fprintf('[%i %i]\n',x,y);
+%   outp = @(x,y) fprintf('[%i %i]\n',x,y);
 end
 if nargin ~= 4
     fprintf('Wrong number of inputs\n');
@@ -100,6 +100,17 @@ save(p.path.path_param,'p');
 %move the file to its final location.
 movefile(p.path.subject,p.path.finalsubject);
 %close everything down
+try
+    addpath('/USER/onat/Code/globalfunctions/ssh2_v2_m1_r6/ssh2_v2_m1_r6/')
+    p.path.tarname = [p.path.finalsubject(1:end-1) '.tar'];
+    tar(p.path.tarname,p.path.finalsubject);
+    [a b c] = fileparts( p.path.tarname);
+    cd(a)
+    scp_simple_put('sanportal','onat','',[b c]);
+    fprintf('Copying to neuronass succesfull...\n');
+catch
+    fprintf('Copying to neuronass failed...\n');
+end
 cleanup;
 
     function AskDetectionSelectable
@@ -227,7 +238,7 @@ cleanup;
         %log the pulse timings.
         mblock_jumps    = logical([1 diff(p.presentation.mblock)]);
         TimeEndStim     = secs(end)- p.ptb.slack;%take the first valid pulse as the end of the last stimulus.        
-        for nTrial  = p.presentation.tTrial-5:p.presentation.tTrial;
+        for nTrial  = 1:p.presentation.tTrial;
             
             %Get the variables that Trial function needs.
             stim_id      = p.presentation.stim_id(nTrial);
@@ -268,6 +279,9 @@ cleanup;
             end
         end        
         %wait 6 seconds for the BOLD signal to come back to the baseline...
+        KbQueueStop(p.ptb.device);
+        KbQueueRelease(p.ptb.device);
+        
         if p.var.ExpPhase > 0
             WaitPulse(p.keys.pulse,p.mrt.dummy_scan);%
             fprintf('OK!! Stop the Scanner\n');
@@ -1159,11 +1173,11 @@ cleanup;
             p.var.event_count                = p.var.event_count + 1;
             p.out.log(p.var.event_count,:)   = [ptb_time(iii) event_type event_info(iii) p.var.ExpPhase];
         end
-                plot(p.out.log(1:p.var.event_count,1) - p.out.log(1,1),p.out.log(1:p.var.event_count,2),'o','markersize',10);
-                ylim([-2 8]);
-                set(gca,'ytick',[-2:8],'yticklabel',{'Rating On','Text','Pulse','Tracker+','Cross+','Stim+','CrossMov','UCS','Stim-','Key+','Tracker-'});
-                grid on
-                drawnow;
+%                 plot(p.out.log(1:p.var.event_count,1) - p.out.log(1,1),p.out.log(1:p.var.event_count,2),'o','markersize',10);
+%                 ylim([-2 8]);
+%                 set(gca,'ytick',[-2:8],'yticklabel',{'Rating On','Text','Pulse','Tracker+','Cross+','Stim+','CrossMov','UCS','Stim-','Key+','Tracker-'});
+%                 grid on
+%                 drawnow;
         
     end
     function [secs]=WaitPulse(keycode,n)
