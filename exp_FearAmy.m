@@ -9,7 +9,7 @@ function [p]=exp_FearAmy(subject,phase,csp,PainThreshold)
 debug = 1;%debug mode
 %replace parallel port function with a dummy function
 if ismac
-%    outp = @(x,y) fprintf('[%i %i]\n',x,y);
+   outp = @(x,y) fprintf('[%i %i]\n',x,y);
 end
 if nargin ~= 4
     fprintf('Wrong number of inputs\n');
@@ -227,7 +227,7 @@ cleanup;
         %log the pulse timings.
         mblock_jumps    = logical([1 diff(p.presentation.mblock)]);
         TimeEndStim     = secs(end)- p.ptb.slack;%take the first valid pulse as the end of the last stimulus.        
-        for nTrial  = 1:p.presentation.tTrial;
+        for nTrial  = p.presentation.tTrial-5:p.presentation.tTrial;
             
             %Get the variables that Trial function needs.
             stim_id      = p.presentation.stim_id(nTrial);
@@ -266,14 +266,23 @@ cleanup;
                 p.out.response(nTrial) = 1;
                 fprintf('Subject Pressed the Hit Key!!\n');
             end
-        end
-        KbQueueRelease(p.ptb.device);
+        end        
         %wait 6 seconds for the BOLD signal to come back to the baseline...
         if p.var.ExpPhase > 0
             WaitPulse(p.keys.pulse,p.mrt.dummy_scan);%
             fprintf('OK!! Stop the Scanner\n');
         end                
-        %stop the queue        
+        %dump the final events
+        [keycode, secs] = KbQueueDump;%this contains both the pulses and keypresses.
+        %log everything but "pulse keys" as pulses, not as keypresses.
+        pulses          = (keycode == p.keys.pulse);
+        if any(~pulses);%log keys presses if only there is one
+            Log(secs(~pulses),7,keycode(~pulses));
+        end
+        if any(pulses);%log pulses if only there is one
+            Log(secs(pulses),0,keycode(pulses));
+        end
+        %stop the queue
         KbQueueStop(p.ptb.device);
         KbQueueRelease(p.ptb.device);
         WaitSecs(10);
@@ -909,7 +918,9 @@ cleanup;
             fprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n');
             fprintf('3/ Switch the SCR cable\n');
             fprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n');
-            fprintf('4/ Did the trigger test work?\n!!!!!!You MUST observe 5 pulses on the PHYSIOCOMPUTER!!!!!\n\n\nPress c to send it again, v to continue...\n')
+            fprintf('4/ Button box has to be on\n');
+            fprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n');
+            fprintf('5/ Did the trigger test work?\n!!!!!!You MUST observe 5 pulses on the PHYSIOCOMPUTER!!!!!\n\n\nPress c to send it again, v to continue...\n')
             [~, k] = KbStrokeWait(p.ptb.device);
             k = find(k);
         end        
@@ -1148,11 +1159,11 @@ cleanup;
             p.var.event_count                = p.var.event_count + 1;
             p.out.log(p.var.event_count,:)   = [ptb_time(iii) event_type event_info(iii) p.var.ExpPhase];
         end
-        %         plot(p.out.log(1:p.var.event_count,1) - p.out.log(1,1),p.out.log(1:p.var.event_count,2),'o','markersize',10);
-        %         ylim([-2 8]);
-        %         set(gca,'ytick',[-2:8],'yticklabel',{'Rating On','Text','Pulse','Tracker+','Cross+','Stim+','CrossMov','UCS','Stim-','Key+','Tracker-'});
-        %         grid on
-        %         drawnow;
+                plot(p.out.log(1:p.var.event_count,1) - p.out.log(1,1),p.out.log(1:p.var.event_count,2),'o','markersize',10);
+                ylim([-2 8]);
+                set(gca,'ytick',[-2:8],'yticklabel',{'Rating On','Text','Pulse','Tracker+','Cross+','Stim+','CrossMov','UCS','Stim-','Key+','Tracker-'});
+                grid on
+                drawnow;
         
     end
     function [secs]=WaitPulse(keycode,n)
