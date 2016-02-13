@@ -135,7 +135,7 @@ init.(thephase{phasei}).thepath.pics_inn = [init.(thephase{phasei}).thepath.proj
 init.(thephase{phasei}).thepath.pics_out = [init.(thephase{phasei}).thepath.project '\pics\out_color\mean127RGB'];
 init.(thephase{phasei}).thepath.results  = [init.(thephase{phasei}).thepath.project '\data'];
 
-init.(thephase{phasei}).debug      = 0; %debug mode = 1, testing = 0
+init.(thephase{phasei}).debug      = 1; %debug mode = 1, testing = 0
 
 %init.thepath.scripts  = [init.thepath.project '\experiment'];
 %addpath(fullfile(init.thepath.project,'experiment\functions'));
@@ -299,7 +299,7 @@ end
 init.(thephase{phasei}).screens      = Screen('Screens');
 init.(thephase{phasei}).screenNumber = max(init.(thephase{phasei}).screens);%The highest display number is a best guess about where you want the stimulus displayed
 if init.(thephase{phasei}).debug
-    PsychDebugWindowConfiguration([],0.7)
+    %PsychDebugWindowConfiguration([],0.7)
 else HideCursor;
 %         Screen('Preference', 'SkipSyncTests', 1);
 %         skipsync = input('You are skipping the sync test. Type y if you want to continue.','s');
