@@ -1,6 +1,6 @@
 
 %Contextual Modulation of old/new effects%
-%1-Feb-2016, n.herweg@uke.de
+%14-Feb-2016, n.herweg@uke.de
 
 %% CLEAN UP
 clear all;close all;clc;
@@ -8,7 +8,7 @@ PsychDefaultSetup(2);
 sca;
 
 warning('replace images 45 and 129 outdoor')
-%seed random number generator based on the current time
+%seed random nurmber generator based on the current time
 rng('shuffle');
 
 %% DEFINE VARIABLES
@@ -34,7 +34,7 @@ n.p1.train.t2b      = n.p1.train.trials;
 %Phase 2: Interleaved encoding/retrieval
 time.p2.pic         = time.p1.pic;
 time.p2.fix         = 2.3;%TBD 300ms to save everything & turn on tracker again, distribute trials across TR
-time.p2.resp        = 2.9;%TBD
+time.p2.resp        = 2.8;%TBD
 time.trackerOff     = 1.8;%200 ms to turn off tracker before button presses are recorded
 
 relnew.p2           = 1;%amount of new pictures relative to old ones
@@ -135,7 +135,7 @@ init.(thephase{phasei}).thepath.pics_inn = [init.(thephase{phasei}).thepath.proj
 init.(thephase{phasei}).thepath.pics_out = [init.(thephase{phasei}).thepath.project '\pics\out_color\mean127RGB'];
 init.(thephase{phasei}).thepath.results  = [init.(thephase{phasei}).thepath.project '\data'];
 
-init.(thephase{phasei}).debug      = 1; %debug mode = 1, testing = 0
+init.(thephase{phasei}).debug      = 0; %debug mode = 1, testing = 0
 
 %init.thepath.scripts  = [init.thepath.project '\experiment'];
 %addpath(fullfile(init.thepath.project,'experiment\functions'));
@@ -156,7 +156,7 @@ if exist(fullfile(init.(thephase{phasei}).thepath.results,fileName),'file')
     load(fullfile(newinit.(thephase{phasei}).thepath.results,fileName)); %Loads the .m-file containing the subject's data.
     load(fullfile(newinit.(thephase{phasei}).thepath.results,[fileName(1:end-4),'_init.mat'])); %Loads the .m-file containing the subject's data.
     
-    init.(thephase{phasei}) = [];
+    init.(thephase{phasei}) = []; %this clears former initialization values (e.g. from training)
     init.(thephase{phasei}) = newinit.(thephase{phasei});
     clear newinit
 else
@@ -299,13 +299,16 @@ end
 init.(thephase{phasei}).screens      = Screen('Screens');
 init.(thephase{phasei}).screenNumber = max(init.(thephase{phasei}).screens);%The highest display number is a best guess about where you want the stimulus displayed
 if init.(thephase{phasei}).debug
-    %PsychDebugWindowConfiguration([],0.7)
+    PsychDebugWindowConfiguration([],0.7)
 else HideCursor;
-%         Screen('Preference', 'SkipSyncTests', 1);
-%         skipsync = input('You are skipping the sync test. Type y if you want to continue.','s');
-%         if ~strcmp(skipsync,'y')
-%             error('Experiment aborted');
-%         end
+    
+    if strcmp(init.(thephase{phasei}).hostname,'triostim1')
+        Screen('Preference', 'SkipSyncTests', 1);
+        skipsync = input('You are skipping the sync test. Type y if you want to continue.','s');
+        if ~strcmp(skipsync,'y')
+            error('Experiment aborted');
+        end
+    end
 end
 
 try
@@ -314,7 +317,7 @@ catch
     [init.(thephase{phasei}).expWin,init.(thephase{phasei}).rect] = PsychImaging('OpenWindow',init.(thephase{phasei}).screenNumber,[0.5 0.5 0.5]);%open onscreen Window
 end
 
-Priority(1);
+Priority(MaxPriority(init.(thephase{phasei}).expWin));
 
 Screen('TextSize', init.(thephase{phasei}).expWin,24);
 Screen('TextFont', init.(thephase{phasei}).expWin, 'Helvetica');
@@ -380,7 +383,7 @@ if phasei == 2 && parti == 2
     
     % set sample rate in camera setup screen
     Eyelink('command', 'sample_rate = %d',1000);
-
+    
     insttexture = Screen('MakeTexture',init.(thephase{phasei}).expWin,uint8(imread(fullfile(init.(thephase{phasei}).thepath.inst,'calibration.png'))));
     Screen('DrawTexture',init.(thephase{phasei}).expWin,insttexture);
     Screen('Flip', init.(thephase{phasei}).expWin);
@@ -393,7 +396,7 @@ if phasei == 2 && parti == 2
     Eyelink('Message','%s',messageString);
     WaitSecs(0.05);
     
-    [ init.(thephase{phasei}).calibratePupil.sequenceComp,init.(thephase{phasei}).calibratePupil.targetMatX,init.(thephase{phasei}).calibratePupil.targetMatY  ] = calibratePupil(round(init.(thephase{phasei}).imgsizepix),ones(3,4),init.(thephase{phasei}).expWin,2,init.el.el,init.(thephase{phasei}).mx,init.(thephase{phasei}).my,fullfile(init.p2.thepath.inst,'calibration_pupil.png'),fullfile(init.(thephase{phasei}).thepath.results,[fileX.fileName(1:end-3),'png']),init.(thephase{phasei}).device);
+    [ init.(thephase{phasei}).calibratePupil.sequenceComp,init.(thephase{phasei}).calibratePupil.targetMatX,init.(thephase{phasei}).calibratePupil.targetMatY  ] = calibratePupil(round(init.(thephase{phasei}).imgsizepix),ones(3,4),init.(thephase{phasei}).expWin,2,init.el.el,init.(thephase{phasei}).mx,init.(thephase{phasei}).my,fullfile(init.p2.thepath.inst,'calibration_pupil.png'),fullfile(init.(thephase{phasei}).thepath.results,[fileX.fileName(1:end-3),'png']),init.(thephase{phasei}).device,fullfile(init.p2.thepath.inst,'stim_calibration_pupil_1024triostim1.bmp'));
 end
 
 %% START SESSIONS

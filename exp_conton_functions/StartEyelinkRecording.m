@@ -4,7 +4,8 @@ Eyelink('Message', 'TRIALID: %04d, NEWOLD: %d, ENCRET: %d, FIXX: %04d, FIXY %04d
 % an integration message so that an image can be loaded as
 % overlay background when performing Data Viewer analysis.
 WaitSecs(0.01);
-Eyelink('Message', '!V IMGLOAD CENTER %s %d %d', thescenepath{thetrial}, init.(thephase{phasei}).mx, init.(thephase{phasei}).my);
+
+Eyelink('Message', '!V IMGLOAD CENTER %s %d %d', fullfile('C:\Users\herweg\Documents\_Projekte\07_conton',char(regexp(thescenepath{thetrial},'\MR.+','match'))), init.(thephase{phasei}).mx, init.(thephase{phasei}).my);
 
 % This supplies the title at the bottom of the eyetracker display
 Eyelink('Command', 'record_status_message "Stim: %02d"', thetrial);
@@ -22,6 +23,7 @@ Eyelink('ImageTransfer',thescenepath{thetrial},round(init.(thephase{phasei}).mx-
 %start recording following mode transition and a short pause.
 Eyelink('Command', 'set_idle_mode');
 WaitSecs(0.01);
+
 WaitSecs('UntilTime',t_fix+time.p2.fix-0.3);
 tpre = GetSecs;
 Eyelink('StartRecording');

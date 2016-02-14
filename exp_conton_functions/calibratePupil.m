@@ -1,4 +1,4 @@
-function [ sequenceComp,targetMatX,targetMatY  ] = calibratePupil(areaSize,sampGrid,win,nrep,initel,mx,my,inst,imgpath,device)
+function [ sequenceComp,targetMatX,targetMatY  ] = calibratePupil(areaSize,sampGrid,win,nrep,initel,mx,my,inst,imgpath,device,imgpathdrawback)
 %UNTITLED Summary of this function goes here
 %   areaSize should give the size of the area that should be covered as
 %   [x,y]
@@ -33,6 +33,12 @@ WaitSecs(0.01);
 
 %clear tracker display and draw box at center
 Eyelink('Command', 'clear_screen %d', 0);
+
+try %this might not work when in the wrong environment
+%draw the image on the screen
+Eyelink('ImageTransfer',imgpathdrawback,1, 1, mx*2, my*2,1,1,0);    
+catch
+end
 
 %start recording following mode transition and a short pause.
 Eyelink('Command', 'set_idle_mode');
