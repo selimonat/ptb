@@ -185,10 +185,10 @@ for trial=1:n.(thephase{phasei}).(thepart{parti}).trials
         
         VASscale_mouse(init,0,fileX.keycond);
         
-        while GetSecs<sceneOnset+time.(thephase{phasei}).pic
+        while GetSecs<sceneOnset+time.(thephase{phasei}).pic-0.02
             [Xmouse,Ymouse,Bmouse]         = GetMouse(init.(thephase{phasei}).expWin);
             if Bmouse(1) && ~exist('rating','var')%rating does not exist at first call because no rating output is queried above
-                while Bmouse(1) && GetSecs<sceneOnset+time.(thephase{phasei}).pic %check position until mouse button is released again and keep that final position
+                while Bmouse(1) && GetSecs<sceneOnset+time.(thephase{phasei}).pic-0.02 %check position until mouse button is released again and keep that final position
                     [Xmouse,Ymouse,Bmouse] = GetMouse(init.(thephase{phasei}).expWin);
                     rating                 = VASscale_mouse(init,Xmouse,fileX.keycond);
                 end
