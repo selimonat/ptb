@@ -37,6 +37,7 @@ for k = inst2load.(thephase{phasei}).(thepart{parti})
     Screen('Flip', init.(thephase{phasei}).expWin);
     Screen('Close')
     KbWait([], 2);
+    Screen('Flip', init.(thephase{phasei}).expWin);
     clear insttexture
 end
 

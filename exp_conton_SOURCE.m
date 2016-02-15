@@ -7,7 +7,6 @@ clear all;close all;clc;
 PsychDefaultSetup(2);
 sca;
 
-warning('replace images 45 and 129 outdoor')
 %seed random nurmber generator based on the current time
 rng('shuffle');
 
