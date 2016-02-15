@@ -124,7 +124,7 @@ switch init.(thephase{phasei}).hostname
     case 'isnf01faf2bafa4'
         init.(thephase{phasei}).thepath.project       = 'C:\Users\herweg\Documents\_Projekte\07_conton\MR';
         init.(thephase{phasei}).thepath.inst     = [init.(thephase{phasei}).thepath.project '\experiment\instructions\keyboard'];
-        init.(thephase{phasei}).whichmonitor = input('Which monitor? Type s for small, l for large, e for eyetracking.','s');
+        init.(thephase{phasei}).whichmonitor = input('Which monitor? Type s for small, l for large, e for eyetracking and lab 218.','s');
         addpath('C:\Users\herweg\Documents\GitHub\ptb\exp_conton_functions');
     case 'etpc'
         init.(thephase{phasei}).thepath.project       = 'C:\USER\herweg\07_conton\MR';

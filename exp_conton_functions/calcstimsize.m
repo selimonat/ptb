@@ -18,16 +18,14 @@ switch init.(thephase{phasei}).hostname
         
     case 'isnf01faf2bafa4'
 
-        vdist = 55;
+        vdist = 50;
         switch init.(thephase{phasei}).whichmonitor
             case 's'
             screen_width = 31;
             case 'l'
             screen_width = 51.5;
             case 'e'
-                 vdist = 50;
             screen_width = 40.7;
-        
         end
  
     otherwise
