@@ -4,20 +4,20 @@ switch init.(thephase{phasei}).hostname
     case 'triostim1'
         switch fileX.keycond
             case '1'
-                key.in    = KbName('2@');%left
+                key.in    = KbName('3#');%left
                 key.out   = KbName('1!');%right
-                key.old   = KbName('2@');
+                key.old   = KbName('3#');
                 key.new   = KbName('1!');
             case '2'
-                key.in    = KbName('2@');
+                key.in    = KbName('3#');
                 key.out   = KbName('1!');
                 key.old   = KbName('1!');
-                key.new   = KbName('2@');
+                key.new   = KbName('3#');
             case '3'
                 key.in    = KbName('1!');
-                key.out   = KbName('2@');
+                key.out   = KbName('3#');
                 key.old   = KbName('1!');
-                key.new   = KbName('2@');
+                key.new   = KbName('3#');
             case '4'
                 key.in    = KbName('1!');
                 key.out   = KbName('2@');

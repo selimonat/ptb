@@ -373,7 +373,7 @@ if phasei == 2 && parti == 2
     % set calibration type.
     Eyelink('command','auto_calibration_messages = YES');
     Eyelink('command', 'calibration_type = HV13');
-    Eyelink('command', 'select_parser_configuration = 1');%this the psychophysical setup, choose 0 for cognitive/standard
+    Eyelink('command', 'select_parser_configuration = 0');%1 = psychophysical setup, 0 = cognitive/standard
     %what do we want to record
     Eyelink('command', 'file_sample_data  = LEFT,RIGHT,GAZE,HREF,AREA,GAZERES,STATUS,INPUT,HTARGET');
     Eyelink('command', 'file_event_filter = LEFT,RIGHT,FIXATION,SACCADE,BLINK,MESSAGE,BUTTON,INPUT');
