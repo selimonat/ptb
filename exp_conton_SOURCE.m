@@ -343,6 +343,7 @@ FixCr(10:11,:)=1;FixCr(:,10:11)=1;
 if phasei == 2 && parti == 2
     
     init.el.recmode = init.(thephase{phasei}).debug;%1 = no EL connected, dummy mode; 0 = EL connected
+    init.el.recal = 0;%just to initialize this variable
     init.el.el = EyelinkInitDefaults(init.(thephase{phasei}).expWin);
     
     init.el.el.targetbeep               = 0;  % sound a beep when a target is presented
@@ -367,13 +368,15 @@ if phasei == 2 && parti == 2
     [init.el.v,init.el.vs] = Eyelink('GetTrackerVersion');
     
     Eyelink('Openfile',[fileX.fileName(8:end-3),'edf']);
+    % Start recording
+    Eyelink('Message', 'TRIALID: %04d, NEWOLD: %d, ENCRET: %d, FIXX: %04d, FIXY %04d', 0, 0, 0, init.(thephase{phasei}).mx,init.(thephase{phasei}).my);
     Eyelink('command', 'add_file_preamble_text ''Recorded by EyelinkToolbox CONTON Experiment (Nora Herweg)''');
     Eyelink('command', 'screen_pixel_coords = %ld %ld %ld %ld', 0, 0, init.p2.rect(3)-1, init.p2.rect(4)-1);
     Eyelink('message', 'DISPLAY_COORDS %ld %ld %ld %ld', 0, 0, init.p2.rect(3)-1, init.p2.rect(4)-1);
     % set calibration type.
     Eyelink('command','auto_calibration_messages = YES');
     Eyelink('command', 'calibration_type = HV13');
-    Eyelink('command', 'select_parser_configuration = 0');%1 = psychophysical setup, 0 = cognitive/standard
+    Eyelink('command', 'select_parser_configuration = 1');%1 = psychophysical setup, 0 = cognitive/standard
     %what do we want to record
     Eyelink('command', 'file_sample_data  = LEFT,RIGHT,GAZE,HREF,AREA,GAZERES,STATUS,INPUT,HTARGET');
     Eyelink('command', 'file_event_filter = LEFT,RIGHT,FIXATION,SACCADE,BLINK,MESSAGE,BUTTON,INPUT');

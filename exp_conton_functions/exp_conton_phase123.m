@@ -111,9 +111,14 @@ for trial=1:n.(thephase{phasei}).(thepart{parti}).trials
                 status = Eyelink('DriftCorrStart', init.(thephase{phasei}).mx, init.(thephase{phasei}).my , 1, 1, 1);%open setup for new calibration on press of escape
                 
                 if status == 27
+                    init.el.recal = init.el.recal+1;
+                    Eyelink('Message', 'TRIALID: %04d, NEWOLD: %d, ENCRET: %d, FIXX: %04d, FIXY %04d', 900+init.el.recal, 0, 0, init.(thephase{phasei}).mx,init.(thephase{phasei}).my);
+                    WaitSecs(0.01);
                     [~, messageString] = Eyelink('CalMessage');
                     Eyelink('Message','%s',messageString);%
-                    WaitSecs(0.05);
+                    WaitSecs(0.01);
+                    Eyelink('Message', 'TRIAL OK');
+                    WaitSecs(0.01);
                 end
                 
                 display('Press ''c'' to continue.')

@@ -17,8 +17,6 @@ Screen('Close');
 % Wait for a button press
 KbWait(device,2);
 
-% Start recording
-Eyelink('Message', 'TRIALID: %04d, NEWOLD: %d, ENCRET: %d, FIXX: %04d, FIXY %04d', 0, 0, 0, mx,my);
 % an integration message so that an image can be loaded as
 % overlay background when performing Data Viewer analysis.
 WaitSecs(0.01);
