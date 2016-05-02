@@ -1,16 +1,13 @@
 
 %Contextual Modulation of old/new effects%
-%1-Feb-2016, n.herweg@uke.de
+%14-Feb-2016, n.herweg@uke.de
 
 %% CLEAN UP
 clear all;close all;clc;
 PsychDefaultSetup(2);
 sca;
 
-warning('replace images 45 and 129 outdoor')
-warning('Mal im debug mode durch start eyelink function gehen?!')
-warning('Priority mode testen')
-%seed random number generator based on the current time
+%seed random nurmber generator based on the current time
 rng('shuffle');
 
 %% DEFINE VARIABLES
@@ -36,7 +33,7 @@ n.p1.train.t2b      = n.p1.train.trials;
 %Phase 2: Interleaved encoding/retrieval
 time.p2.pic         = time.p1.pic;
 time.p2.fix         = 2.3;%TBD 300ms to save everything & turn on tracker again, distribute trials across TR
-time.p2.resp        = 2.9;%TBD
+time.p2.resp        = 2.8;%TBD
 time.trackerOff     = 1.8;%200 ms to turn off tracker before button presses are recorded
 
 relnew.p2           = 1;%amount of new pictures relative to old ones
@@ -122,13 +119,16 @@ switch init.(thephase{phasei}).hostname
     case 'triostim1'
         init.(thephase{phasei}).thepath.project       = 'C:\USER\herweg\07_conton\MR';
         init.(thephase{phasei}).thepath.inst     = [init.(thephase{phasei}).thepath.project '\experiment\instructions\buttonbox'];
+        addpath('C:\USER\herweg\ptb\exp_conton_functions');
     case 'isnf01faf2bafa4'
         init.(thephase{phasei}).thepath.project       = 'C:\Users\herweg\Documents\_Projekte\07_conton\MR';
         init.(thephase{phasei}).thepath.inst     = [init.(thephase{phasei}).thepath.project '\experiment\instructions\keyboard'];
-        init.(thephase{phasei}).whichmonitor = input('Which monitor? Type s for small, l for large, e for eyetracking.','s');
+        init.(thephase{phasei}).whichmonitor = input('Which monitor? Type s for small, l for large, e for eyetracking and lab 218.','s');
+        addpath('C:\Users\herweg\Documents\GitHub\ptb\exp_conton_functions');
     case 'etpc'
         init.(thephase{phasei}).thepath.project       = 'C:\USER\herweg\07_conton\MR';
         init.(thephase{phasei}).thepath.inst     = [init.(thephase{phasei}).thepath.project '\experiment\instructions\keyboard'];
+        addpath('C:\USER\herweg\ptb\exp_conton_functions');
 end
 init.(thephase{phasei}).thepath.pics_inn = [init.(thephase{phasei}).thepath.project '\pics\inn_color\mean127RGB'];
 init.(thephase{phasei}).thepath.pics_out = [init.(thephase{phasei}).thepath.project '\pics\out_color\mean127RGB'];
@@ -138,7 +138,7 @@ init.(thephase{phasei}).debug      = 0; %debug mode = 1, testing = 0
 
 %init.thepath.scripts  = [init.thepath.project '\experiment'];
 %addpath(fullfile(init.thepath.project,'experiment\functions'));
-addpath('C:\Users\herweg\Documents\GitHub\ptb\exp_conton_functions');
+
 
 %check if fileX already exists and warn, if overwriting is confirmed load
 if exist(fullfile(init.(thephase{phasei}).thepath.results,fileName),'file')
@@ -155,7 +155,7 @@ if exist(fullfile(init.(thephase{phasei}).thepath.results,fileName),'file')
     load(fullfile(newinit.(thephase{phasei}).thepath.results,fileName)); %Loads the .m-file containing the subject's data.
     load(fullfile(newinit.(thephase{phasei}).thepath.results,[fileName(1:end-4),'_init.mat'])); %Loads the .m-file containing the subject's data.
     
-    init.(thephase{phasei}) = [];
+    init.(thephase{phasei}) = []; %this clears former initialization values (e.g. from training)
     init.(thephase{phasei}) = newinit.(thephase{phasei});
     clear newinit
 else
@@ -300,11 +300,14 @@ init.(thephase{phasei}).screenNumber = max(init.(thephase{phasei}).screens);%The
 if init.(thephase{phasei}).debug
     PsychDebugWindowConfiguration([],0.7)
 else HideCursor;
-%         Screen('Preference', 'SkipSyncTests', 1);
-%         skipsync = input('You are skipping the sync test. Type y if you want to continue.','s');
-%         if ~strcmp(skipsync,'y')
-%             error('Experiment aborted');
-%         end
+    
+    if strcmp(init.(thephase{phasei}).hostname,'triostim1')
+        Screen('Preference', 'SkipSyncTests', 1);
+        skipsync = input('You are skipping the sync test. Type y if you want to continue.','s');
+        if ~strcmp(skipsync,'y')
+            error('Experiment aborted');
+        end
+    end
 end
 
 try
@@ -312,6 +315,8 @@ try
 catch
     [init.(thephase{phasei}).expWin,init.(thephase{phasei}).rect] = PsychImaging('OpenWindow',init.(thephase{phasei}).screenNumber,[0.5 0.5 0.5]);%open onscreen Window
 end
+
+Priority(MaxPriority(init.(thephase{phasei}).expWin));
 
 Screen('TextSize', init.(thephase{phasei}).expWin,24);
 Screen('TextFont', init.(thephase{phasei}).expWin, 'Helvetica');
@@ -338,11 +343,13 @@ FixCr(10:11,:)=1;FixCr(:,10:11)=1;
 if phasei == 2 && parti == 2
     
     init.el.recmode = init.(thephase{phasei}).debug;%1 = no EL connected, dummy mode; 0 = EL connected
+    init.el.recal = 0;%just to initialize this variable
     init.el.el = EyelinkInitDefaults(init.(thephase{phasei}).expWin);
     
     init.el.el.targetbeep               = 0;  % sound a beep when a target is presented
     init.el.el.feedbackbeep             = 0;
-    init.el.el.backgroundcolour         = WhiteIndex(init.(thephase{phasei}).expWin)/2;warning('Is this really grey?')
+    init.el.el.backgroundcolour         = WhiteIndex(init.(thephase{phasei}).expWin)/2;
+    init.el.el.foregroundcolour         = WhiteIndex(init.(thephase{phasei}).expWin);
     init.el.el.msgfontcolour            = WhiteIndex(init.(thephase{phasei}).expWin);
     init.el.el.imgtitlecolour           = WhiteIndex(init.(thephase{phasei}).expWin);
     init.el.el.calibrationtargetcolour  = WhiteIndex(init.(thephase{phasei}).expWin);
@@ -353,6 +360,7 @@ if phasei == 2 && parti == 2
     init.el.el.waitformodereadytime     = 25;%ms
     
     EyelinkUpdateDefaults(init.el.el);
+    PsychEyelinkDispatchCallback(init.el.el);
     
     if ~EyelinkInit(init.el.recmode,1);%enable callback = 1 is default; if initialization does not work
         error('Initialization not successful')
@@ -360,6 +368,23 @@ if phasei == 2 && parti == 2
     [init.el.v,init.el.vs] = Eyelink('GetTrackerVersion');
     
     Eyelink('Openfile',[fileX.fileName(8:end-3),'edf']);
+    % Start recording
+    Eyelink('Message', 'TRIALID: %04d, NEWOLD: %d, ENCRET: %d, FIXX: %04d, FIXY %04d', 0, 0, 0, init.(thephase{phasei}).mx,init.(thephase{phasei}).my);
+    Eyelink('command', 'add_file_preamble_text ''Recorded by EyelinkToolbox CONTON Experiment (Nora Herweg)''');
+    Eyelink('command', 'screen_pixel_coords = %ld %ld %ld %ld', 0, 0, init.p2.rect(3)-1, init.p2.rect(4)-1);
+    Eyelink('message', 'DISPLAY_COORDS %ld %ld %ld %ld', 0, 0, init.p2.rect(3)-1, init.p2.rect(4)-1);
+    % set calibration type.
+    Eyelink('command','auto_calibration_messages = YES');
+    Eyelink('command', 'calibration_type = HV13');
+    Eyelink('command', 'select_parser_configuration = 0');%1 = psychophysical setup, 0 = cognitive/standard
+    %what do we want to record
+    Eyelink('command', 'file_sample_data  = LEFT,RIGHT,GAZE,HREF,AREA,GAZERES,STATUS,INPUT,HTARGET');
+    Eyelink('command', 'file_event_filter = LEFT,RIGHT,FIXATION,SACCADE,BLINK,MESSAGE,BUTTON,INPUT');
+    Eyelink('command', 'use_ellipse_fitter = no');
+    Eyelink('command', 'pupil_size_diameter = NO');
+    
+    % set sample rate in camera setup screen
+    Eyelink('command', 'sample_rate = %d',1000);
     
     insttexture = Screen('MakeTexture',init.(thephase{phasei}).expWin,uint8(imread(fullfile(init.(thephase{phasei}).thepath.inst,'calibration.png'))));
     Screen('DrawTexture',init.(thephase{phasei}).expWin,insttexture);
@@ -370,10 +395,10 @@ if phasei == 2 && parti == 2
     
     EyelinkDoTrackerSetup(init.el.el);
     [~, messageString] = Eyelink('CalMessage');
-    Eyelink('Message','%s',messageString);%
+    Eyelink('Message','%s',messageString);
     WaitSecs(0.05);
     
-    %Eyelink('StartRecording');
+    [ init.(thephase{phasei}).calibratePupil.sequenceComp,init.(thephase{phasei}).calibratePupil.targetMatX,init.(thephase{phasei}).calibratePupil.targetMatY  ] = calibratePupil(round(init.(thephase{phasei}).imgsizepix),ones(3,4),init.(thephase{phasei}).expWin,2,init.el.el,init.(thephase{phasei}).mx,init.(thephase{phasei}).my,fullfile(init.p2.thepath.inst,'calibration_pupil.png'),fullfile(init.(thephase{phasei}).thepath.results,[fileX.fileName(1:end-3),'png']),init.(thephase{phasei}).device,fullfile(init.p2.thepath.inst,'stim_calibration_pupil_1024triostim1.bmp'));
 end
 
 %% START SESSIONS

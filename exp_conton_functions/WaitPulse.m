@@ -1,5 +1,4 @@
 function [secs]=WaitPulse(n,device)
-%[secs]=WaitPulse(keycode,n)
 %
 %   This function waits for the Nth upcoming pulse. If N=1, it will wait for
 %   the very next pulse to arrive. 1 MEANS NEXT PULSE. So if you wish to wait
@@ -25,6 +24,7 @@ keys(1,KbName('5%')) = 1;
 KbQueueCreate(device,keys);
 KbQueueStart(device);
 
+disp('Waiting for dummy pulses...');
 secs  = nan(1,n);
 pulse = 0;
 while pulse < n
@@ -32,7 +32,7 @@ while pulse < n
     secs(pulse+1) = KbQueueWait(device);
     pulse         = pulse + 1;
 end
-
+disp('Received dummy pulses!');
 KbQueueRelease(device);
 
 if queuerunning == 1

@@ -1,5 +1,5 @@
 %Contextual Modulation of old/new effects%
-%11-Jan-2016, n.herweg@uke.de
+%14-Feb-2016, n.herweg@uke.de
 
 %% Initialization
 %Timestamp
@@ -13,7 +13,7 @@ fileX.(thephase{phasei}).(thepart{parti})(n.(thephase{phasei}).(thepart{parti}).
 key = counterkeys(init,fileX,thephase,phasei);
 
 %Load images for first block
-[thescenepath,thescene] = LoadStimuli(1,thephase,phasei,thepart,parti,thecat,n,fileX,init);
+[thescenepath,thescene,thescenepath_EL] = LoadStimuli(1,thephase,phasei,thepart,parti,thecat,n,fileX,init);
 
 %Get text length to center text position
 texttodraw{1,1} = 'Kurze Pause!';
@@ -37,6 +37,7 @@ for k = inst2load.(thephase{phasei}).(thepart{parti})
     Screen('Flip', init.(thephase{phasei}).expWin);
     Screen('Close')
     KbWait([], 2);
+    Screen('Flip', init.(thephase{phasei}).expWin);
     clear insttexture
 end
 
@@ -54,7 +55,7 @@ else
     t_targ = GetSecs-12;
 end
 
-if phasei == 2 && parti == 2 && strcmp(init.p2.hostname,'triostim')
+if phasei == 2 && parti == 2 && strcmp(init.p2.hostname,'triostim1')
     %Wait for dummy scans
     fileX.MRtiming.start.block1 = WaitPulse(init.mr.ndummy+1,init.(thephase{phasei}).device);%Waits for 6 dummys scans, the 7th is the first scan for analysis
 end
@@ -73,7 +74,7 @@ clear targstim targtrial targettexture t_targ
 
 %% Start trial loop
 for trial=1:n.(thephase{phasei}).(thepart{parti}).trials
-    
+
     %Break
     if (phasei==2 && rem(trial,n.(thephase{phasei}).test.tpb)==1 && trial>1) || (phasei ~= 2 && rem(trial,n.(thephase{phasei}).test.t2b)==1 && trial>1)%short break after every nth trial and after every block in p2
         
@@ -81,10 +82,11 @@ for trial=1:n.(thephase{phasei}).(thepart{parti}).trials
         Screen('DrawTexture',init.(thephase{phasei}).expWin,coverTexture);
         
         if rem(trial,n.(thephase{phasei}).test.t2b)==1
+            KbQueueStop(init.(thephase{phasei}).device);%Stop and flush running cueue for communication in the break
+            KbQueueFlush(init.(thephase{phasei}).device);
             Screen('DrawText', init.(thephase{phasei}).expWin, texttodraw{1,1},texttodraw{1,2},texttodraw{1,3}, [1 1 1]);
             %Wait for last scans
-            if phasei == 2 && parti == 2 &&strcmp(init.p2.hostname,'triostim') && rem(trial,n.(thephase{phasei}).test.tpr)==1
-                disp('Waiting for last pulses...');
+            if phasei == 2 && parti == 2 &&strcmp(init.p2.hostname,'triostim1') && rem(trial,n.(thephase{phasei}).test.tpr)==1
                 fileX.MRtiming.end.(['block',num2str(floor(trial/n.(thephase{phasei}).test.tpr))]) = WaitPulse(init.mr.ndummy+1,init.(thephase{phasei}).device);
             end
             
@@ -100,7 +102,7 @@ for trial=1:n.(thephase{phasei}).(thepart{parti}).trials
         
         if rem(trial,n.(thephase{phasei}).test.t2b)==1
             %Load images for next block (timing & memory issue)
-            [thescenepath,thescene] = LoadStimuli(trial,thephase,phasei,thepart,parti,thecat,n,fileX,init);
+            [thescenepath,thescene,thescenepath_EL] = LoadStimuli(trial,thephase,phasei,thepart,parti,thecat,n,fileX,init);
             
             save(fullfile(init.(thephase{phasei}).thepath.results,fileX.fileName),'fileX');
             save(fullfile(init.(thephase{phasei}).thepath.results,[fileX.fileName(1:end-4),'_init.mat']),'init');
@@ -109,9 +111,14 @@ for trial=1:n.(thephase{phasei}).(thepart{parti}).trials
                 status = Eyelink('DriftCorrStart', init.(thephase{phasei}).mx, init.(thephase{phasei}).my , 1, 1, 1);%open setup for new calibration on press of escape
                 
                 if status == 27
+                    init.el.recal = init.el.recal+1;
+                    Eyelink('Message', 'TRIALID: %04d, NEWOLD: %d, ENCRET: %d, FIXX: %04d, FIXY %04d', 900+init.el.recal, 0, 0, init.(thephase{phasei}).mx,init.(thephase{phasei}).my);
+                    WaitSecs(0.01);
                     [~, messageString] = Eyelink('CalMessage');
                     Eyelink('Message','%s',messageString);%
-                    WaitSecs(0.05);
+                    WaitSecs(0.01);
+                    Eyelink('Message', 'TRIAL OK');
+                    WaitSecs(0.01);
                 end
                 
                 display('Press ''c'' to continue.')
@@ -130,7 +137,7 @@ for trial=1:n.(thephase{phasei}).(thepart{parti}).trials
         else
             time2flip = 20;
         end
-        if phasei == 2 && parti == 2 && strcmp(init.p2.hostname,'triostim') && rem(trial,n.(thephase{phasei}).test.tpr)==1
+        if phasei == 2 && parti == 2 && strcmp(init.p2.hostname,'triostim1') && rem(trial,n.(thephase{phasei}).test.tpr)==1
             %Wait for dummy scans
             fileX.MRtiming.start.(['block',num2str(1+floor(trial/n.(thephase{phasei}).test.tpr))]) = WaitPulse(init.mr.ndummy+1,init.(thephase{phasei}).device);%Waits for 6 dummys scans, the 7th is the first scan for analysis
         end
@@ -154,15 +161,12 @@ for trial=1:n.(thephase{phasei}).(thepart{parti}).trials
         fixcross = Screen('MakeTexture',init.(thephase{phasei}).expWin,FixCr);
         Screen('DrawTexture',init.(thephase{phasei}).expWin,fixcross);
         t_fix    = Screen('Flip', init.(thephase{phasei}).expWin,fileX.(thephase{phasei}).(thepart{parti})(trial,12)+3-init.(thephase{phasei}).slack);
-        %         if parti == 2
-        %         Eyelink('Message', 'FX Onset at %3d, %3d', init.(thephase{phasei}).mx, init.(thephase{phasei}).my);
-        %         end
         Screen('Close')
     end
     
     if phasei == 2 && parti == 2
         %Turn the eye tracker on prior to stimulus onset
-        [t_trackerOnPre, t_trackerOnPost] = StartEyelinkRecording(trial,init,fileX,thescenepath,thephase,phasei,thepart,parti,t_fix,time);
+        [t_trackerOnPre, t_trackerOnPost] = StartEyelinkRecording(trial,init,fileX,thescenepath_EL,thephase,phasei,thepart,parti,t_fix,time);
     end
     
     %Scene presentation
@@ -179,6 +183,7 @@ for trial=1:n.(thephase{phasei}).(thepart{parti}).trials
     %Collect input
     if phasei ~= 3
         %start collecting input
+        KbQueueFlush(init.(thephase{phasei}).device);
         KbQueueStart(init.(thephase{phasei}).device);
     else
         SetMouse(init.(thephase{phasei}).mx,init.(thephase{phasei}).my+250,init.(thephase{phasei}).screenNumber);
@@ -186,10 +191,10 @@ for trial=1:n.(thephase{phasei}).(thepart{parti}).trials
         
         VASscale_mouse(init,0,fileX.keycond);
         
-        while GetSecs<sceneOnset+time.(thephase{phasei}).pic
+        while GetSecs<sceneOnset+time.(thephase{phasei}).pic-0.02
             [Xmouse,Ymouse,Bmouse]         = GetMouse(init.(thephase{phasei}).expWin);
             if Bmouse(1) && ~exist('rating','var')%rating does not exist at first call because no rating output is queried above
-                while Bmouse(1) && GetSecs<sceneOnset+time.(thephase{phasei}).pic %check position until mouse button is released again and keep that final position
+                while Bmouse(1) && GetSecs<sceneOnset+time.(thephase{phasei}).pic-0.02 %check position until mouse button is released again and keep that final position
                     [Xmouse,Ymouse,Bmouse] = GetMouse(init.(thephase{phasei}).expWin);
                     rating                 = VASscale_mouse(init,Xmouse,fileX.keycond);
                 end
@@ -212,7 +217,7 @@ for trial=1:n.(thephase{phasei}).(thepart{parti}).trials
         t_trackerOff    = StopEyelinkRecording;
     end
     Screen('Close')
-    
+   
     %If necessary go on collecting input
     if phasei == 3 && exist('rating','var') && ~exist('fin','var') % if rating has been started but not finished
         while Bmouse(1) && GetSecs<sceneOnset+time.(thephase{phasei}).resp %check position until mouse button is released again and keep that final position
@@ -244,8 +249,6 @@ for trial=1:n.(thephase{phasei}).(thepart{parti}).trials
     if phasei ~= 3
         WaitSecs('UntilTime',t_scene+time.(thephase{phasei}).resp);
         [keyIsDown, firstPress, firstRelease, lastPress, lastRelease] = KbQueueCheck(init.(thephase{phasei}).device);
-        KbQueueStop(init.(thephase{phasei}).device);%Although a call to KbQueueStart should suffice to flush a queue that is not actively receiving events, KbQueueFlush should be used preferentially to flush events from an actively running queue.
-        KbQueueFlush(init.(thephase{phasei}).device);
     end
     
     %Save everything
@@ -280,15 +283,15 @@ for trial=1:n.(thephase{phasei}).(thepart{parti}).trials
     elseif phasei ~= 3
         fileX.(thephase{phasei}).(thepart{parti})(trial,8)  = 888;%two buttons
     end
-    
-    clearvars -except fileX FixCr init inst2load key n parti phasei relnew t_fix thecat thecond thepart thescene time trial thephase texttodraw thecover thescenepath
+
+    clearvars -except fileX FixCr init inst2load key n parti phasei relnew t_fix thecat thecond thepart thescene time trial thephase texttodraw thecover thescenepath thescenepath_EL
     thescene{trial}=[];
+    
 end
 
 if phasei == 2 && parti == 2
     %Wait for last scans and shut down eyelink
-    if strcmp(init.p2.hostname,'triostim')
-        disp('Waiting for last pulses...');
+    if strcmp(init.p2.hostname,'triostim1')
         fileX.MRtiming.end.(['block',num2str(floor(trial/n.(thephase{phasei}).test.tpr))]) = WaitPulse(init.mr.ndummy+1,init.(thephase{phasei}).device);
     end
     try
