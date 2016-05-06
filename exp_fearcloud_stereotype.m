@@ -5,7 +5,7 @@ function [p]=exp_fearcloud_stereotype(subject,counterbal)
 % Not scannerproof, minimal logging.
 %
 
-debug = 0;%debug mode
+debug = 1;%debug mode
 %set some formerly needed inputs to an arbitrary value, so we don't have to
 %change it all in SetParams
 phase = 1;
@@ -89,6 +89,9 @@ cleanup;
         increment([p.keys.increase p.keys.decrease]) = [1 -1];%key to increment mapping        
         %%
         ok                 = 1;
+        ii                  = Shuffle(1:8);
+        p.stim.circle_file_id = p.stim.circle_file_id(ii);
+        p.stim.circle_order   = p.stim.circle_order(ii);
         while ok                        
             DrawCircle;
             Screen('FrameOval', p.ptb.w, [1 1 0], p.stim.circle_rect(positions(1),:), 2);%draw the marker circle somewhere random initially.
@@ -109,11 +112,12 @@ cleanup;
         Screen('Flip',p.ptb.w);
         p.out.selectedface = [p.out.selectedface p.stim.circle_order(positions(1))];
         p.out.cond       = [p.out.cond cond];
+        fprintf('Subject chose face... %g \n',p.out.selectedface(end));
     end
-    function DrawCircle        
+    function DrawCircle      
         for npos = 1:p.stim.tFace
             Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites_cut(p.stim.circle_file_id(npos)),[],p.stim.circle_rect(npos,:));
-            %Screen('DrawText', p.ptb.w, sprintf('%i_%i_%i',p.stim.circle_order(npos),p.stim.circle_file_id(npos),npos),mean(p.stim.circle_rect(npos,[1 3])) ,mean(p.stim.circle_rect(npos,[2 4])));
+            Screen('DrawText', p.ptb.w, sprintf('%i_%i_%i',p.stim.circle_order(npos),p.stim.circle_file_id(npos),npos),mean(p.stim.circle_rect(npos,[1 3])) ,mean(p.stim.circle_rect(npos,[2 4])));
         end
     end
 
@@ -439,7 +443,7 @@ cleanup;
         %3, 8 ==> Down
         %4, 9 ==> Up (confirm)
         %5    ==> Pulse from the scanner
-        p.keys.confirm                 = KbName('up');
+        p.keys.confirm                 = KbName('return');
         p.keys.increase                = KbName('left');
         p.keys.decrease                = KbName('right');
         p.keys.pulse                   = KbName('5%');
@@ -450,7 +454,6 @@ cleanup;
         else
             p.keys.escape                  = KbName('esc');
         end
-        p.keys.enter                   = KbName('return');
         
         %% %%%%%%%%%%%%%%%%%%%%%%%%%
         %Communication business
@@ -707,30 +710,30 @@ cleanup;
                 'In the following few trials, you will see a circle of faces,\n' ...
                 'from which we ask you to choose one regarding a given question.\n\n' ...
                 'The questions differ from trial to trial, so read each instruction carefully!\n\n' ...
-                'Please confirm that you want to start by pressing the UP arrow key.\n' ...
+                'Please confirm that you want to start by pressing ENTER.\n' ...
                 ];
         elseif nInstruct == 1%male
             
             text = ['Which face do you think is the most MALE face? \n\n' ...
-                'Please use the left/right arrow key to move the circle to the face of your choice\n' ...
-                'and confirm with the UP arrow key.\n' ...
+                'Please use the left/right arrow key to move the marker to the face of your choice\n' ...
+                'and confirm with ENTER.\n' ...
                 ];
         elseif nInstruct == 2%male
             
             text = ['Which face do you think is the most FEMALE face? \n\n' ...
-                'Please use the left/right arrow key to move the circle to the face of your choice\n' ...
-                'and confirm with the UP arrow key.\n' ...
+                'Please use the left/right arrow key to move the marker to the face of your choice\n' ...
+                'and confirm with ENTER.\n' ...
                 ];
             
         elseif nInstruct == 3%age-young
             text = ['Which face do you think is the YOUNGEST face? \n\n' ...
-                'Please use the left/right arrow key to move the circle to the face of your choice\n' ...
-                'and confirm with the UP arrow key.\n' ...
+                'Please use the left/right arrow key to move the marker to the face of your choice\n' ...
+                'and confirm with ENTER.\n' ...
                 ];
         elseif nInstruct == 4%age-old
             text = ['Which face do you think is the OLDEST face? \n\n' ...
-                'Please use the left/right arrow key to move the circle to the face of your choice\n' ...
-                'and confirm with the UP arrow key.\n' ...
+                'Please use the left/right arrow key to move the marker to the face of your choice\n' ...
+                'and confirm with ENTER.\n' ...
                 ];
         elseif nInstruct == 14
             text = ['Thanks!\n'...
@@ -843,6 +846,7 @@ cleanup;
         %% take care of the circle presentation
         %order of faces on the circle that will be shown at the end.
         if phase ~= 0
+            keyboard
             circle_order = Shuffle(unique(p.presentation.dist(p.presentation.dist < 500)));%
             circle_order(end+1)=circle_order(1);
             while any(abs(diff(circle_order)) < 50);%check that neighbors will not be neighbors in the next order.
