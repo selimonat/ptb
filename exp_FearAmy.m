@@ -332,7 +332,10 @@ cleanup;
         %send eyelink and ced a marker asap
         Eyelink('Message', 'Stim Onset');
         Eyelink('Message', 'SYNCTIME');
-        MarkCED( p.com.lpt.address, p.com.lpt.StimOnset );
+        MarkCED( p.com.lpt.address, p.com.lpt.StimOnset );%this actually didn't really work nicely. 
+        %the first stim onset pulse is always missing. This could be due to
+        %the fact that the state of the port was already 1 and thus CED
+        %didn't realize this command.
         if oddball
             MarkCED( p.com.lpt.address, p.com.lpt.oddball );
         end
