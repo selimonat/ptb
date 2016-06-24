@@ -230,11 +230,13 @@ cleanup;
         %Enter the presentation loop and wait for the first pulse to
         %arrive.
         %wait for the dummy scans
-        [secs] = WaitPulse(p.keys.pulse,p.mrt.dummy_scan);%will log it
+        [secs] = WaitPulse(p.keys.pulse,p.mrt.dummy_scan);%will log it        
         KbQueueStop(p.ptb.device);
         WaitSecs(.05);
         KbQueueCreate(p.ptb.device);
-        KbQueueStart(p.ptb.device);
+        KbQueueStart(p.ptb.device);%this means that from now on we are going to log pulses. 
+        %If the scanner by mistake had been started prior to this point
+        %those pulses would have been not logged.
         %log the pulse timings.
         mblock_jumps    = logical([1 diff(p.presentation.mblock)]);
         TimeEndStim     = secs(end)- p.ptb.slack;%take the first valid pulse as the end of the last stimulus.        
