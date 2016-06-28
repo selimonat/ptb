@@ -65,7 +65,7 @@ ShowInstruction(1);
 OK = 1;
 while OK
     
-    current_chain = RandSample(1:tchain,[1 1]);
+    current_chain = PsychRandSample(1:tchain,[1 1]);
     
     
     if PM{current_chain}.stop ~= 1
@@ -92,7 +92,7 @@ while OK
        
         %Present trial here at stimulus intensity PM.xCurrent and collect
         %response
-        direction = RandSample([-1 1],[1 1]);
+        direction = PsychRandSample([-1 1],[1 1]);
         test      = PM{current_chain}.xCurrent * direction + PM{current_chain}.reference_face + csp_degree + PM{current_chain}.reference_circle;
         dummy = test;
         % the computed degree has to stay in the same circle:
