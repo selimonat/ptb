@@ -4,7 +4,7 @@ function [p]=exp_plapil_PFfitting_YN(subject,phase,csp_degree)
 % observer's underlying Psychometric Function (PF).
 % Enter the subject Number as well as the CS+ Face in Degrees (where 00 is
 % 1st face, and so)
-simulation_mode = 1;
+simulation_mode = 0;
 ncircle=1;
 
 ListenChar(2);%disable pressed keys to be spitted around
@@ -22,7 +22,7 @@ p  = [];
 SetParams;
 SetPTB;
 
-% InitEyeLink;
+InitEyeLink;
 WaitSecs(2);
 %calibrate if we are at the scanner computer.
 if strcmp(p.hostname,'triostim1') || strcmp(p.hostname,'etpc');
@@ -68,7 +68,7 @@ ShowInstruction(1);
 OK = 1;
 while OK
     
-    current_chain = PsychRandSample(1:tchain,[1 1]);
+    current_chain = RandSample(1:tchain,[1 1]);
     
     
     if PM{current_chain}.stop ~= 1
@@ -96,7 +96,7 @@ while OK
        
         %Present trial here at stimulus intensity PM.xCurrent and collect
         %response
-        direction = PsychRandSample([-1 1],[1 1]);
+        direction = RandSample([-1 1],[1 1]);
         fprintf('PM.x is now %4.2f \n',direction*PM{current_chain}.x(cc(current_chain)))
         test      = PM{current_chain}.xCurrent * direction + PM{current_chain}.reference_face + csp_degree + PM{current_chain}.reference_circle;
         dummy = test;
@@ -176,7 +176,7 @@ while OK
     
         %updating PM
         PM{current_chain} = PAL_AMPM_updatePM(PM{current_chain},response);
-        PM{current_chain}.threshold
+        fprintf('Estimated Threshold after trial %d: %g \n',tt,PM{current_chain}.threshold(end))
         SetLog;
         %iteration control
         dummy = cell2mat(PM);
@@ -316,7 +316,7 @@ movefile(p.path.subject,p.path.finalsubject);
     
 
     function SetPTB
-    debug = 1;
+    debug = 0;
         %Open a graphics window using PTB
         screens       =  Screen('Screens');
         [~, hostname] = system('hostname');
