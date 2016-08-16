@@ -1,4 +1,4 @@
-function [p]=exp_feargen_PFfitting_YN_laptop(subject,phase,csp_degree)
+function [p]=exp_plapil_PFfitting_YN(subject,phase,csp_degree)
 
 % Diskrimination Task estimating the Threshold alpha and Slope beta of an
 % observer's underlying Psychometric Function (PF).
@@ -22,7 +22,7 @@ p  = [];
 SetParams;
 SetPTB;
 
-%InitEyeLink;
+InitEyeLink;
 WaitSecs(2);
 %calibrate if we are at the scanner computer.
 if strcmp(p.hostname,'triostim1') || strcmp(p.hostname,'etpc');
@@ -38,7 +38,10 @@ breakpoint=50;
 
 % counter for within chain trials (cc) and global trials (tt)
 cc=zeros(1,tchain);
-tt=0; 
+tt=0;
+%trialID is counting every single face (2 per Trial_YN), need that for
+%Eyelink
+trialID=0;
 
 
 for nc = 1:tchain
@@ -65,16 +68,17 @@ ShowInstruction(1);
 OK = 1;
 while OK
     
-    current_chain = PsychRandSample(1:tchain,[1 1]);
+    current_chain = RandSample(1:tchain,[1 1]);
     
     
     if PM{current_chain}.stop ~= 1
         tt=tt+1;
         % enter in break loop
             if (tt~=1 && mod(tt,breakpoint)==1 && simulation_mode==0);
+                save(p.path.path_param,'p');
+                memory
                 ShowInstruction(4);
-                ShowInstruction(1);
-                %CalibrateEL;
+                CalibrateEL;
             end
         cc(current_chain)=cc(current_chain)+1;
         fprintf('Chain %4.2f , Trial %02d\n',current_chain,cc(current_chain))
@@ -83,22 +87,24 @@ while OK
         if p.psi.p0 ~= 0
            if any(p.psi.zerotrials(:,current_chain)==cc(current_chain))
              fprintf('Forcing x=0 Trial...\n')
-             PM{current_chain}.xCurrent=0;
-             PM{current_chain}.x(cc(current_chain))=0;
+             PM{current_chain}.xCurrent = 11.25;
+             PM{current_chain}.x(cc(current_chain)) = 11.25;
             
            end
         end
-        fprintf('PM.x is now %4.2f \n',PM{current_chain}.x(cc(current_chain)))
+        
        
         %Present trial here at stimulus intensity PM.xCurrent and collect
         %response
-        direction = PsychRandSample([-1 1],[1 1]);
+        direction = RandSample([-1 1],[1 1]);
+        fprintf('PM.x is now %4.2f \n',direction*PM{current_chain}.x(cc(current_chain)))
         test      = PM{current_chain}.xCurrent * direction + PM{current_chain}.reference_face + csp_degree + PM{current_chain}.reference_circle;
         dummy = test;
         % the computed degree has to stay in the same circle:
         % whenever it goes left from the 00 degrees (360 at foreign),
         % there's a problem
-        % for chain 1 and 2, values below 0  have to be shifted 360 degrees,
+        % for chain 1 and 2, values below 0  have to be shifted 360
+        % degrees,
         % for chain 3 and 4, values below 360 have to be shifted 360 degrees
         % e.g., -45 has to be 315 in chain 1; 315 has to be 675 in chain 3
         % was done using mod... adding (0 0 360 360) (this is the last part)
@@ -112,42 +118,50 @@ while OK
         % fprintf('Chain: %03d\nxCurrent: %6.2f\nDirection:%6.2f\n %6.2f -> %6.2f vs. %6.2f\n',current_chain,PM{current_chain}.xCurrent,direction,dummy,test,ref);
         % start Trial
         fprintf('Starting Trial %03d/%03d.\n',tt,tchain*p.psi.numtrials)
-      
-        [test_face, ref_face, signal] = Trial_YN(ref,test,circle_id(current_chain),tt);
-      
+        
+        [test_face, ref_face, signal,trialID] = Trial_YN(trialID,ref,test,circle_id(current_chain),tt);
+        
         fprintf('Rating.\n')
+        Screen('Textsize', p.ptb.w,p.text.fontsize);
         %Rating Slider
         %
-        message1 = 'Waren die Gesichter unterschiedlich oder gleich?\n';
+        message1 = 'Waren die Muster unterschiedlich oder gleich?\n';
         message2 = 'Bewege den "Zeiger" mit der rechten und linken Pfeiltaste\n und bestätige deine Einschätzung mit der oberen Pfeiltaste.';
         if ~simulation_mode
-            [response_subj]      = RatingSlider(p.ptb.rect,2,Shuffle(1:2,1),p.keys.increase,p.keys.decrease,p.keys.confirm,{ 'unterschiedlich' 'gleich'},message1,message2,0);
+           [response_subj]      = RatingSlider(p.ptb.rect,2,Shuffle(1:2,1),p.keys.increase,p.keys.decrease,p.keys.confirm,{ 'unterschiedlich' 'gleich'},message1,message2,0);
             
             % see if subject found the different pair of faces...
             % buttonpress left (Yes) is response_subj=2, right alternative (No) outputs a 1.
+            % note that response=1 only means "yes", and not correct or anything
+            sdt=NaN;
             if (response_subj == 2 && signal == 1)
                 response=1;
-%                 fprintf('...Hit. \n')
+                fprintf('...Hit. \n')
+                sdt=1;
             elseif (response_subj==1 && signal == 1)
                 response=0;
-%                 fprintf('...Miss. \n')
+                fprintf('...Miss. \n')
+                sdt=3;
             elseif (response_subj == 2 && signal==0)
                 response=1;
-%                 fprintf('...False Alarm. \n')
+                fprintf('...False Alarm. \n')
+                sdt=2;
             elseif (response_subj == 1 && signal == 0)
                 response=0;
-%                 fprintf('...Correct Rejection. \n')
+                fprintf('...Correct Rejection. \n')
+                sdt=4;
             else
-%                 fprintf('error in the answer algorithm! \n')
+                fprintf('error in the answer algorithm! \n')
             end
             
         else
             true_a = 45;
-            true_s = 10;
+            true_s = 3;
             true_g = 0.2;
             true_l = 0.02;
-            response = ObserverResponseFunction(p.psi.PFfit,true_a,1/true_s,true_g,true_l,PM{current_chain}.xCurrent);
-            
+%             response = ObserverResponseFunction(p.psi.PFfit,true_a,1/true_s,true_g,true_l,PM{current_chain}.xCurrent);
+            response = round(rand(1));
+            sdt = 1;
                     
                        
         end
@@ -162,6 +176,7 @@ while OK
     
         %updating PM
         PM{current_chain} = PAL_AMPM_updatePM(PM{current_chain},response);
+        fprintf('Estimated Threshold after trial %d: %g \n',tt,PM{current_chain}.threshold(end))
         SetLog;
         %iteration control
         dummy = cell2mat(PM);
@@ -177,6 +192,7 @@ while OK
     save(p.path.path_param,'p');
 
 end
+%end of Experiment, shown to subject
 ShowInstruction(2);
 %Print summary of results to screen
 for chain=1:tchain
@@ -185,7 +201,7 @@ fprintf('Chain %g: Estimated Slope (beta): %4.2f \n',chain,PM{chain}.slope(end))
 end
 
 %get the eyelink file back to this computer
-%StopEyelink(p.path.edf);
+StopEyelink(p.path.edf);
 
 
 %save([p.path.dropbox 'Log' num2str(subject) '.mat'],'p.psi.log')
@@ -201,7 +217,8 @@ movefile(p.path.subject,p.path.finalsubject);
 
     
 
-    function  [test_face, ref_face, signal] = Trial_YN(ref_stim,test_stim,last_face_of_circle,tt)
+    function  [test_face,ref_face,signal,trialID] = Trial_YN(trialID,ref_stim,test_stim,last_face_of_circle,tt)
+        Screen('Textsize', p.ptb.w,p.text.fixsize);
         % computes the trial FACES, using the test/ref information input
         % values (in Deg)
         
@@ -210,7 +227,8 @@ movefile(p.path.subject,p.path.finalsubject);
         trial      = mod(round(trial),last_face_of_circle)+1;
         ref_face   = trial(1);
         test_face  = trial(2);
-        trial      = Shuffle(trial);
+        [trial,idx]= Shuffle(trial);
+        fprintf('Faces: %d %d \n',trial(1),trial(2));
         %compute if trial had different faces or not
         %if trial(1)=trial(2), they were the same and subject has to
         %answer with 'no' (right option, is 1), else means correct hit
@@ -220,65 +238,85 @@ movefile(p.path.subject,p.path.finalsubject);
         else
             signal = 1;
         end
-   
-       % %create two pink noise textures
-%         pink_noise   = Image2PinkNoise(p.stim.stim(:,:,trial(1)));
-%         pink_noise   = repmat((pink_noise-mean(pink_noise(:))).*p.ptb.tw+mean(pink_noise(:)),[1 1 3]);
-%         p.ptb.stim_sprites(p.stim.tFile+1) = Screen('MakeTexture', p.ptb.w, pink_noise);
-%         pink_noise   = Image2PinkNoise(p.stim.stim(:,:,trial(2)));
-%         pink_noise   = repmat((pink_noise-mean(pink_noise(:))).*p.ptb.tw+mean(pink_noise(:)),[1 1 3]);
-%         p.ptb.stim_sprites(p.stim.tFile+2) = Screen('MakeTexture', p.ptb.w, pink_noise);
-        %%sprite_index = [pink_noise FixationCross trial(1) FixationCross pink_noise trial(2) NaN];
+       
         
+       trial_deg = [ref_stim test_stim];
+       isref=double(trial==ref_face) ;
+       delta_ref   = MinimumAngleQuartile([trial_deg(idx(1)) trial_deg(idx(2))],ref);
+       delta_csp   = MinimumAngleQuartile([trial_deg(idx(1)) trial_deg(idx(2))],csp_degree); % ...
+       abs_FGangle = [trial_deg(idx(1)) trial_deg(idx(2))];
+       
+
         %get fixation crosses and onsets from p parameter
         fix        = round(p.ptb.CrossPositions(tt,:));
+         
+       
         
-        %StartEyelinkRecording(tt,phase,trial(1),fix(1),fix(2));
+        trialID=trialID+1;
+       
         
         %GetSecs so that the onsets can be defined
-        onsets     = p.trial.onsets + GetSecs;
-%         %pink_noise 1
-%         
-%         Screen('DrawTexture', p.ptb.w,p.ptb.stim_sprites(p.stim.tFile+1));
-%         Eyelink('Message', 'Pink Noise 1 Onset');
-%         Screen('Flip',p.ptb.w,onsets(1),0);
+        
+        onsets = 0.25+GetSecs;%fix1 onset
+        onsets = [onsets onsets(end)+p.duration.fix+rand(1)*.25];%stim1 onset
+        onsets = [onsets onsets(end)+p.duration.stim];%stim1 offset
+        fixdelta=p.duration.fix+rand(1)*.25;
+        onsets = [onsets onsets(end)+1.5-fixdelta];%fix2 onset
+        onsets = [onsets onsets(end)+fixdelta];%stim2 onset
+        onsets = [onsets onsets(end)+p.duration.stim];%stim2 offset
+
+        
        
+        
         %fixation cross 1
-        Screen('DrawText', p.ptb.w, double('+'),fix(1),fix(2), p.stim.white);
-%Eyelink('Message', 'FX 1 Onset at %d %d',fix(1),fix(2));
+        FixCross = [fix(1)-1,fix(2)-20,fix(1)+1,fix(2)+20;fix(1)-20,fix(2)-1,fix(1)+20,fix(2)+1];
+        Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');
+        Eyelink('Message', 'FX Onset at %d %d',fix(1),fix(2));
         Screen('Flip',p.ptb.w,onsets(1),0);
+        StartEyelinkRecording(trialID,phase,cc(current_chain),tt,current_chain,isref(1),trial(1),delta_ref(1),delta_csp(1),abs_FGangle(1),fix(1),fix(2));
+      
        
         %face trial(1)
         Screen('DrawTexture',p.ptb.w,p.ptb.stim_sprites(trial(1)));
-% Eyelink('Message', 'Stim 1 Onset');
         Screen('Flip',p.ptb.w,onsets(2),0);
        
-%StopEyelinkRecording;
+        Eyelink('Message', 'Stim Onset');
+        Eyelink('Message', 'SYNCTIME');
+        while GetSecs < onsets(3)
+        end
+        Screen('Flip',p.ptb.w,onsets(3),0);
         
+        StopEyelinkRecording;
         %second face of the trial
-%StartEyelinkRecording(tt,phase,trial(2),fix(3),fix(4));
-%         %pink_noise 2
-%         Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(p.stim.tFile+2));
-%         Eyelink('Message', 'Pink Noise 2 Onset');
-%         Screen('Flip',p.ptb.w,onsets(4),0);
+        trialID=trialID+1;
+       
+
         
         %fixation cross 2
-        Screen('DrawText', p.ptb.w, double('+'), fix(3),fix(4), p.stim.white);
-%Eyelink('Message', 'FX Onset 2 at %d %d',fix(3),fix(4));
-        Screen('Flip',p.ptb.w,onsets(3),0);
+        FixCross = [fix(3)-1,fix(4)-20,fix(3)+1,fix(4)+20;fix(3)-20,fix(4)-1,fix(3)+20,fix(4)+1];
+        Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');
+        Eyelink('Message', 'FX Onset at %d %d',fix(3),fix(4));
+        Screen('Flip',p.ptb.w,onsets(4),0);
+        StartEyelinkRecording(trialID,phase,cc(current_chain),tt,current_chain,isref(2),trial(2),delta_ref(2),delta_csp(2),abs_FGangle(2),fix(3),fix(4));
        
         %face trial(2)
         Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(trial(2)));
-%Eyelink('Message', 'Stim 2 Onset');
-        Screen('Flip',p.ptb.w,onsets(4),0);
-        while GetSecs<onsets(5)
+        Screen('Flip',p.ptb.w,onsets(5),0);
+        
+        Eyelink('Message', 'Stim Onset');
+        Eyelink('Message', 'SYNCTIME');
+
+        while GetSecs<onsets(6)
         end
-%StopEyelinkRecording;
+        Screen('Flip',p.ptb.w,onsets(6),0);
+        StopEyelinkRecording;
+       
+
     end
     
 
     function SetPTB
-    debug =0;
+    debug = 0;
         %Open a graphics window using PTB
         screens       =  Screen('Screens');
         [~, hostname] = system('hostname');
@@ -322,12 +360,12 @@ movefile(p.path.subject,p.path.finalsubject);
         for nStim = 1:p.stim.tFile
                 filename       = p.stim.files(nStim,:);
                 [im , ~, ~]    = imread(filename);
-                %what is this good for?
-                if ndims(im) == 3
-                    p.stim.stim(:,:,nStim)    = rgb2gray(im);
-                else
-                    p.stim.stim(:,:,nStim)    = im;
-                end
+%                 %what is this good for?
+%                 if ndims(im) == 3
+%                     p.stim.stim(:,:,nStim)    = rgb2gray(im);
+%                 else
+%                     p.stim.stim(:,:,nStim)    = im;
+%                 end
                 p.ptb.stim_sprites(nStim)     = Screen('MakeTexture', p.ptb.w, im );
         end
         p.stim.delta = ncircle*360/p.stim.tFile;
@@ -338,8 +376,8 @@ movefile(p.path.subject,p.path.finalsubject);
         
         
         function  [cross_positions]=FixationCrossPool
-            radius   = 490; %in px (around 14 degrees (37 px/deg))
-            center   = [p.ptb.width/2 p.ptb.height/2];
+            radius   = 290; %in px (around 14 degrees (37 px/deg))
+            center   = [800 600];
             
             %setting up fixation cross pool vector of size
             % totaltrials x 4 (face_1_x face_1_y face_2_x face_2_y)
@@ -367,16 +405,16 @@ movefile(p.path.subject,p.path.finalsubject);
         elseif strcmp(p.hostname,'etpc')
             p.path.baselocation       = 'C:\Users\onat\Documents\Experiments\';
         else
-            p.path.baselocation       = 'C:\Users\onat\Documents\Experiments\';
+            p.path.baselocation       = 'C:\Users\Lea\Documents\Experiments\';
         end
         
-        p.path.experiment             = [p.path.baselocation 'feargen_master\'];
-        p.path.stimfolder             = 'stim\32discriminationsmall';
+        p.path.experiment             = [p.path.baselocation 'plapil\'];
+        p.path.stimfolder             = 'stim\32discrimination';
         p.path.stim                   = [p.path.experiment  p.path.stimfolder '\'];
         p.path.stim24                 = [p.path.experiment  p.path.stimfolder '\' '24bits' '\'];
         %
         p.subID                       = sprintf('sub%02d',subject);
-        p.path.edf                    = char(sprintf([p.subID 'p%02d' ],phase));
+        p.path.edf                    = sprintf(['s%03dp%02d' ],subject,phase);
         timestamp                     = datestr(now,30);
         p.path.subject                = [p.path.experiment 'data\tmp\' p.subID '_' timestamp '\'];
         p.path.finalsubject           = [p.path.experiment 'data\' p.subID '_' timestamp '\' ];
@@ -390,7 +428,7 @@ movefile(p.path.subject,p.path.finalsubject);
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
         %get stim files
      
-          dummy = dir([p.path.stim '*.bmp']);
+          dummy = dir([p.path.stim '*.png']);
             p.stim.files    = [repmat([fileparts(p.path.stim) filesep],length(dummy),1) vertcat(dummy(:).name)];
             p.stim.label = {dummy(:).name};  
         
@@ -416,7 +454,7 @@ movefile(p.path.subject,p.path.finalsubject);
         %font size and background gray level
         p.text.fontname                = 'Times New Roman';
         p.text.fontsize                = 18;%30;
-        p.text.fixationsize            = 60;
+        p.text.fixsize                 = 60;
         %rating business
         p.rating.division              = 2;%number of divisions for the rating slider
         %
@@ -449,9 +487,10 @@ movefile(p.path.subject,p.path.finalsubject);
         %time2fixationcross->cross2onset->onset2shock->shock2offset
         %these (duration.BLA) are average duration values:
 %         1.5 0.5 0.5
-        p.duration.stim                = 1.5;%s     
-        p.duration.fix                 = 0.85;
-        %p.duration.gray                = .1;
+        p.duration.stim                = 1.0;%s     
+        %p.duration.pink                = 0.7;%0.7
+        p.duration.fix                 = .85;
+        %p.duration.gray                = 0;
         if simulation_mode
             p.duration.stim                = .001;%s
             p.duration.pink                = .001;
@@ -464,49 +503,26 @@ movefile(p.path.subject,p.path.finalsubject);
         p.stim.cs_plus                 = csp_degree;%index of cs stimulus, this is the one paired to shock
         %p.stim.cs_neg                  = csn;
       
-% 
-%         event_onsets = 0.15;
-%         event_onsets = [event_onsets event_onsets(end)+p.duration.pink];
-%         event_onsets = [event_onsets event_onsets(end)+p.duration.fix];
-%         event_onsets = [event_onsets event_onsets(end)+p.duration.stim];
-%         event_onsets = [event_onsets event_onsets(end)+p.duration.pink];
-%         event_onsets = [event_onsets event_onsets(end)+p.duration.fix];
-%         event_onsets = [event_onsets event_onsets(end)+p.duration.stim];
-%         %event_onsets = [event_onsets event_onsets(end)+p.duration.gray];
-        
-        event_onsets = 0.15;
-        event_onsets = [event_onsets event_onsets(end)+p.duration.fix];
-        event_onsets = [event_onsets event_onsets(end)+p.duration.stim];
-        event_onsets = [event_onsets event_onsets(end)+p.duration.fix];
-        event_onsets = [event_onsets event_onsets(end)+p.duration.stim];
-        %event_onsets = [event_onsets event_onsets(end)+p.duration.gray];
 
-        p.trial.onsets = event_onsets;
-%         p.out.rating                  = [];
-%         p.out.log                     = zeros(p.psi.numtrials*4,4).*NaN;
-
-
-        
-        
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %priors for the PSI fitting structure PM
         
         %% Define prior, these are always the same so defining once is enough.
-        p.psi.prioraaRange    = linspace(0,100,50); %values of aa to include in prior
+        p.psi.prioraaRange    = linspace(1,170,50); %values of aa to include in prior
         %IS THIS RANGE OF BETA VALUES REASONABLE?
-        p.psi.priorBetaRange  = linspace(-2,0,50);  %values of log_10(beta) to include in prior
+        p.psi.priorBetaRange  = linspace(.1,10,50);  %values of beta to include in prior
         %Range of lapse rates for the marginalized estimation of lambda
         %Prins(2013) uses 0:0.01:0.1;
-        p.psi.priorLambdaRange = 0:0.01:0.05;
+        p.psi.priorLambdaRange = 0:0.01:0.1;
         %Range of guess rates (Prins: 0:0.03:0.3);
         p.psi.priorGammaRange = 0:0.03:0.3;
         % Stimulus values to select from (need not be equally spaced)
-        p.psi.stimRange       = 0:11.25:100;
+        p.psi.stimRange       = 0:11.25:169;
         %Function to be fitted during procedure
-        p.psi.PFfit = @PAL_CumulativeNormal;    %Shape to be assumed
+        p.psi.PFfit = @PAL_Weibull;    %Shape to be assumed
         
         %Termination after n Trials
-        p.psi.numtrials      = 50;
+        p.psi.numtrials      = 100;
         % percentage of obligatory x=0 trials
         p.psi.p0  = .2;
         
@@ -514,20 +530,11 @@ movefile(p.path.subject,p.path.finalsubject);
         PM = [];
         face_shift   = [0 180 0 180];
         circle_shift = [0 0 360 360];
-        circle_id    = [1 1 2 2]*p.stim.tFace/2;
+        circle_id = [1 1]*p.stim.tFace;
+        %circle_id    = [1 1 2 2]*p.stim.tFace/2 % for 2 circles;
         tchain = 2;
-        ncircle=1;
 
         
-   
-
-        
-     
-
-
-
-
-
         %Save the stuff
         save(p.path.path_param,'p');
         %
@@ -597,13 +604,32 @@ movefile(p.path.subject,p.path.finalsubject);
         end
     end
 
-    function shuffled = Shuffle(vector,N)
+    function [shuffled,idx] = Shuffle(vector,N)
         %takes first N from the SHUFFLED before outputting. This function
         %could be used as a replacement for randsample
         if nargin < 2;N = length(vector);end
         [dummy, idx]    = sort(rand([1 length(vector)]));
         shuffled        = vector(idx(1:N));
         shuffled        = shuffled(:);
+    end
+
+    function [a]=MinimumAngleQuartile(y,x)
+        %[a]=MinimumAngle(x,y);
+        %
+        %finds the minimum angle between two angles given in degrees, the answer is
+        %also in degrees. The clockwise distances from Y to X are considered as
+        %positive. Opposite angles are considered as positive 180.
+        
+        x  = deg2rad(x);
+        y  = deg2rad(y);
+        
+        a  = atan2(sin(x-y), cos(x-y));
+        
+        a  = -round(((180/pi)*a)*4)/4;
+        
+        if any(abs(a) == 180);
+            a(abs(a) == 180) = 180;
+        end
     end
 
     function ShowInstruction(nInstruct)
@@ -639,30 +665,31 @@ movefile(p.path.subject,p.path.finalsubject);
         
         if nInstruct == 0%Eyetracking calibration
                 
-                text = ['Um Deine Augenbewegungen zu messen, \n' ...
+                text = ['Um Ihre Augenbewegungen zu messen, \n' ...
                         'müssen wir jetzt den Eye-Tracker kalibrieren.\n' ...
-                        'Dazu zeigen wir Dir einige Punkte auf dem Bildschirm, \n' ...
-                        'bei denen Du Dich wie folgt verhältst:\n' ...
-                        'Bitte fixiere das Fixationskreuz und \n' ...
-                        'bleibe so lange darauf, wie es zu sehen ist.\n' ...
-                        'Bitte drücke jetzt den mittleren Knopf, \n' ...
+                        'Dazu zeigen wir Ihnen einige Punkte auf dem Bildschirm, \n' ...
+                        'bei denen Sie sich wie folgt verhalten:\n' ...
+                        'Bitte fixieren Sie das Fixationskreuz und \n' ...
+                        'bleiben Sie so lange darauf, wie es zu sehen ist.\n' ...
+                        'Bitte drücken Sie jetzt den mittleren Knopf, \n' ...
                         'um mit der Kalibrierung weiterzumachen.\n' ...
                     ];
         
         elseif nInstruct == 1
-            text = ['Du siehst nun nacheinander zwei Gesichter.\n'...
+            text = ['Sie sehen nun nacheinander zwei Muster.\n'...
                 '\n'...
-                'Danach wirst Du gefragt, ob die Gesichter unterschiedlich oder gleich waren.\n'...
+                'Danach werden Sie gefragt, ob die Muster unterschiedlich oder gleich waren.\n'...
                 '\n'...
-                'Benutze dazu die Pfeiltasten (links, rechts) und die obere Taste zum Bestätigen.\n'...
+                'Benutzen Sie dazu die Pfeiltasten (links, rechts) und die obere Taste zum Bestätigen.\n'...
                 '\n'...
-                'Wenn du noch Fragen hast, kannst du jetzt den Versuchsleiter fragen.\n'...
+                'Wenn Sie noch Fragen haben, können Sie jetzt die Versuchsleiterin fragen.\n'...
+                'Wir können Sie jederzeit hören.\n'...
                 '\n'...
-                'Drücke ansonsten die mittlere Taste,\n'...
+                'Drücken Sie ansonsten die mittlere Taste,\n'...
                 '   um das Experiment zu starten.\n' ...
                 ];
         elseif nInstruct == 3
-            text = ['You will now see two faces after each other.\n'...
+            text = ['You will now see two patterns after each other.\n'...
                 '\n'...
                 'Please state, if they were different (left) or the same (right).\n'...
                 '\n'...
@@ -675,9 +702,10 @@ movefile(p.path.subject,p.path.finalsubject);
             text = 'Experiment beendet!\n';
             
         elseif nInstruct==4%break
-            text = [sprintf('Du hast bereits %g von %g Durchgängen geschafft!\n',tt-1,p.psi.numtrials*tchain)...
-                'Mache eine kurze Pause, aber halte Deinen Kopf in der gleichen Position!\n'...
-                'Drücke anschließend die mittlere Taste, um weiterzumachen.\n'];
+            text = [sprintf('Sie haben bereits %g von %g Durchgängen geschafft!\n',tt-1,p.psi.numtrials*tchain)...
+                'Machen Sie eine kurze Pause, lehnen Sie sich gern einen Moment zurück\n'...
+                'und schließen Sie die Augen, um diese zu entspannen.\n'...
+                'Drücken Sie anschließend die mittlere Taste, um weiterzumachen.\n'];
         end
     end
        
@@ -700,7 +728,9 @@ movefile(p.path.subject,p.path.finalsubject);
         p.psi.log.lambda     = NaN(nc,p.psi.numtrials);
         p.psi.log.seLambda   = NaN(nc,p.psi.numtrials);
         p.psi.log.xrounded   = NaN(p.stim.tFace/tchain+1,p.psi.numtrials,nc);
+        p.psi.log.sdt        = NaN(nc,p.psi.numtrials);  
         p.psi.log.trial_counter  = zeros(p.stim.tFace/tchain+1,nc);
+   
         
     end
 
@@ -721,7 +751,8 @@ movefile(p.path.subject,p.path.finalsubject);
         p.psi.log.seGamma(current_chain,cc(current_chain))    = PM{current_chain}.seGuess(end);
         p.psi.log.lambda(current_chain,cc(current_chain))     = PM{current_chain}.lapse(end);
         p.psi.log.seLambda(current_chain,cc(current_chain))   = PM{current_chain}.seLapse(end);
-        
+        p.psi.log.sdt(current_chain,cc(current_chain))        = sdt;%1=hit 2=FA 3=miss 4=CR
+ 
         
     end
 %     function PlotProcedure
@@ -771,16 +802,19 @@ movefile(p.path.subject,p.path.finalsubject);
 %             
 %         end
 
-function [t]=StartEyelinkRecording(tt,phase,trialface,fixx,fixy)
+function [t]=StartEyelinkRecording(trialID,phase,cc,tt,current_chain,isref,file,delta_ref,delta_csp,abs_FGangle,fixx,fixy)
+    
         t = [];
         
-        Eyelink('Message', 'Trial: %03d, Phase: %02d, Face: %d ,FX %d,%d', tt, phase, trialface, fixx,fixy);
+        
+        Eyelink('Message', 'TRIALID:%04d, PHASE:%04d, CHAIN:%04d, CHAINTRIAL:%04d, TTRIAL:%04d, ISREF:%04d, FILE:%04d, DELTAREF:%04d, DELTACSP:%04d, FGDEG:%04d, FXX:%04d, FXY:%04d',trialID, phase,...
+            current_chain, cc, tt, isref, file, delta_ref*100, delta_csp*100, abs_FGangle*100,fixx,fixy);
         % an integration message so that an image can be loaded as
         % overlay background when performing Data Viewer analysis.
         WaitSecs(0.01);
-        Eyelink('Message', '!V IMGLOAD CENTER %s %d %d', p.stim.files(trialface,:), p.ptb.midpoint(1), p.ptb.midpoint(2));
+        Eyelink('Message', '!V IMGLOAD CENTER %s %d %d', p.stim.files(file,:), p.ptb.midpoint(1), p.ptb.midpoint(2));
         % This supplies the title at the bottom of the eyetracker display
-        Eyelink('Command', 'record_status_message "Stim: %d, Phase: %d"',trialface, phase);
+        Eyelink('Command', 'record_status_message "Stim: %d, Phase: %d"',file, phase);
         %
         %Put the tracker offline and draw the stimuli.
         Eyelink('Command', 'set_idle_mode');
@@ -788,9 +822,8 @@ function [t]=StartEyelinkRecording(tt,phase,trialface,fixx,fixy)
         % clear tracker display and draw box at center
         Eyelink('Command', 'clear_screen %d', 0);
         %draw the image on the screen
-        Eyelink('ImageTransfer',p.stim.files24(trialface,:),p.ptb.imrect(1),p.ptb.imrect(2),p.ptb.imrect(3),p.ptb.imrect(4),p.ptb.imrect(1),p.ptb.imrect(2));
-      
-        %Eyelink('Command', 'draw_cross %d %d',fix(1),fix(2))
+        Eyelink('ImageTransfer',p.stim.files24(file,:),p.ptb.imrect(1),p.ptb.imrect(2),p.ptb.imrect(3),p.ptb.imrect(4),p.ptb.imrect(1),p.ptb.imrect(2));
+        Eyelink('Command', 'draw_cross %d %d 15',fixx,fixy);
         %
         %drift correction
         %EyelinkDoDriftCorrection(el,crosspositionx,crosspositiony,0,0);
@@ -798,14 +831,16 @@ function [t]=StartEyelinkRecording(tt,phase,trialface,fixx,fixy)
         Eyelink('Command', 'set_idle_mode');
         WaitSecs(0.01);
         Eyelink('StartRecording');
-        Screen('Textsize', p.ptb.w,p.text.fixationsize);
+        
         t = GetSecs;
         Log(t,8,NaN);
 end
 
 function [t]=StopEyelinkRecording
-        Eyelink('StopRecording');
         
+        Eyelink('Message', 'Stim Offset');            
+        Eyelink('Message', 'BLANK_SCREEN');
+        Eyelink('StopRecording');
         t = GetSecs;
         %this is the end of the trial scope.
         WaitSecs(0.01);
@@ -815,7 +850,7 @@ function [t]=StopEyelinkRecording
         Eyelink('Command', 'set_idle_mode');
         WaitSecs(0.01);
         Eyelink('Command', 'clear_screen %d', 0);
-        Screen('Textsize', p.ptb.w,p.text.fontsize);
+        
         Log(t,-8,NaN);
 end
 
@@ -866,12 +901,17 @@ function InitEyeLink
                             
         % open file.
         res = Eyelink('Openfile', p.path.edf);
+        if res == -3
+            fprintf('File cannot be created!!!!\n');
+            return;
+        end
         %
-        Eyelink('command', 'add_file_preamble_text ''Recorded by EyelinkToolbox FearGen2 Experiment''');
+        Eyelink('command', 'add_file_preamble_text ''Recorded by EyelinkToolbox FearCloud Experiment''');
         Eyelink('command', 'screen_pixel_coords = %ld %ld %ld %ld', 0, 0, p.ptb.width-1, p.ptb.height-1);
         Eyelink('message', 'DISPLAY_COORDS %ld %ld %ld %ld', 0, 0, p.ptb.width-1, p.ptb.height-1);
         % set calibration type.
         Eyelink('command', 'calibration_type = HV13');
+        Eyelink('command','auto_calibration_messages = YES');
         Eyelink('command', 'select_parser_configuration = 1');
         %what do we want to record
         Eyelink('command', 'file_sample_data  = LEFT,RIGHT,GAZE,HREF,AREA,GAZERES,STATUS,INPUT,HTARGET');
@@ -907,6 +947,7 @@ function CalibrateEL
         fprintf('=================\n=================\nNow we are done with the calibration\n')
 end
 
+        
 
 function Log(ptb_time, event_type, event_info)
         %Phases:
