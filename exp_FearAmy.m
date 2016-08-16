@@ -321,7 +321,7 @@ cleanup;
         TimeCrossOn  = Screen('Flip',p.ptb.w,TimeCrossOnset,0);        
         Log(TimeCrossOn,1,fix_i);%cross onset.
         %turn the eye tracker on
-        StartEyelinkRecording(nTrial,stim_id,p.var.ExpPhase,dist,oddball,ucs,fix,mblock_id);
+        StartEyelinkRecording(nTrial,stim_id,n,dist,oddball,ucs,fix,mblock_id);%I would be cautious here, the first trial is never recorded in the EDF file, reason yet unknown.
         %% Draw the stimulus to the buffer
         if ~stim_id==0
             Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(stim_id));
