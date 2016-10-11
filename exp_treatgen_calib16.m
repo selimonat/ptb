@@ -6,7 +6,7 @@ function [p]=exp_treatgen_calib16(subject,run,threshold)
 %
 %
 
-debug = 1;%debug mode;
+debug = 0;%debug mode;
 commandwindow;
 %clear everything
 clear mex global functions
@@ -18,7 +18,10 @@ GetSecs;
 WaitSecs(0.001);
 %
 p         = [];
+s         = [];
+
 SetParams;
+SetArduino;
 SetPTB;
 %
 %init all the variables
@@ -85,8 +88,8 @@ cleanup;
         KbQueueStart(p.ptb.device);%this means that from now on we are going to log pulses.
         %If the scanner by mistake had been started prior to this point
         %those pulses would have been not logged.
-%         %log the pulse timings.
-%         TimeEndStim     = secs(end)- p.ptb.slack;%take the first valid pulse as the end of the last stimulus.
+        %         %log the pulse timings.
+        %         TimeEndStim     = secs(end)- p.ptb.slack;%take the first valid pulse as the end of the last stimulus.
         for nTrial  = 1:p.presentation.tTrial;
             
             %Get the variables that Trial function needs.
@@ -96,10 +99,10 @@ cleanup;
             %
             FixOnset     = GetSecs  + p.duration.ISI;       % white Fixcross
             FixColor     = FixOnset + prestimdur;               % red Fixcross
-            Ramp1Onset   = FixColor + p.duration.anticip + rand(1)*.5; % actual ramp to trial's temp
+            Ramp1Onset   = FixColor + p.duration.anticip + rand(1)*.7; % actual ramp to trial's temp
             PlateauOnset = Ramp1Onset + rampdur;                % reached plateau, then wait
             Ramp2Onset   = PlateauOnset + p.duration.painstim;      % ramp back to baseline
-            RateOnset    = Ramp2Onset + rampdur + p.duration.poststim;  % 
+            RateOnset    = Ramp2Onset + rampdur + p.duration.poststim;  %
             RateOffset   = RateOnset + p.duration.rate;
             
             fprintf('Starting Trial %02d of %02d, Destination Temp is %5.2f C, White fix on for %5.2f s. \n',nTrial,p.presentation.tTrial,tempC,prestimdur);
@@ -113,7 +116,7 @@ cleanup;
         WaitSecs(3);
     end
     function PainTrial(numTrial,FixOnset,FixColor,Ramp1Onset,PlateauOnset,Ramp2Onset, RateOnset,RateOffset, tempC,rampdur)
-       
+        
         %% Fixation (white) Onset
         if numTrial ==1 % needed for first trial
             Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
@@ -121,50 +124,57 @@ cleanup;
             Screen('DrawingFinished',p.ptb.w,0);
             TimeCrossOn  = Screen('Flip',p.ptb.w,FixOnset,0);
             Log(TimeCrossOn, 2, p.ptb.FixCross');%white cross onset.
+            MarkCED(p.com.lpt.address, p.com.lpt.Fix1)
         end
-        
         %% Fixation (red) Onset
         Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
         Screen('FillRect',  p.ptb.w, p.ptb.fc_color, p.ptb.FixCross');%draw the prestimus cross atop
         Screen('DrawingFinished',p.ptb.w,0);
         TimeCrossOn  = Screen('Flip',p.ptb.w,FixColor,0);
         Log(TimeCrossOn, 3, p.ptb.FixCross');%red cross onset.
-        
+        MarkCED(p.com.lpt.address, p.com.lpt.Fix2)
         %% Ramp to destination, wait there, ramp down.
-        %serialcom(s,'START',[],'verbose');
+        serialcom(s,'START',[],'verbose');
         Log(Ramp1Onset, 4, p.presentation.ror) % ramp up
+        MarkCED(p.com.lpt.address, p.com.lpt.RampUp)
         fprintf('Ramping to %5.2f C in %.02f s.\n',tempC,rampdur)
-        %serialcom(s,'SET',tempC,'verbose');
+        serialcom(s,'SET',tempC);
         while GetSecs < PlateauOnset
         end
         Log(PlateauOnset, 5, tempC); % begin of stim plateau
+        MarkCED(p.com.lpt.address, p.com.lpt.Plateau)
         fprintf('\nPlateau is on. \n')
         countedDown = 1;
         while GetSecs < Ramp2Onset
-             [countedDown]=CountDown(GetSecs-PlateauOnset,countedDown,'.');                 
+            [countedDown]=CountDown(GetSecs-PlateauOnset,countedDown,'.');
         end
         fprintf('\nRamping back to baseline %5.2f C in %.02f s. \n',p.presentation.basetemp,rampdur)
-        %serialcom(s,'SET',p.stim.baseline)
+        serialcom(s,'SET',p.presentation.basetemp)
         WaitSecs(rampdur);
         Log(Ramp2Onset, 6, p.presentation.ror) % ramp down
+        MarkCED(p.com.lpt.address, p.com.lpt.RampDown)
         
         %% Rating
         Screen('Flip', p.ptb.w);
         while GetSecs < RateOnset
         end
         Log(RateOnset,9,NaN);   % log the rating onset
-        [currentRating.finalRating,currentRating.RT,currentRating.response] = vasScale(p.ptb.w,p.ptb.rect,p.duration.rate,randi(p.rating.initrange),...
+        MarkCED(p.com.lpt.address, p.com.lpt.RateOn)
+        rateinit = randi(p.rating.initrange);
+        [currentRating.finalRating,currentRating.RT,currentRating.response] = vasScale(p.ptb.w,p.ptb.rect,p.duration.rate,rateinit,...
             p.stim.bg,p.ptb.startY,p.keys);
         Log(GetSecs,10,NaN); % log the rating offset
-        PutRatingLog(numTrial,currentRating,tempC)
+        MarkCED(p.com.lpt.address, p.com.lpt.RateOff)
+        PutRatingLog(numTrial,currentRating,tempC,rateinit)
         %% put fixation cross if rating ended before time ran out
-%         while GetSecs < RateOffset
-%         end
         Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
         Screen('FillRect',  p.ptb.w, p.stim.white, p.ptb.FixCross');%draw the prestimus cross atop
         Screen('DrawingFinished',p.ptb.w,0);
-        TimeCrossOn  = Screen('Flip',p.ptb.w,FixColor,0);
+        TimeCrossOn  = Screen('Flip',p.ptb.w);
         Log(TimeCrossOn, 2, p.ptb.FixCross');%white cross onset.
+        MarkCED(p.com.lpt.address, p.com.lpt.Fix1)
+        while GetSecs < RateOffset
+        end
     end
 
     function SetParams
@@ -174,7 +184,7 @@ cleanup;
         p.hostname                    = deblank(hostname);
         if strcmp(p.hostname,'triostim1')
             p.path.baselocation       = 'C:\USER\kampermann\Experiments\';
-        elseif strcmp(p.hostname,'isn3464a9d59588')%Lea's HP
+        elseif strcmp(p.hostname,'isn3464a9d59588') % Lea's HP
             p.path.baselocation       = 'C:\Users\Lea\Documents\Experiments\';
         else
             error('Unknown PC found, please define it for folder structure.')
@@ -204,7 +214,7 @@ cleanup;
         p.stim.bg                     = im(1,1,1); %151
         %
         %font size and background gray level
-        p.text.fontname                = 'Times New Roman';
+        p.text.fontname                = 'Arial';
         p.text.fontsize                = 18;%30;
         p.text.linespace               = 10;
         p.text.lineheight              = p.text.fontsize + p.text.linespace;
@@ -242,13 +252,14 @@ cleanup;
         %parallel port
         p.com.lpt.address              = 888;
         %codes for different events
-        p.com.lpt.Fix1Onset             = 1;
-        p.com.lpt.Fix2Onset             = 2;
+        p.com.lpt.Fix1              = 1;
+        p.com.lpt.Fix2              = 2;
         %2 is empty because
-        p.com.lpt.RampUpOnset           = 4;
-        p.com.lpt.PlateauOnset          = 8;
-        p.com.lpt.RampDownOnset         = 16;
-        p.com.lpt.RateOnset             = 32;
+        p.com.lpt.RampUp            = 4;
+        p.com.lpt.Plateau           = 8;
+        p.com.lpt.RampDown          = 16;
+        p.com.lpt.RateOn            = 32;
+        p.com.lpt.RateOff           = 64;
         %p.com.lpt.CS_neg               = 128;
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -273,8 +284,8 @@ cleanup;
         p.presentation.run             = run;
         
         %this will deal all the presentation sequence related information
-        p.presentation.Tmax            = threshold + 3;
-        p.presentation.stimlist        = p.presentation.Tmax + steps;%Threshold + 3 is maximum temperature
+%         p.presentation.Tmax            = threshold + 3;
+        p.presentation.stimlist        = p.presentation.basetemp + steps;%Threshold + 3 is maximum temperature
         p.presentation.tTrial          = length(p.presentation.stimlist);
         %
         
@@ -294,7 +305,16 @@ cleanup;
             labels = {dummy(:).name};
         end
     end
-
+    function SetArduino
+        s = serial('COM5','BaudRate',19200);
+        fopen(s);
+        WaitSecs(1);
+        serialcom(s,'T',p.presentation.basetemp);
+        serialcom(s,'ROR',p.presentation.ror);
+        WaitSecs(.5);
+        serialcom(s,'DIAG');
+        WaitSecs(1);
+    end
     function [finalRating,reactionTime,response] = vasScale(window,windowRect,durRating,defaultRating,backgroundColor,StartY,keys)
         
         %% key settings
@@ -419,13 +439,13 @@ cleanup;
             finalRating = currentRating - 1;
             reactionTime = durRating;
             disp(['VAS Rating: ' num2str(finalRating)]);
-            warning(sprintf('\n***********\n***********\nNo Confirmation!!!\n***********\n***********\n'));
+            warning(sprintf('\n***********\nNo Confirmation!\n***********\n'));
         end
         if  nrbuttonpresses == 0
             finalRating = NaN;
             reactionTime = durRating;
             disp(['VAS Rating: ' num2str(finalRating)]);
-            warning(sprintf('\n***********\n***********\nNo Response!\nPlease check participant!!!\n***********\n***********\n'));
+            warning(sprintf('\n***********\nNo Response!\nPlease check participant!\n***********\n'));
         end
         % toc
     end
@@ -537,15 +557,15 @@ cleanup;
         %RectLeft=1, RectTop=2, RectRight=3, RectBottom=4.
         %         p.ptb.CrossPosition_x       = p.ptb.midpoint(1);%bb(1);%always the same
         %         p.ptb.CrossPosition_y       = p.ptb.midpoint(2)./2;
-
+        
         p.ptb.fc_size               = 20;
         p.ptb.fc_width              = 4;
         p.ptb.fc_color              = [255 0 0];
-%         p.ptb.screenFix1 = [p.ptb.midpoint(1)-p.ptb.fc_size p.ptb.startY-p.ptb.fc_width p.ptb.midpoint(1)+p.ptb.fc_size p.ptb.startY+p.ptb.fc_width]; %I guess this is X
-%         p.ptb.screenFix2 = [p.ptb.midpoint(1)-p.ptb.fc_width p.ptb.startY-p.ptb.fc_size p.ptb.midpoint(1)+p.ptb.fc_width p.ptb.startY+p.ptb.fc_size]; %I guess this is Y
+        %         p.ptb.screenFix1 = [p.ptb.midpoint(1)-p.ptb.fc_size p.ptb.startY-p.ptb.fc_width p.ptb.midpoint(1)+p.ptb.fc_size p.ptb.startY+p.ptb.fc_width]; %I guess this is X
+        %         p.ptb.screenFix2 = [p.ptb.midpoint(1)-p.ptb.fc_width p.ptb.startY-p.ptb.fc_size p.ptb.midpoint(1)+p.ptb.fc_width p.ptb.startY+p.ptb.fc_size]; %I guess this is Y
         fix          = [p.ptb.midpoint(1) p.ptb.startY]; % yaxis is 1/4 of total yaxis
         p.ptb.FixCross     = [fix(1)-p.ptb.fc_width,fix(2)-p.ptb.fc_size,fix(1)+p.ptb.fc_width,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-p.ptb.fc_width,fix(1)+p.ptb.fc_size,fix(2)+p.ptb.fc_width];
-
+        
         %
         %%
         %priorityLevel=MaxPriority(['GetSecs'],['KbCheck'],['KbWait'],['GetClicks']);
@@ -580,26 +600,26 @@ cleanup;
         %CORRECT
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
         %test whether CED receives the triggers correctly...
-%         k = 0;
-%         while ~(k == 25 | k == 86 );
-%             pause(0.1);
-%             outp(p.com.lpt.address,244);%244 means all but the UCS channel (so that we dont shock the subject during initialization).
-%             fprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n');
-%             fprintf('1/ Red cable has to be connected to the Cogent BOX\n');
-%             fprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n');
-%             fprintf('2/ D2 Connection not to forget on the LPT panel\n');
-%             fprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n');
-%             fprintf('3/ Switch the SCR cable\n');
-%             fprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n');
-%             fprintf('4/ Button box has to be on\n');
-%             fprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n');
-%             fprintf('5/ Did the trigger test work?\n!!!!!!You MUST observe 5 pulses on the PHYSIOCOMPUTER!!!!!\n\n\nPress c to send it again, v to continue...\n')
-%             [~, k] = KbStrokeWait(p.ptb.device);
-%             k = find(k);
-%         end
-%         fprintf('Continuing...\n');
+        %         k = 0;
+        %         while ~(k == 25 | k == 86 );
+        %             pause(0.1);
+        %             outp(p.com.lpt.address,244);%244 means all but the UCS channel (so that we dont shock the subject during initialization).
+        %             fprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n');
+        %             fprintf('1/ Red cable has to be connected to the Cogent BOX\n');
+        %             fprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n');
+        %             fprintf('2/ D2 Connection not to forget on the LPT panel\n');
+        %             fprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n');
+        %             fprintf('3/ Switch the SCR cable\n');
+        %             fprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n');
+        %             fprintf('4/ Button box has to be on\n');
+        %             fprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n');
+        %             fprintf('5/ Did the trigger test work?\n!!!!!!You MUST observe 5 pulses on the PHYSIOCOMPUTER!!!!!\n\n\nPress c to send it again, v to continue...\n')
+        %             [~, k] = KbStrokeWait(p.ptb.device);
+        %             k = find(k);
+        %         end
+        %         fprintf('Continuing...\n');
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
-       
+        
     end
     function [shuffled idx] = Shuffle(vector,N)
         %takes first N from the SHUFFLED before outputting. This function
@@ -609,83 +629,13 @@ cleanup;
         shuffled        = vector(idx(1:N));
         shuffled        = shuffled(:);
     end
-    function [out] = serialcom(s,cmd,varargin)
-        if ~noarduino
-            % SERIALCOM allows talking to an Arduino via an established serial
-            % connection. Possible inputs for CMD are 'HELP','DIAG','START', without
-            % optional input, and 'T','RoR','SET' and 'MOVE' with corresponding
-            % temperature ('T','RoR','SET', in format [xx.xx]) or time ('MOVE', [ms]).
-            
-            % Examples for usage:
-            % serialcom(s,'HELP')
-            % serialcom(s,'DIAG')
-            % serialcom(s,'START')
-            % serialcom(s,'T',35.00)
-            % serialcom(s,'RoR',10.00)
-            % serialcom(s,'SET',38.50)
-            % serialcom(s,'MOVE',1000) to move up for 1000 ms
-            %
-            % While the first varargin is thus expected (if applicable) to be the
-            % input for setting temperatures and raise durations, a second input can be
-            % 'verbose', when response from Arduino is wanted as output e.g.:
-            % out = serialcom(s,'T',35,'verbose')
-            % out = serialcom(s,'HELP',[],'verbose')
-            out  = [];
-            buffer_warn  = 0;
-            suppress_out = 0; %suppress output even for DIAG and HELP
-            % mspb = 11/s.BaudRate; %muS per byte (comes from baudrate) (1/BaudRate * 11 bits per byte)
-            
-            
-            % clear buffer by reading out potential leftovers
-            while s.BytesAvailable ~= 0
-                fread(s,s.BytesAvailable);
-                if buffer_warn
-                    warning('Detected and cleaned buffer leftovers...')
-                end
-            end
-            
-            % differentiate between command types, e.g. 'DIAG' vs 'T;32', what to send
-            % via the serial port.
-            if any(strcmp(cmd,{'HELP','DIAG','START'}))
-                fprintf(s,cmd);
-                fprintf('Sending command %s. \n',cmd)
-            elseif any(strcmp(cmd,{'T','ROR','SET','MOVE'}))
-                cmdstr = [cmd ';' num2str(varargin{1})];
-                fprintf(s,cmdstr);
-                fprintf('Sending command %s. \n',cmdstr)
-            end
-            
-            if any(strcmp(cmd,{'HELP','DIAG',}))
-                fprintf('Asked for %s, waiting %g seconds for Arduino response.\n',cmd,.5)
-                pause(.5)
-                if ~suppress_out
-                    fprintf('%s \n',char(fread(s,s.BytesAvailable))')
-                end
-            end
-            % ensure to wait long enough to get back the Arduino's response (if wanted)
-            if length(varargin) == 2
-                ws = .2;
-                fprintf('Verbose wanted, waiting %g seconds for Arduino response.\n',ws)
-                pause(ws)
-                %read out Arduino's response from buffer
-                try
-                    out = char(fread(s,s.BytesAvailable))'; %reads as many bytes as stored in buffer
-                    if ~suppress_out
-                        fprintf('%s \n',out)
-                    end
-                catch
-                    % e.g. if buffer is empty
-                    warning('Problem with s.BytesAvailable, reading buffer was not successful... \n')
-                end
-            end
+
+    function [countedDown]=CountDown(secs, countedDown, countString)
+        if secs>countedDown
+            fprintf('%s', countString);
+            countedDown=ceil(secs);
         end
     end
-        function [countedDown]=CountDown(secs, countedDown, countString)
-            if secs>countedDown
-                fprintf('%s', countString);
-                countedDown=ceil(secs);
-            end
-        end
 
     function MarkCED(socket,port)
         %send pulse to SCR#
@@ -693,6 +643,7 @@ cleanup;
         WaitSecs(0.01);
         outp(socket,0);
     end
+
     function cleanup
         % Close window:
         sca;
@@ -716,29 +667,29 @@ cleanup;
         %
         %event types are as follows:
         %
-% % %         %Pulse Detection      :     0    info: NaN;
-% % %         %Tracker Onset        :     1
-% % %         %Cross Onset          :     2    info: position
-% % %         %Stimulus Onset       :     3    info: dist_id
-% % %         %Cross Movement       :     4    info: NaN;
-% % %         %UCS Delivery         :     5    info: NaN;
-% % %         %Stimulus Offset      :     6    info: NaN;
-% % %         %Key Presses          :     7    info: NaN;
-% % %         %Tracker Offset       :     8    info: NaN;
-% % %         %MicroBlock			  :     9    info:rank
-%%%%%%%%%%%%%%%%%  
-%         %Pulse Detection      :     0    info: NaN;
-%         %Tracker Onset        :     1
-%         %Cross (white) Onset  :     2    info: position
-%         %Cross (red) Onset    :     3    info: position
-%         %Ramp Up Onset        :     4    info: ror
-%         %Pain Plateau         :     5    info: temp
-%         %Ramp Down Onset      :     6    info: ror;
-%         %Key Presses          :     7    info: NaN;
-%         %Tracker Offset       :     8    info: NaN;
-%         %Rate Onset			:     9    info: NaN;      
-%         %Rate Offset          :     10   info: NaN;
-%         %dummy fixflip        :     22   info: NaN;
+        % % %         %Pulse Detection      :     0    info: NaN;
+        % % %         %Tracker Onset        :     1
+        % % %         %Cross Onset          :     2    info: position
+        % % %         %Stimulus Onset       :     3    info: dist_id
+        % % %         %Cross Movement       :     4    info: NaN;
+        % % %         %UCS Delivery         :     5    info: NaN;
+        % % %         %Stimulus Offset      :     6    info: NaN;
+        % % %         %Key Presses          :     7    info: NaN;
+        % % %         %Tracker Offset       :     8    info: NaN;
+        % % %         %MicroBlock			  :     9    info:rank
+        %%%%%%%%%%%%%%%%%
+        %         %Pulse Detection      :     0    info: NaN;
+        %         %Tracker Onset        :     1
+        %         %Cross (white) Onset  :     2    info: position
+        %         %Cross (red) Onset    :     3    info: position
+        %         %Ramp Up Onset        :     4    info: ror
+        %         %Pain Plateau         :     5    info: temp
+        %         %Ramp Down Onset      :     6    info: ror;
+        %         %Key Presses          :     7    info: NaN;
+        %         %Tracker Offset       :     8    info: NaN;
+        %         %Rate Onset			:     9    info: NaN;
+        %         %Rate Offset          :     10   info: NaN;
+        %         %dummy fixflip        :     22   info: NaN;
         %Text on the screen   :     -1    info: Which Text?
         for iii = 1:length(ptb_time)
             p.var.event_count                = p.var.event_count + 1;
@@ -751,14 +702,15 @@ cleanup;
         %                 drawnow;
         
     end
-    function PutRatingLog(Trialnum,currentRating,tempC)
-            
+    function PutRatingLog(Trialnum,currentRating,tempC,rateinit)
+        
         p.log.ratingEventCount                     = p.log.ratingEventCount + 1;
         p.log.ratings(p.log.ratingEventCount,1)    = tempC;
         p.log.ratings(p.log.ratingEventCount,2)    = Trialnum;
         p.log.ratings(p.log.ratingEventCount,3)    = currentRating.finalRating;
         p.log.ratings(p.log.ratingEventCount,4)    = currentRating.response;
         p.log.ratings(p.log.ratingEventCount,5)    = currentRating.RT;
+        p.log.ratings(p.log.ratingEventCount,6)    = rateinit;
     end
 
     function [keycode, secs] = KbQueueDump;
