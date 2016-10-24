@@ -39,11 +39,6 @@ SetPTB;
 t                         = [];
 nTrial                    = 0;
 %%
-%Time Storage
-TimeEndStim               = [];
-TimeStartShock            = [];
-TimeTrackerOff            = [];
-TimeCrossOn               = [];
 p.var.event_count         = 0;
 %%
 if el
@@ -61,7 +56,7 @@ if run == 0
     ShowInstruction(1,1);
     ShowInstruction(2,1);
     TENSdemo(basetemp,middletemp,lowtemp);
-    %instr here
+    ShowInstruction(3,1);
     PresentStimuli;
     ShowInstruction(20,0,2);
 else
@@ -70,25 +65,30 @@ else
         CalibrateEL;
     end
     p.var.ExpPhase  = run;%set this after the calibration;
-%     if run == 1
-%         %     %% Vormessung
-%         %     k = 0;
-%         %     while ~(k == 25 | k == 86 );
-%         %         pause(0.1);
-%         %         fprintf('Experimenter!! press V key when the vormessung is finished.\n');
-%         %         [~, k] = KbStrokeWait(p.ptb.device);
-%         %         k = find(k);
-%         %     end
-%         %     fprintf('Continuing...\n');
-%     end
-    ShowInstruction(3,1);
-    for ninstr = 300:305
-        ShowInstruction(ninstr,1);
+    %     if run == 1
+    %         %     %% Vormessung
+    %         %     k = 0;
+    %         %     while ~(k == 25 | k == 86 );
+    %         %         pause(0.1);
+    %         %         fprintf('Experimenter!! press V key when the vormessung is finished.\n');
+    %         %         [~, k] = KbStrokeWait(p.ptb.device);
+    %         %         k = find(k);
+    %         %     end
+    %         %     fprintf('Continuing...\n');
+    %     end
+    if run ==1 
+        ShowInstruction(4,1);
+        for ninstr = 400:405
+            ShowInstruction(ninstr,1);
+        end
+    else
+        ShowInstruction(44,1)
     end
+    %%%scanner:add "start scanner now" here
     PresentStimuli;
     WaitSecs(5);
     %turn scanner off
-    if run == 4
+    if run == 4 && mrt == 1
         CalibrateEL;
         AskDetection;
         AskDetectionSelectable;
@@ -97,7 +97,9 @@ else
 end
 
 %get the eyelink file back to this computer
-StopEyelink(p.path.edf);
+if el
+    StopEyelink(p.path.edf);
+end
 %trim the log file and save
 p.out.log = p.out.log(sum(isnan(p.out.log),2) ~= size(p.out.log,2),:);
 %shift the time so that the first timestamp is equal to zero
@@ -213,11 +215,10 @@ cleanup;
             
             %Get the variables that Trial function needs.
             stim_id      = p.presentation.stim_id(nTrial);
-            fix          = [656   280   664   320;    640   296  680   304];%p.presentation.CrossPosition(nTrial);
+            fix          = p.presentation.CrossPosition(nTrial,:);%dummy:[656   280   664   320;    640   296  680   304];
             ISI1         = p.presentation.isi1(nTrial);
             ISI2         = p.presentation.isi2(nTrial);
             ISI3         = p.presentation.isi2(nTrial);
-            poststim     = p.presentation.poststim(nTrial);
             ucs          = p.presentation.ucs(nTrial);
             dist         = p.presentation.dist(nTrial);
             if ucs
@@ -227,11 +228,11 @@ cleanup;
             end
             %
             %OnsetTime     = TimeEndStim + ISI-p.duration.stim - p.ptb.slack;
-            fprintf('\n%d of %d, Stim: %d, Temp: %d, UCS: %d',nTrial,p.presentation.tTrial,stim_id,tempC,ucs);
+            fprintf('\nTrial %d of %d, Stim: %d, Temp: %5.2f, UCS: %d',nTrial,p.presentation.tTrial,stim_id,tempC,ucs);
             
             %Start with the trial, here is time-wise sensitive must be
             %optimal
-            [TimeEndStim] = Trial(nTrial, ISI1, ISI2, ISI3, poststim, tempC, stim_id, ucs, dist, fix);
+            [TimeEndStim] = Trial(nTrial, ISI1, ISI2, tempC, stim_id, ucs, dist, fix);
             %fprintf('OffsetTime: %05.8gs, Difference of %05.8gs\n',TimeEndStim,TimeEndStim-OnsetTime-p.duration.stim);
             %
             %dump itfa
@@ -246,12 +247,8 @@ cleanup;
                     Log(secs(pulses),0,keycode(pulses));
                 end
             end
-%             %now we have to detect if the subject has pressed the CONFIRM
-%             %key while the ODDBALL stimulus was on the screen.
-%             if any((keycode == p.keys.confirm) & (secs > OnsetTime) & (secs <= TimeEndStim))
-%                 p.out.response(nTrial) = 1;
-%                 fprintf('Subject Pressed the Hit Key!!\n');
-%             end
+            %check if temperatures need to be adaptive
+            adaptTemp(nTrial,ucs);
         end
         %wait 6 seconds for the BOLD signal to come back to the baseline...
         KbQueueStop(p.ptb.device);
@@ -278,28 +275,30 @@ cleanup;
         %stop the queue
         KbQueueStop(p.ptb.device);
         KbQueueRelease(p.ptb.device);
-        WaitSecs(10);
+%         if mrt == 1
+%             WaitSecs(10);
+%         end
     end
-    function [TimeEndStim] = Trial(nTrial, ISI1, ISI2, ISI3, poststim, tempC, stim_id, ucs, dist, fix)
+    function [TimeEndStim] = Trial(nTrial, ISI1, ISI2, tempC, stim_id, ucs, dist, fix)
         basetemp = p.presentation.pain.basetemp(nTrial);
         rampdur = abs((tempC - p.presentation.pain.basetemp(nTrial)))/p.presentation.pain.ror;
         
         FixCross     = [fix(1)-p.ptb.fc_width,fix(2)-p.ptb.fc_size,fix(1)+p.ptb.fc_width,fix(2)+p.ptb.fc_size;...
             fix(1)-p.ptb.fc_size,fix(2)-p.ptb.fc_width,fix(1)+p.ptb.fc_size,fix(2)+p.ptb.fc_width];
         %get all the times
-        jitter  = rand(1).*.25;
-        OnsetTime   = GetSecs + .2;
+        jitter      = rand(1).*.5;
+        OnsetTime   = GetSecs + .1;
         Fix1On      = OnsetTime;
         RateBOn     = OnsetTime + ISI1;
         RateBOff    = OnsetTime + ISI1 + p.duration.rate;
-        Fix2On      = OnsetTime + ISI1 + p.duration.rate + .2;
-        FaceOn      = OnsetTime + ISI1 + p.duration.rate + .2 + ISI2 - jitter;
-        FaceOff     = OnsetTime + ISI1 + p.duration.rate + .2 + ISI2 - jitter + p.duration.face;
-        Ramp1On     = OnsetTime + ISI1 + p.duration.rate + .2 + ISI2 - jitter + p.duration.face + ISI3 + jitter;
-        Plateau     = OnsetTime + ISI1 + p.duration.rate + .2 + ISI2 - jitter + p.duration.face + ISI3 + jitter + rampdur;
-        Ramp2On     = OnsetTime + ISI1 + p.duration.rate + .2 + ISI2 - jitter + p.duration.face + ISI3 + jitter + rampdur + p.duration.treatment;
-        RateTOn     = OnsetTime + ISI1 + p.duration.rate + .2 + ISI2 - jitter + p.duration.face + ISI3 + jitter + rampdur + p.duration.treatment + rampdur + poststim;
-        RateTOff    = OnsetTime + ISI1 + p.duration.rate + .2 + ISI2 - jitter + p.duration.face + ISI3 + jitter + rampdur + p.duration.treatment + rampdur + poststim + p.duration.rate;
+        Fix2On      = OnsetTime + ISI1 + p.duration.rate ;
+        FaceOn      = OnsetTime + ISI1 + p.duration.rate + ISI2;
+        FaceOff     = OnsetTime + ISI1 + p.duration.rate + ISI2 + p.duration.face;
+        Ramp1On     = OnsetTime + ISI1 + p.duration.rate + ISI2 + p.duration.face + jitter;
+        Plateau     = OnsetTime + ISI1 + p.duration.rate + ISI2 + p.duration.face + jitter + rampdur;
+        Ramp2On     = OnsetTime + ISI1 + p.duration.rate + ISI2 + p.duration.face + jitter + rampdur + p.duration.treatment - 2*rampdur; %dur.treatment - 2*rampdur is plateau duration
+        RateTOn     = OnsetTime + ISI1 + p.duration.rate + ISI2 + p.duration.face + jitter + rampdur + p.duration.treatment +.5 - jitter;
+        RateTOff    = OnsetTime + ISI1 + p.duration.rate + ISI2 + p.duration.face + jitter + rampdur + p.duration.treatment +.5 - jitter + p.duration.rate;
         TimeEndStim = RateTOff;
         %% Baseline, tonic pain, inkl. white fixcross in the middle
         if nTrial ==1
@@ -316,76 +315,69 @@ cleanup;
         %% Rate Baseline
         countedDown = 1;
         while GetSecs < RateBOn
-            [countedDown]=CountDown(GetSecs-TimeCrossOn,countedDown,'.');
+            [countedDown]=CountDown(GetSecs-OnsetTime,countedDown,'.');
         end
         rateinit = randi(p.rating.initrange);
         Log(RateBOn,9,NaN);%VAS Baseline onset.
+        MarkCED(p.com.lpt.address,p.com.lpt.RateB);
         [currentRating.finalRating,currentRating.RT,currentRating.response] = vasScale(p.ptb.w,p.ptb.rect,p.duration.rate,rateinit,...
             p.stim.bg,p.ptb.startY,p.keys);
-        MarkCED(p.com.lpt.address,p.com.lpt.RateB);
+        Log(GetSecs,10,NaN);%VAS Baseline offset.
         PutRatingLog(nTrial,currentRating,basetemp,rateinit,'base')
-        RateOff = Screen('Flip',p.ptb.w);
-        Log(RateOff,10,NaN);%VAS Baseline offset.
-        fprintf('Subject rated fast.')
-        countedDown = 1;
-        while GetSecs < RateBOff
-            [countedDown]=CountDown(GetSecs-RateOff,countedDown,'.');
-        end
+        fprintf('Took subject %5.2f seconds to respond. \n',currentRating.RT)
+        %         Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
+        %         Screen('FillRect',  p.ptb.w, p.stim.white, p.ptb.centralFixCross');%draw the prestimus cross atop
+        %         Screen('DrawingFinished',p.ptb.w,0);
+        %         Fix2On = Screen('Flip',p.ptb.w);
+        %         Log(Fix2On,16,p.ptb.centralFixCross')
+        %only needed if blank screen should wait
+        %         countedDown = 1;
+        %         while GetSecs < RateBOff
+        %             [countedDown]=CountDown(GetSecs-RateOff,countedDown,'.');
+        %         end
         %% Show second Fixcross
         Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
         Screen('FillRect', p.ptb.w, p.stim.white, FixCross');%draw the prestimus cross atop
         Screen('DrawingFinished',p.ptb.w,0);
-        TimeCrossOn  = Screen('Flip',p.ptb.w,Fix2On,0);
+        TimeCrossOn  = Screen('Flip',p.ptb.w);
+        Log(TimeCrossOn,15,FixCross')
         %% Draw the stimulus to the buffer
         Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(stim_id));
         %% Face Stimulus Onset
-        fprintf('Face No %g is on. UCS = %g.\n',stim_id,ucs)
         TimeFaceOnset  = Screen('Flip',p.ptb.w,FaceOn,0);%asap and dont clear
         %send eyelink and ced a marker asap
-        %         Eyelink('Message', 'Stim Onset');
-        %         Eyelink('Message', 'SYNCTIME');
         Log(TimeFaceOnset,13,stim_id)
         MarkCED(p.com.lpt.address, p.com.lpt.FaceOnset );%this actually didn't really work nicely.
-        % the first stim onset pulse is always missing. This could be due to
-        % the fact that the state of the port was already 1 and thus CED
-        % didn't realize this command.
+        fprintf('Face No %g is on.\n',stim_id)
         %% Face Stim Off, Pain Cross on
         Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
         Screen('FillRect', p.ptb.w, p.stim.white,p.ptb.centralFixCross');%draw the central cross
         Screen('DrawingFinished',p.ptb.w,0);
         TimeFaceOffset  = Screen('Flip',p.ptb.w,FaceOff,0);%asap and dont clear
         Log(TimeFaceOffset,14,stim_id);%log the stimulus offset
-        %
-        %         %% record some more eye data after stimulus offset.
-        %         WaitSecs('UntilTime',TimeTrackerOff);
-        %         Eyelink('Message', 'Stim Offset');
-        %         Eyelink('Message', 'BLANK_SCREEN');
-        %         TimeTrackerOff    = StopEyelinkRecording;
-        %
-        %
         %% ramp to treatment temp
         while GetSecs < Ramp1On
         end
-        serialcom(s,'START',[],'verbose');
+        serialcom(s,'START');
         Log(Ramp1On, 4, p.presentation.pain.ror) % ramp up
         MarkCED(p.com.lpt.address, p.com.lpt.Ramp1)
-        fprintf('Ramping to %5.2f C in %.02f s.',tempC,rampdur)
+        fprintf('Ramping to %5.2f C in %.02f s.\n',tempC,rampdur)
         serialcom(s,'SET',tempC);
         while GetSecs < Plateau
         end
         Log(Plateau, 5, tempC); % begin of stim plateau
         MarkCED(p.com.lpt.address, p.com.lpt.Plateau)
         if ucs == 1
-            fprintf('This is a UCS trial!\n');
-            %             Log(TimeStartShock,5,NaN);
+            fprintf('This is a UCS trial!');
             MarkCED(p.com.lpt.address, p.com.lpt.ucs)
         end
         countedDown = 1;
         while GetSecs < Ramp2On
             [countedDown]=CountDown(GetSecs-Plateau,countedDown,'.');
         end
-        fprintf('\nRamping back to baseline %5.2f C in %.02f s. \n',basetemp,rampdur)
-        serialcom(s,'SET',p.presentation.pain.basetemp(nTrial))
+        fprintf('\nRamping back to baseline %5.2f C in %.02f s.',basetemp,rampdur)
+        serialcom(s,'SET',p.presentation.pain.basetemp(nTrial));
+        MarkCED(p.com.lpt.address, p.com.lpt.Ramp2)
         Log(Ramp2On, 6, p.presentation.pain.ror) % ramp down
         WaitSecs(rampdur);
         Screen('Flip',p.ptb.w); %asap and dont clear
@@ -398,20 +390,19 @@ cleanup;
             p.stim.bg,p.ptb.startY,p.keys);
         RateOff = Screen('Flip',p.ptb.w);
         Log(RateOff,12,NaN);%VAS Treatment offset.
-        fprintf('Subject rated fast.')
+        fprintf('Took subject %5.2f seconds to respond. \n',currentRating.RT)
         PutRatingLog(nTrial,currentRating,tempC,rateinit,'treat')
-        countedDown = 1;
-        while GetSecs < RateTOff
-            [countedDown]=CountDown(GetSecs-RateOff,countedDown,'.');
-        end
-        
+        %         countedDown = 1;
+        %         while GetSecs < RateTOff
+        %             [countedDown]=CountDown(GetSecs-RateOff,countedDown,'.');
+        %         end
+        %
         %% back to white cross (whenever ready)
         Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
         Screen('FillRect',  p.ptb.w, p.stim.white, p.ptb.centralFixCross');%draw the prestimus cross atop        TimeCrossOn  = Screen('Flip',p.ptb.w,Fix1On,0);
         Screen('DrawingFinished',p.ptb.w,0);
-        TimeCrossOn  = Screen('Flip',p.ptb.w,Fix1On,0);
+        TimeCrossOn  = Screen('Flip',p.ptb.w);
         MarkCED( p.com.lpt.address, p.com.lpt.Fix1Onset);
-        %         Eyelink('Message', 'FX Onset at %d %d',fix(1),fix(2));
         Log(TimeCrossOn,2,p.ptb.centralFixCross);%cross onset.
         while GetSecs < RateTOff
         end
@@ -423,9 +414,9 @@ cleanup;
         for dc = 1:length(demotemps)
             text = textstring{dc};
             fixon     = GetSecs + .1;
-            redon     = GetSecs + .1 + 5;
-            rampon    = GetSecs + .1 + 5 + 1 + rand(1)*.25;
-            rampback  = rampon + rampdurs(dc) + p.duration.treatment;
+            redon     = GetSecs + .1 + 5/3;
+            rampon    = GetSecs + .1 + 5/3 + 1 + rand(1)*.25;
+            rampback  = rampon + rampdurs(dc) + p.duration.treatment./3;
             rateon    = rampback + rampdurs(dc)+ 1;
             %white cross
             Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
@@ -438,28 +429,29 @@ cleanup;
             Screen('DrawingFinished',p.ptb.w,0);
             Screen('Flip',p.ptb.w,redon,0);
             while GetSecs < rampon end
-            serialcom(s,'START')
-            serialcom(s,'SET',demotemps(dc))
+            serialcom(s,'START');
+            serialcom(s,'SET',demotemps(dc));
             while GetSecs < rampback end
-            serialcom(s,'SET',basetemp)
+            serialcom(s,'SET',basetemp);
             while GetSecs < rateon end
             rateinit = randi(p.rating.initrange);
             [currentRating.finalRating,currentRating.RT,currentRating.response] = vasScale(p.ptb.w,p.ptb.rect,p.duration.rate,rateinit,...
-            p.stim.bg,p.ptb.startY,p.keys);
+                p.stim.bg,p.ptb.startY,p.keys);
             PutRatingLog(dc,currentRating,demotemps(dc),rateinit,'TENSdemo');
             fprintf(textstring{dc})
             fprintf(' condition with Temp of %g was rated as VAS  = %g \n',demotemps(dc),currentRating.finalRating)
             Screen('Flip',p.ptb.w);
         end
         k = 0;
-        while ~(k == 25 | k == 86 );
+        while ~ or(k == 86,k == 67);
             pause(0.1);
-            fprintf('Mean VAS: middle = %g, low = %g...\n',mean(p.log.ratings.demo([1 3],3)),mean(p.log.ratings.demo([2 4],3)))
+            %             fprintf('Mean VAS: middle = %g, low = %g...\n',mean(p.log.ratings.demo([1 3],3)),mean(p.log.ratings.demo([2 4],3)))
             fprintf('Are you OK with these ratings? Press c to correct, or v to continue...\n')
             [~, k] = KbStrokeWait(p.ptb.device);
             k = find(k);
         end
-        if k ~= 86
+        keyboard
+        if k == KbName('c')
             x1 = input('Please enter the corrected middle temperature.\n');
             x2 = input('Please enter the corrected lower temperature.\n');
             p.presentation.pain.middle     = repmat(x1,[p.presentation.tTrial 1]);
@@ -504,7 +496,70 @@ cleanup;
             p.log.ratings.demo(currentTrial,6)       = initVAS;
         end
     end
-
+    function adaptTemp(nTrial,ucs)
+        adaptt = 0;
+        adaptb = 0;
+        if (p.presentation.pain.baseadapt == 1)&&(nTrial >= 3)&& (nTrial ~= p.presentation.tTrial);
+            basemed = median(p.log.ratings.baseline(nTrial-2:nTrial,3));
+            if (90 > basemed)&&(80 <= basemed)
+                p.presentation.pain.basetemp(nTrial+1:end) = p.presentation.pain.basetemp(nTrial) - p.presentation.pain.adaptstep;
+                fprintf('Median VAS was %g (not near 70). Decreased baseline Temp from %5.2f to %5.2f.\n',basemed,p.presentation.pain.basetemp(nTrial),p.presentation.pain.basetemp(nTrial+1))
+                adaptb = -1;
+            elseif (basemed >= 90)
+                p.presentation.pain.basetemp(nTrial+1:end) = p.presentation.pain.basetemp(nTrial) - p.presentation.pain.adaptstep*2;
+                fprintf('This was really too hot, subject rated %g. Decreased baseline Temp from %5.2f to %5.2f.\n',basemed,p.presentation.pain.basetemp(nTrial),p.presentation.pain.basetemp(nTrial+1))
+                adaptb = -2;
+            elseif basemed < 60
+                p.presentation.pain.basetemp(nTrial+1:end) = p.presentation.pain.basetemp(nTrial) + p.presentation.pain.adaptstep;
+                fprintf('Median VAS was %g (not near 70). Increased baseline Temp from %5.2f to %5.2f.\n',basemed,p.presentation.pain.basetemp(nTrial),p.presentation.pain.basetemp(nTrial+1))
+                adaptb = 1;
+            end
+        end
+        if ucs  % ucs only happens twice... probably better to adapt it very flexibly(?)
+            treatmed = p.log.ratings.treat(nTrial,3);
+            
+            if (treatmed >= 40)
+                p.presentation.pain.low(nTrial+1:end) = p.presentation.pain.low(nTrial) - p.presentation.pain.adaptstep;
+                fprintf('UCS was rated as %g (not near 30). Decreased UCS treatment Temp from %5.2f to %5.2f.\n',treatmed,p.presentation.pain.low(nTrial),p.presentation.pain.low(nTrial+1))
+                adaptt = -1;
+            elseif treatmed < 20
+                p.presentation.pain.low(nTrial+1:end) = p.presentation.pain.low(nTrial) + p.presentation.pain.adaptstep;
+                fprintf('UCS was rated as %g (not near 30). Increased UCS treatment Temp from %5.2f to %5.2f.\n',treatmed,p.presentation.pain.low(nTrial),p.presentation.pain.low(nTrial+1))
+                adaptt = 1;
+            end
+        elseif ~ucs
+            if (p.presentation.pain.treatadapt == 1)&&(sum(p.presentation.ucs(1:nTrial)==0) >= 3) && (nTrial ~= p.presentation.tTrial); %nTrial > 3 because we want the last three ratings to go to median
+                
+                dummy = p.log.ratings.treat(~p.presentation.ucs(1:nTrial),3);
+                treatmed = median(dummy(end-2:end));
+                if (treatmed >= 60)
+                    p.presentation.pain.middle(nTrial+1:end) = p.presentation.pain.middle(nTrial) - p.presentation.pain.adaptstep;
+                    fprintf('Median VAS was %g (not near 50).  Decreased treatment Temp from %5.2f to %5.2f.\n',treatmed,p.presentation.pain.middle(nTrial),p.presentation.pain.middle(nTrial+1))
+                    adaptt = -1;
+                elseif treatmed < 40
+                    p.presentation.pain.middle(nTrial+1:end) = p.presentation.pain.middle(nTrial) + p.presentation.pain.adaptstep;
+                    fprintf('Median VAS was %g (not near 50). Increased treatment Temp from %5.2f to %5.2f.\n',treatmed,p.presentation.pain.middle(nTrial),p.presentation.pain.middle(nTrial+1))
+                    adaptt = 1;
+                    if p.presentation.pain.middle(nTrial+1) == p.presentation.pain.basetemp(nTrial+1)
+                        p.presentation.pain.middle(nTrial+1:end) = p.presentation.pain.basetemp(nTrial+1)-.5;
+                        fprintf('Reached baseline temp limit. Treatment temp set back to %5.2f.\n',p.presentation.pain.middle(nTrial+1))
+                    end
+                end
+            end
+        end
+        %check if temps are still different from each others
+        if nTrial ~= p.presentation.tTrial;
+            if p.presentation.pain.low(nTrial+1) == p.presentation.pain.middle(nTrial+1);
+                p.presentation.pain.low(nTrial+1:end) = p.presentation.pain.middle(nTrial+1)-p.presentation.pain.adaptstep;
+                warning('Needed to put UCS temp down, because middle temp was the same.\n')
+            end
+            if any([adaptb adaptt])
+                fprintf('Temps are now:\nBase:    %5.2f\nMiddle:  %5.2f\nLow:     %5.2f\n',p.presentation.pain.basetemp(nTrial+1),p.presentation.pain.middle(nTrial+1),p.presentation.pain.low(nTrial+1))
+            end
+        end
+        p.presentation.pain.adapt(nTrial,:) = [adaptb adaptt];
+       
+    end
     function SetParams
         %mrt business
         p.mrt.dummy_scan              = 7;%this will wait until the 6th image is acquired.
@@ -602,6 +657,7 @@ cleanup;
             p.keys.null                    = KbName('0)');
             p.keys.one                     = KbName('1!');
             p.keys.v                       = KbName('v');
+            p.keys.c                       = KbName('c');
             p.keys.enter                   = KbName('return');
         end
         %% %%%%%%%%%%%%%%%%%%%%%%%%%
@@ -615,7 +671,8 @@ cleanup;
         p.com.lpt.RateT     = 16;
         p.com.lpt.Ramp1     = 32;
         p.com.lpt.Plateau   = 64;
-        p.com.lpt.ucs       = 128;
+        p.com.lpt.Ramp2     = 128;
+        p.com.lpt.ucs       = 1;
         
         
         %
@@ -625,7 +682,7 @@ cleanup;
         %time2fixationcross->cross2onset->onset2shock->shock2offset
         %these (duration.BLA) are average duration values:
         p.duration.face                = 1.5; % face stimulus
-        p.duration.treatment           = 5;   % treatment plateau
+        p.duration.treatment           = 6;   % treatment plateau
         p.duration.rate                = 5;   % how long can subject rate maximally
         p.duration.keep_recording      = 0.25;%this is the time we will keep recording (eye data) after stim offset.
         
@@ -634,25 +691,42 @@ cleanup;
         if run == 0
             seq.cond_id       = nan(8,1);
             seq.tTrial        = 8;
-            seq.ucs           = zeros(8,1);
             seq.isi1          = Shuffle([4 4.5 4.5 4.5 5 5 5 5]);
             seq.isi2          = 6-seq.isi1;
             seq.isi3          = Shuffle([.5 .5 .5 .5 .75 .75 .75 1]);
             seq.stim_id       = Shuffle(1:8);
             seq.ucs           = seq.stim_id==csp;
             seq.dist          = 1:8;
-            seq.poststim      = 1-seq.isi3;
+            p.presentation    = seq;
+        elseif run ==10
+            seq.cond_id       = Shuffle([repmat(csp,[1 4]), repmat(csn,[1 4]), 9 9]);
+            seq.tTrial        = length(seq.cond_id);
+            seq.ucs           = seq.cond_id == 9;
+            seq.isi1          = seq_BalancedDist(seq.cond_id,[4 4.5 5]);
+            seq.isi2          = 6-seq.isi1;
+            seq.isi3          = Shuffle([.5 .5 .5 .5 .75 .75 .75 1]);
+            seq.stim_id       = seq.cond_id;
+            seq.stim_id(seq.ucs) = csp;
+            seq.dist          = MinimumAngle((seq.stim_id-1)*45,(csp-1)*45);
             p.presentation    = seq;
         else
             load([p.path.stim '/stimlist/seq.mat']);
             p.presentation    = seq(subject,csp);
         end
         
-        p.presentation.pain.basetemp   = repmat(basetemp,[p.presentation.tTrial 1]);
-        p.presentation.pain.middle     = repmat(middletemp,[p.presentation.tTrial 1]);
-        p.presentation.pain.low        = repmat(lowtemp,[p.presentation.tTrial 1]);
-        p.presentation.pain.ror        = 5;
-        
+        p.presentation.pain.basetemp    = repmat(basetemp,[p.presentation.tTrial 1]);
+        p.presentation.pain.middle      = repmat(middletemp,[p.presentation.tTrial 1]);
+        p.presentation.pain.low         = repmat(lowtemp,[p.presentation.tTrial 1]);
+        p.presentation.pain.ror         = 5;
+        p.presentation.pain.adaptstep   = .5;
+        p.presentation.pain.baseadapt   = 0;
+        p.presentation.pain.treatadapt  = 1;
+        p.presentation.pain.adapt       = zeros(p.presentation.tTrial,2); % first column is baseline, second treatment
+        % codes will be:
+        %  1  - increase
+        % -1  - decrease
+        % -2  - baseline was too hurtful
+        %  0  - no action taken
         if run ==0
             p.presentation.CrossPosition = FixationCrossPool;
         end
@@ -738,7 +812,7 @@ cleanup;
         p.ptb.CrossPositionET_x     = [p.ptb.midpoint(1) p.ptb.midpoint(1)];
         p.ptb.CrossPositionET_y     = [p.ptb.midpoint(2)-p.ptb.cross_shift(2) p.ptb.midpoint(2)+p.ptb.cross_shift(2)];
         p.ptb.fc_size               = 20;
-        p.ptb.fc_width              = 2;
+        p.ptb.fc_width              = 4;
         p.ptb.fc_color              = [255 0 0];
         p.ptb.startY                = p.ptb.midpoint(2);
         fix          = [p.ptb.midpoint(1) p.ptb.startY]; % yaxis is 1/4 of total yaxis
@@ -1005,20 +1079,20 @@ cleanup;
         elseif nInstruct == 1%first Instr. of the training phase.
             text = ['Willkommen zum Experiment.\n' ...
                 '\n'...
-                'Wir werden Ihnen nun als erstes demonstrieren,\n'...
+                'Wir werden Ihnen nun als Erstes demonstrieren,\n'...
                 'wie sich die Schmerzreize während des Experiments anfühlen werden. \n'...
                 'Sie spüren bereits jetzt einen konstanten Schmerz, \n'...
-                'der während des Experiments in jedem Durchgang durch kurzes Absenken der Temperatur behandelt wird. \n'...
+                'der während des Experiments in jedem Durchgang durch kurzes Absenken der Temperatur behandelt wird.\n'...
                 'Dadurch wird der Schmerz etwas gelindert.\n'...
                 'In einigen Durchgängen werden wir zusätzlich das TENS-Gerät aktivieren, \n'...
                 'was zu einer noch besseren Schmerzreduktion führt. \n'...
                 'Die Funktion des TENS-Geräts werden wir Ihnen nun in einem ersten Durchgang demonstrieren.\n'...
-                '\n'...               
+                '\n'...
                 'Drücken Sie die obere Taste um mit den Erklärungen fortzufahren.\n' ...
                 ];
         elseif nInstruct == 2%second Instr. of the training phase.
             text = ['Sie erhalten nun vier Behandlungsdurchgänge, jeweils im Wechsel mit und ohne TENS.\n' ...
-                'Ob die TENS aktiviert ist, werden wir Ihnen in diesem Teil noch angeben.\n' ...
+                'Ob die TENS aktiviert ist, werden wir Ihnen in diesem Teil noch angeben, damit Sie den Unterschied kennen lernen.\n' ...
                 'Im Hauptexperiment wird dies nicht so sein. \n' ...
                 '\n' ...
                 'Bitte bewerten Sie nach jedem Durchgang, wie schmerzhaft dieser war.\n' ...
@@ -1027,52 +1101,71 @@ cleanup;
                 '\n'...
                 'Drücken Sie die obere Taste um die Demonstration zu starten.\n' ...
                 ];
+        elseif nInstruct == 3%Instruction before the faces baseline is shown
+            text = ['Als nächstes werden wir Ihnen demonstrieren,\n'...
+                'wie die verschiedenen Durchgänge im Hauptexperiment funktionieren.\n' ...
+                'Jeder Durchgang beginnt mit dem nun bereits spürbaren Grundschmerz,\n' ...
+                'den Sie bei Erscheinen der Skala bewerten. \n' ...
+                '\n' ...
+                'Zudem wird Ihnen in jedem Durchgang ein Gesicht präsentiert, das Sie aufmerksam betrachten sollen. \n' ...
+                '\n' ...
+                'Direkt nach dem Gesicht folgt die Schmerzreduktion,\n' ...
+                'für die Sie anschließend wieder den Schmerz auf der gewohnten Skala bewerten.\n' ...
+                'Es ist sehr wichtig, dass Sie Ihr Rating innerhalb von 5 Sekunden abgeben und bestätigen.\n' ...
+                '\n'...
+                'Drücken Sie die obere Taste um die Demonstration zu starten.\n' ...
+                ];
+            
         elseif nInstruct == 299%short instruction before localizer
             text = ['Die Kalibrierung war erfolgreich.\n'...
                 'Es startet nun eine kurze Vormessung (~2 min), während der Sie nichts tun müssen.\n\n'...
                 ];
-        elseif nInstruct == 3 %second Instr. of the training phase.
+        elseif nInstruct == 4 %Instr. for the very first phase.
             text = ['Willkommen zum Hauptteil des Experiments.\n' ...
                 'Auch in diesem Teil des Experiments erhalten Sie durchgängig Schmerzreize, \n'...
                 'die hin und wieder durch Absenken der Temperatur behandelt werden.\n' ...
-                'Es wird Ihnen jedoch nicht mehr angezeigt, ob die es sich um eine normale Behandlung, \n'...
+                'Es wird Ihnen jedoch nicht angezeigt, ob die es sich um eine normale Behandlung, \n'...
                 'oder die verbesserte TENS Behandlung handelt. \n' ...
                 'Bitte bewerten Sie den wahrgenommenen Schmerz ganz intuitiv. \n' ...
-                'Sie haben dazu wie in der Kalibration jeweils 5 Sekunden Zeit.\n' ...
-                'Es ist sehr wichtig, dass Sie Ihr Rating innerhalb dieser Zeit abgeben und bestätigen.\n' ...
                 '\n'...
-                'Genau wie im vorherigen Durchgang sehen Sie vor jeder Schmerzreduktion ein Gesicht. Dieses können Sie ganz frei betrachten.\n'...
+                'Genau wie im vorherigen Durchgang sehen Sie vor jeder Schmerzreduktion ein Gesicht. Dieses sollen Sie aufmerksam betrachten.\n'...
                 'Sie werden merken, dass eines der Gesichter mit der TENS-Behandlung gepaart wird, \n'...
                 'd.h. dass nach diesem Gesicht bessere Schmerzreduktion erfolgt.\n'...
                 '\n'...
                 'Drücken Sie die obere Taste um fortzufahren.\n' ...
                 ];
-        elseif nInstruct == 300%third Instr. of the training phase.
+        elseif nInstruct == 400% 
             text = ['Wir sind jetzt kurz vor Beginn des Experiments.\n'...
-                'Wenn Sie noch Fragen haben, können Sie sich gerne an die Versuchleiterin wenden. \n'...
-                'Ansonsten möchten wir Sie nun noch einmal an die wichtigsten Punkte erinnern.\n\n'...
+                'Wenn Sie noch Fragen haben, wenden Sie sich jetzt an die Versuchleiterin. \n'...
+                'Ansonsten möchten wir Sie nun noch an die wichtigsten Punkte erinnern.\n\n'...
                 'Drücken Sie jeweils die obere Taste um fortzufahren.\n' ...
                 ];
-        elseif nInstruct == 301%third Instr. of the training phase.
+        elseif nInstruct == 44%short Instr. for following phases
+            text = ['Es folgt nun der nächste Durchgang.\n'...
+                'Wenn Sie noch Fragen haben, wenden Sie sich jetzt an die Versuchleiterin. \n'...
+                '\n\n'...
+                'Drücken Sie die obere Taste um zu starten.\n' ...
+                ];
+        elseif nInstruct == 401%third Instr. of the training phase.
             text = ['1. Blicken Sie immer auf die Fixationskreuze.\n'...
                 ];
-        elseif nInstruct == 302%third Instr. of the training phase.
-            text = ['2. Bewerten Sie die Schmerzwahrnehmung so genau wie möglich, aber innerhalb der 5 Sekunden.\n'...
+        elseif nInstruct == 402%third Instr. of the training phase.
+            text = ['2. Bewerten Sie die Schmerzwahrnehmung so genau wie möglich, aber innerhalb von 5 Sekunden.\n'...
                 ];
-        elseif nInstruct == 303%third Instr. of the training phase.
+        elseif nInstruct == 403%third Instr. of the training phase.
             text = ['3. Es ist allein Ihre Wahrnehmung gefragt, es gibt kein richtig oder falsch.\n'...
                 ];
-        elseif nInstruct == 304%third Instr. of the training phase.
+        elseif nInstruct == 404%third Instr. of the training phase.
             text = ['4. Nur eines der Gesichter wird mit der TENS Behandlung gepaart.\n'...
                 ];
-        elseif nInstruct == 305%third Instr. of the training phase.
+        elseif nInstruct == 405%third Instr. of the training phase.
             text = ['Drücken Sie jetzt die obere Taste, das Experiment startet dann in wenigen Sekunden.\n' ...
                 ];
             
             
         elseif nInstruct == 20
             text = ['Demo beendet. Vielen Dank! \n'];
-                  
+            
         elseif nInstruct == 21
             text = ['Durchgang beendet. Vielen Dank! \n'];
             
@@ -1089,19 +1182,6 @@ cleanup;
                 'Bitte drücken Sie zum Start die obere Taste und\n' ...
                 'fixieren Sie das anschließend erscheinende Fixationskreuz.\n'...
                 ];
-            
-        elseif nInstruct == 10%just before the shock
-            text = ['Reiz kommt...\n'];
-        elseif nInstruct == 11%this is the rating question
-            text = ['Wie wahrscheinlich ist es, bei dem gerade gesehenen Gesicht \n'...
-                'einen elektrischen Schock zu erhalten?“\n' ...
-                'Bewegen Sie den "Zeiger" mit der rechten und linken Taste\n' ...
-                'und bestätigen Sie Ihre Einschätzung mit der mit der oberen Taste'...
-                ];
-        elseif nInstruct == 12 %These two below are the possible responses to the question in 11
-            text = {'Sehr\nwahrscheinlich'};
-        elseif nInstruct == 13
-            text = {'Überhaupt\nnicht\nwahrscheinlich'};
         elseif nInstruct == 14
             text = ['Danke. Den aktiven Teil des Experiment haben Sie nun geschafft.\n'...
                 'Es folgt nun noch eine strukturelle Messung, die ca. 7 Minuten dauert.\n'...
@@ -1183,8 +1263,8 @@ cleanup;
         cross_directions = round(rand(p.presentation.tTrial,1))*180;
         dummy            = cross_directions + rand(p.presentation.tTrial,1)*30-15;
         cross_positions  = [cosd(dummy(:,1))*radius+center(1) sind(dummy(:,1))*radius+center(2)];
-%         cross_positions  = [cosd(dummy(:,1))*radius+center(1) sind(dummy(:,1))*radius+center(2)...
-%             cosd(dummy(:,2))*radius+center(1) sind(dummy(:,2))*radius+center(2)];
+        %         cross_positions  = [cosd(dummy(:,1))*radius+center(1) sind(dummy(:,1))*radius+center(2)...
+        %             cosd(dummy(:,2))*radius+center(1) sind(dummy(:,2))*radius+center(2)];
     end
     function MarkCED(socket,port)
         %send pulse to SCR#
@@ -1284,6 +1364,7 @@ cleanup;
         commandwindow;
         KbQueueStop(p.ptb.device);
         KbQueueRelease(p.ptb.device);
+        fclose(s);
     end
     function CalibrateEL
         fprintf('=================\n=================\nEntering Eyelink Calibration\n')
@@ -1319,6 +1400,7 @@ cleanup;
         %         %Rate T Offset        :     12   info: NaN;
         %         %Face Onset           :     13   info: stim_id;
         %         %Face Offset          :     14   info: stim_id;
+        %         %FaceStim Fixcross    :     15   info: position
         %         %dummy fixflip        :     22   info: NaN;
         %Text on the screen   :     -1    info: Which Text?
         %VAS Onset            :     -2    info: NaN;
