@@ -550,7 +550,7 @@ cleanup;
         Screen('Flip',p.ptb.w);%make the bg
         p.ptb.slack                 = Screen('GetFlipInterval',p.ptb.w)./2;
         [p.ptb.width, p.ptb.height] = Screen('WindowSize', p.ptb.screenNumber);
-        p.ptb.startY = p.ptb.height./4; %should be px(yaxis)./4;
+        p.ptb.startY = p.ptb.height./2; %should be px(yaxis)./4;
         %find the mid position on the screen.
         p.ptb.midpoint              = [ p.ptb.width./2 p.ptb.height./2];
         %NOTE about RECT:
