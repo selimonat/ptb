@@ -44,14 +44,17 @@ Screen('TextSize', p.ptb.w, 30);
 Screen('TextSize', p.ptb.w, p.text.fontsize);
 %Instructions
 if run == 1
-    ShowInstruction(0,0,3);
-    ShowInstruction(1,1); % explains all
+    ShowInstruction(0,0,3)
+    ShowInstruction(1,1);
+    LimitsProcedure;
+    ShowInstruction(10,1);
+elseif run == 1
+    ShowInstruction(2,1); % explains all
+    PresentStimuli;
 elseif run ==2
-    ShowInstruction(2,1); % a bit shorter
+    ShowInstruction(3,1); % a bit shorter
+    PresentStimuli;
 end
-
-PresentStimuli;
-
 
 
 %trim the log file and save
@@ -76,7 +79,53 @@ catch
 end
 cleanup;
 
-
+    function LimitsProcedure
+        for n = 1:p.presentation.limits.ntrials
+            if n ==1
+                Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
+                Screen('FillRect', p.ptb.w,  p.stim.white, p.ptb.FixCross');%draw the prestimus cross atop
+                Screen('DrawingFinished',p.ptb.w,0);
+                TimeCrossOn  = Screen('Flip',p.ptb.w);
+            end
+%             serialcom(s,'START');
+            
+            tstart = tic;
+            %prepare red cross
+            Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
+            Screen('FillRect',  p.ptb.w, p.ptb.fc_color, p.ptb.FixCross');%draw the prestimus cross atop
+            Screen('DrawingFinished',p.ptb.w,0);
+            TimeCrossOn  = Screen('Flip',p.ptb.w);
+            fprintf('Trigger sent, raising temperature. ');
+            fprintf('Waiting for keypress...\n')
+            
+            %wait for keypress
+            k = 0;
+            while ~(k == p.keys.space);
+                pause(0.1);
+                [~, k] = KbStrokeWait(p.ptb.device);
+                k = find(k);
+            end
+            tstop = toc;
+%             serialcom(s,'MOVE',20)%this opens the "up" channel for 20 ms, to stop thermode;
+            fprintf('Subject pressed space!\n')
+            %turn back to white cross
+            Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
+            Screen('FillRect', p.ptb.w,  p.stim.white, p.ptb.FixCross');%draw the prestimus cross atop
+            Screen('DrawingFinished',p.ptb.w,0);
+            RT(n)        = (tstop-tstart);
+            stoplim(n) = RT(n)*p.presentation.limits.ror + p.presentation.limits.base;
+            fprintf('Subject stopped at %5.2f C.\n',stoplim(n)); 
+            WaitSecs(p.presentation.limits.isi);
+        end
+        p.presentation.limits.RT        = RT;
+        p.presentation.limits.threshold = stoplim;
+        fprintf('------------------------------------------------------------------');
+        fprintf('Limits temps were: \n')
+        for n = 1:p.presentation.ntrials
+        fprintf('(%g) %5.2f C\n',n,stoplim(n));
+        end
+        fprintf('Mean limits temp is %5.2f C.\n',mean(stoplim));
+        
     function PresentStimuli
         %Enter the presentation loop and wait for the first pulse to
         %arrive.
@@ -283,6 +332,13 @@ cleanup;
         p.presentation.ror             = 5;
         p.presentation.run             = run;
         
+        p.presentation.limits.base      = 20;
+        p.presentation.limits.ror       = .5;
+        p.presentation.limits.isi       = 5;
+        p.presentation.limits.ntrials   = 3;
+        p.presentation.limits.RT        = zeros(p.presentation.limits.ntrials,1);
+        p.presentation.limits.threshold = zeros(p.presentation.limits.ntrials,1);
+        
         %this will deal all the presentation sequence related information
 %         p.presentation.Tmax            = threshold + 3;
         p.presentation.stimlist        = p.presentation.basetemp + steps;%Threshold + 3 is maximum temperature
@@ -488,6 +544,14 @@ cleanup;
             text = ['Bewertung der Schmerzintensität'];
             
         elseif nInstruct == 1 %Instruction
+            text = ['Wir bestimmen nun Ihre individuelle Schmerzempfindung.\n' ...
+                'Wir werden dazu die Temperatur langsam schrittweise erhöhen.\n'...
+                'Bitte schauen Sie während des Vorgangs auf das weiße Kreuz.\n'...
+                'Ihre Aufgabe ist es, die Leertaste zu drücken, sobald Sie die Temperatur als schmerzhaft empfinden,\n' ...
+                'd.h. sobald zum Gefühl von Wärme ein unangenehmes Gefühl wie Brennen oder Stechen hinzukommt.\n' ...
+                'Der Vorgang wird drei mal wiederholt.\n' ...
+                'Wenn Sie keine Fragen mehr haben, drücken Sie bitte die obere Taste, um zu starten.\n'];
+        elseif nInstruct == 2 %Instruction
             text = ['Im Folgenden möchten wir Ihre spezifische Schmerzempfindung bestimmen.\n' ...
                 'Dazu senden wir Ihnen mehrere Hitzereize, die Sie anschließend mittels\n' ...
                 'einer Schmerz-Skala bewerten sollen. Falsche Antworten gibt es bei dieser\n' ...
@@ -497,23 +561,22 @@ cleanup;
                 'zu konzentrieren & bewerten Sie diese so präzise wie möglich. Falls Sie noch\n'...
                 'Fragen haben, wenden Sie sich bitte noch einmal an die Versuchsleiterin. Falls\n' ...
                 'Sie keine Fragen mehr haben, drücken Sie bitte die obere Taste, um zu starten.\n'];
-        elseif nInstruct == 2%short instruction for second run
+        elseif nInstruct == 3%short instruction for second run
             text = ['Wiederholung der Schwellenkalibrierung.\n'...
                 '\n'...
                 'Nutzen Sie die Tasten von Zeigefinger (links) & Ringfinger (rechts) zum Bewerten.\n'...
                 'Bestätigen Sie Ihre Eingabe immer mit der mittleren Taste (oben). Falls Sie noch \n'...
                 'Fragen haben, teilen Sie dies gleich noch einmal der Versuchsleiterin mit. \n'...
                 ];
+        elseif nInstruct == 10
+            text = ['Vielen Dank!\n'...
+                'Es geht gleich weiter. \n'];
         elseif nInstruct == 11 %end
             text = ['Bitte bewerten Sie, wie schmerzhaft der soeben erhaltene Reiz für Sie war.'];
         elseif nInstruct == 12 %These two below are the possible responses to the question in 11
             text = {'unerträglich\nschmerzhaft'};
         elseif nInstruct == 13
             text = {'Überhaupt\nnicht\nschmerzhaft'};
-        elseif nInstruct == 14
-            text = ['Diesen Teil des Experiments haben Sie geschafft. \n'...
-                'Vielen Dank!\n'...
-                'Es geht gleich weiter. \n'];
         else
             text = {''};
         end
@@ -657,6 +720,7 @@ cleanup;
         commandwindow;
         KbQueueStop(p.ptb.device);
         KbQueueRelease(p.ptb.device);
+        fclose(s);
     end
     function Log(ptb_time, event_type, event_info)
         %Phases:
