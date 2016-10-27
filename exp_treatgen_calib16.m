@@ -43,7 +43,7 @@ Screen('TextSize', p.ptb.w, 30);
 [nx, ny, textbounds]=DrawFormattedText(p.ptb.w, GetText(0), 'center', 'center');
 Screen('TextSize', p.ptb.w, p.text.fontsize);
 %Instructions
-if run == 1
+if run == 0
     ShowInstruction(0,0,3)
     ShowInstruction(1,1);
     LimitsProcedure;
@@ -80,16 +80,23 @@ end
 cleanup;
 
     function LimitsProcedure
+        fprintf('Is the thermode set? Press v to start experiment from your side!\n')
+        k = 0;
+        while ~(k == p.keys.v);
+            pause(0.1);
+            [~, k] = KbStrokeWait(p.ptb.device);
+            k = find(k);
+        end
         for n = 1:p.presentation.limits.ntrials
             if n ==1
                 Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
                 Screen('FillRect', p.ptb.w,  p.stim.white, p.ptb.FixCross');%draw the prestimus cross atop
                 Screen('DrawingFinished',p.ptb.w,0);
                 TimeCrossOn  = Screen('Flip',p.ptb.w);
+                WaitSecs(1);
             end
 %             serialcom(s,'START');
-            
-            tstart = tic;
+            tic;
             %prepare red cross
             Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
             Screen('FillRect',  p.ptb.w, p.ptb.fc_color, p.ptb.FixCross');%draw the prestimus cross atop
@@ -97,7 +104,6 @@ cleanup;
             TimeCrossOn  = Screen('Flip',p.ptb.w);
             fprintf('Trigger sent, raising temperature. ');
             fprintf('Waiting for keypress...\n')
-            
             %wait for keypress
             k = 0;
             while ~(k == p.keys.space);
@@ -105,27 +111,31 @@ cleanup;
                 [~, k] = KbStrokeWait(p.ptb.device);
                 k = find(k);
             end
-            tstop = toc;
+            RT(n) = toc;
 %             serialcom(s,'MOVE',20)%this opens the "up" channel for 20 ms, to stop thermode;
-            fprintf('Subject pressed space!\n')
             %turn back to white cross
             Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
             Screen('FillRect', p.ptb.w,  p.stim.white, p.ptb.FixCross');%draw the prestimus cross atop
             Screen('DrawingFinished',p.ptb.w,0);
-            RT(n)        = (tstop-tstart);
+            Screen('Flip',p.ptb.w);
             stoplim(n) = RT(n)*p.presentation.limits.ror + p.presentation.limits.base;
-            fprintf('Subject stopped at %5.2f C.\n',stoplim(n)); 
-            WaitSecs(p.presentation.limits.isi);
+            fprintf('Subject stopped at %5.2f °C.\n',stoplim(n));
+            fprintf('ISI is on.')
+            tic
+            while toc<=p.presentation.limits.isi
+                pause(1)
+                fprintf('.')
+            end
         end
         p.presentation.limits.RT        = RT;
         p.presentation.limits.threshold = stoplim;
-        fprintf('------------------------------------------------------------------');
-        fprintf('Limits temps were: \n')
-        for n = 1:p.presentation.ntrials
-        fprintf('(%g) %5.2f C\n',n,stoplim(n));
+        fprintf('------------------------------------------------------------------\n');
+        fprintf('Estimated limits are: \n')
+        for n = 1:p.presentation.limits.ntrials
+            fprintf('(%g) %5.2f °C\n',n,stoplim(n));
         end
-        fprintf('Mean limits temp is %5.2f C.\n',mean(stoplim));
-        
+        fprintf('Mean limits temp is %5.2f °C.\n',mean(stoplim));
+    end
     function PresentStimuli
         %Enter the presentation loop and wait for the first pulse to
         %arrive.
@@ -287,6 +297,7 @@ cleanup;
             p.keys.esc                     = KbName('esc');
             p.keys.null                    = KbName('0)');
             p.keys.one                     = KbName('1!');
+            p.keys.v                       = KbName('v');
         end
         
         %get all the required keys in a vector
