@@ -95,8 +95,8 @@ cleanup;
                 TimeCrossOn  = Screen('Flip',p.ptb.w);
                 WaitSecs(1);
             end
-%             serialcom(s,'START');
-            tic;
+            serialcom(s,'START');
+            tic
             %prepare red cross
             Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
             Screen('FillRect',  p.ptb.w, p.ptb.fc_color, p.ptb.FixCross');%draw the prestimus cross atop
@@ -104,6 +104,7 @@ cleanup;
             TimeCrossOn  = Screen('Flip',p.ptb.w);
             fprintf('Trigger sent, raising temperature. ');
             fprintf('Waiting for keypress...\n')
+            toc
             %wait for keypress
             k = 0;
             while ~(k == p.keys.space);
@@ -111,8 +112,8 @@ cleanup;
                 [~, k] = KbStrokeWait(p.ptb.device);
                 k = find(k);
             end
+            serialcom(s,'MOVE',20)%this opens the "up" channel for xx ms, to stop thermode;\
             RT(n) = toc;
-%             serialcom(s,'MOVE',20)%this opens the "up" channel for 20 ms, to stop thermode;
             %turn back to white cross
             Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
             Screen('FillRect', p.ptb.w,  p.stim.white, p.ptb.FixCross');%draw the prestimus cross atop
@@ -128,7 +129,8 @@ cleanup;
             end
         end
         p.presentation.limits.RT        = RT;
-        p.presentation.limits.threshold = stoplim;
+        p.presentation.limits.threshold = stoplim;%uncorrected
+        p.presentation.limits.threshold_c = .05+.98*stoplim; %rough correction from lin. regression of pilote test
         fprintf('------------------------------------------------------------------\n');
         fprintf('Estimated limits are: \n')
         for n = 1:p.presentation.limits.ntrials
