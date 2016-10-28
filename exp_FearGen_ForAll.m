@@ -1,20 +1,74 @@
-function [p]=exp_FearGen_NoHardware(subject,Nseq,phase,csp,PainThreshold)
+function [p]=exp_FearGen_ForAll(subject,phase,Nseq,csp,PainThreshold)
 %[p]=exp_FearGen_NoHardware(subject,phase,csp,PainThreshold)
 %
 %
-%   This is based on the exp_FearAmy.m, adapted to run the initial FearGen
-%   project (Onat & Buechel, 2015).
+%   This code is based on the exp_FearAmy.m, adapted to run the initial FearGen
+%   experiment (Onat & Buechel, 2015).
 %
+%   When the experiment starts as experimenter you will have to pass through
+%   few sanity checks (press (V)alidate to continue). Once these are
+%   passed, some text will be shown to the participant. You can also pass
+%   these stages by pressing V (normally the subject has to read them and
+%   press confirm key). These instructions for participants are shown using
+%   the ShowInstruction function, where you precise instructions by their
+%   id number. All instructions are stored in the GetText function by these
+%   ids. So if you would like to change instructions you will need to
+%   modify that function.
+%
+%   The experiment starts with PHASE = 1. Here I set the shock intensity
+%   while the participant is in the scanner. The shock threshold is
+%   measured outside the scanner. This is here just to validate the shock
+%   intensity that will be used during the experiment, it is obtained by
+%   the PAINTHRESHOLD (given as input) times P.OUT.SHOCKFACTOR (defined
+%   below). PAINTHRESHOLD is only painful half of the time by definition,
+%   and we would like to give a shock which is more painful but still
+%   bearable by the participant. That is, I ask the participant to confirm
+%   the shock is PAINFUL and BEARABLE. If the shock is not bearable the
+%   program will propose a lower amplitude and the same question will be
+%   repeated until these two conditions are fulfilled. It is always good to
+%   stay in oral communication with the participant though. The phase = 1 
+%   continues with a short presentation of faces, where I evaluate whether
+%   they 1/ follow the fixation cross as instructed and 2/ detect the
+%   oddball target. If they fail in any of these, phase 1 is repeated. This
+%   phase also helps people to familiarize with the faces if no other task
+%   has yet been carried out before.
+%
+%   The phase 2 is baseline. All faces are shown, but non predicts the
+%   shock. Instead shocks are delivered after a shock symbol. This phase
+%   ends with ratings.
+%
+%   Phase 3 is conditioning. Only CS+ and CS- are shown and CS+ is shocked
+%   at about 30% of the cases.
+%
+%   Phase 4 is similar to baseline, all faces are shown, but shock follows
+%   the CS+ face to avoid extinction. Following this phase, there is the
+%   detection task.
+%
+%   
+%   The current experiment can fully work with the Eyelink
+%   eye-tracker. This is however now disabled. If you intent to record
+%   eye-movements turn the EyelinkWanted flag to 1.
+%
+%   The parallel communication currently relies on the cogent's OUTP
+%   function. It is used to deliver shocks and to send event pulses to the
+%   physio computer. If you intend to use a Windows systems you can install
+%   cogent and outp function, then you would be able to directly use this
+%   code. Or take the extra mile and code the outp equivalent in PTB (that
+%   would be nice).
 %
 %   To do before you start:
-%   Set the baselocation for the experiment in SetParams:
-%   p.path.baselocation (line: ~420)
-%   Set the key identifiers: line ~500;
+%   Set the baselocation for the experiment in SetParams around line 420:
+%   p.path.baselocation variable. this location will be used to save
+%   the experiment-related data for the current subject.
+%
+%   
+%   Example usage:
+%   exp_FearGen_ForAll(12,3,4,1,8.43); runs the Conditioning paradigm (3) for
+%   participant 12, using the stimulus sequence 4 where the CS+ face is
+%   face number 1 for a participant who has a shock intensity of 8.43.
 %
 %
-%   Explain key mappings
-%   Explain phases;
-
+%   Selim Onat
 
 debug   = 1;%debug mode => 1: transparent window enabling viewing the backgroun.
 EyelinkWanted = 0;%is Eyelink wanted?
@@ -72,7 +126,7 @@ KbQueueStop(p.ptb.device);
 KbQueueRelease(p.ptb.device);
 %save again the parameter file
 save(p.path.path_param,'p');
-if phase == 0
+if phase == 1
     %
     p.mrt.dummy_scan = 0;%for the training we don't want any pulses
     p.var.ExpPhase = phase;
@@ -266,7 +320,7 @@ cleanup;
             %Get the variables that Trial function needs.
             stim_id      = p.presentation.stim_id(nTrial);
             fix_y        = p.presentation.cross_position(nTrial);
-            ISI          = p.presentation.isi(nTrial)*2+1;
+            ISI          = (p.presentation.isi(nTrial)+1)*2;
             ucs          = p.presentation.ucs(nTrial);
             oddball      = p.presentation.oddball(nTrial);
             prestimdur   = p.duration.prestim+rand(1)*.25;
@@ -502,10 +556,11 @@ cleanup;
         %3, 8 ==> Down
         %4, 9 ==> Up (confirm)
         %5    ==> Pulse from the scanner
-        p.keys.confirm                 = KbName('4');%
-        p.keys.increase                = KbName('1');
-        p.keys.decrease                = KbName('3');
-        p.keys.pulse                   = KbName('5');
+        KbName('UnifyKeyNames');
+        p.keys.confirm                 = KbName('4$');%
+        p.keys.increase                = KbName('1!');
+        p.keys.decrease                = KbName('3#');
+        p.keys.pulse                   = KbName('5%');
         p.keys.el_calib                = KbName('v');
         p.keys.el_valid                = KbName('c');
         p.keys.escape                  = KbName('Escape');
@@ -539,7 +594,8 @@ cleanup;
         p.duration.prestim             = .85;
         %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %stimulus sequence: Explanation of the fields:
-        load([fileparts(which('exp_FearGen_NoHardWare.m')) filesep 'bin' filesep 'feargen_seq.mat']);
+        s = load([fileparts(which('exp_FearGen_NoHardWare.m')) filesep 'bin' filesep 'feargen_seq.mat']);
+        s = s.s;
         %Explanation of the fields:
         %.cond_id        => Condition id, this is the face to be loaded. 1-8: face id, 9 => oddball, 10 => UCS.
         %.UCS            => 1 if it is UCS trial, otherwise 0
@@ -675,10 +731,11 @@ cleanup;
         DrawSkala;
         ok = 1;
         while ok == 1
+            
             [secs, keyCode, ~] = KbStrokeWait(p.ptb.device);
             keyCode = find(keyCode);
             Log(secs,7,keyCode);
-            if length(keyCode) == 1%this loop avoids crashes to accidential presses of meta keys
+            if length(keyCode) == 1%this loop avoids crashes to accidential presses of meta keys                
                 if (keyCode == up) || (keyCode == down)
                     next = position + increment(keyCode);
                     if next < (tSection+1) && next > 0
@@ -872,8 +929,7 @@ cleanup;
             text = {''};
         end
     end
-    function SetPTB
-        %KbName('UnifyKeyNames');
+    function SetPTB        
         %Sets the parameters related to the PTB toolbox. Including
         %fontsizes, font names.
         %Default parameters
@@ -934,7 +990,6 @@ cleanup;
         p.ptb.keysOfInterest = [];for i = fields(p.keys)';p.ptb.keysOfInterest = [p.ptb.keysOfInterest p.keys.(i{1})];end
         fprintf('Key listening will be restricted to %d\n',p.ptb.keysOfInterest)
         RestrictKeysForKbCheck(p.ptb.keysOfInterest);
-        
         p.ptb.keysOfInterest=zeros(1,256);
         p.ptb.keysOfInterest(p.keys.confirm) = 1;
         %create a queue sensitive to only relevant keys.
