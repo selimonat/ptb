@@ -7,6 +7,7 @@ function [p]=exp_treatgen(subject,run,csp,basetemp,middletemp,lowtemp)
 %
 mrt   = 0;
 debug = 0;%debug mode
+laptop = 0;
 %replace parallel port function with a dummy function
 if ismac
     %   outp = @(x,y) fprintf('[%i %i]\n',x,y);
@@ -782,6 +783,9 @@ cleanup;
         %%Find the number of the screen to be opened
         screens                     =  Screen('Screens');
         p.ptb.screenNumber          =  max(screens);%the maximum is the second monitor
+        if laptop
+            p.ptb.screenNumber = 1;
+        end
         %Make everything transparent for debugging purposes.
         if debug
             commandwindow;
