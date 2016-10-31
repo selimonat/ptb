@@ -1,5 +1,5 @@
-function [p]=exp_FearGen_NoHardware(subject,Nseq,phase,csp,PainThreshold)
-%[p]=exp_FearGen_NoHardware(subject,phase,csp,PainThreshold)
+function [p]=exp_FearGen_ForAll(subject,Nseq,phase,csp,PainThreshold)
+%[p]=exp_FearGen_ForAll(subject,phase,csp,PainThreshold)
 %
 %
 %   This is based on the exp_FearAmy.m, adapted to run the initial FearGen
@@ -16,7 +16,7 @@ function [p]=exp_FearGen_NoHardware(subject,Nseq,phase,csp,PainThreshold)
 %   Explain phases;
 
 
-debug   = 1;%debug mode => 1: transparent window enabling viewing the backgroun.
+debug   = 1;%debug mode => 1: transparent window enabling viewing the background.
 EyelinkWanted = 0;%is Eyelink wanted?
 %replace parallel port function with a dummy function
 if ~IsWindows
@@ -29,7 +29,8 @@ if ~IsWindows
     %in PTB. This presentation will now replace the OUTP.m function with
     %the following code, which simply does nothing but allows the program
     %run.
-    outp = @(x,y) 1;
+    
+    %% outp = @(x,y) 1;
 end
 if nargin ~= 5
     fprintf('Wrong number of inputs\n');
@@ -435,14 +436,14 @@ cleanup;
         %Path Business.
         [~, hostname]                 = system('hostname');
         p.hostname                    = deblank(hostname);
-        p.path.baselocation           = '/home/onat/Desktop/FearGen/';
+        p.path.baselocation           = 'C:\Users\...\Documents\Experiments\FearGen';
         %create the base folder if not yet there.
         if exist(p.path.baselocation) == 0
             mkdir(p.path.baselocation);
         end
         
         p.path.experiment             = [p.path.baselocation  filesep];
-        p.path.stim                   = [fileparts(which('exp_FearGen_NoHardWare.m')) filesep 'bin' filesep 'FearGen_Stimuli' filesep];
+        p.path.stim                   = [fileparts(which('exp_FearGen_ForAll.m')) filesep 'bin' filesep 'FearGen_Stimuli' filesep];
         p.path.stim24                 = [p.path.stim '24bit' filesep];%location of 24bit stimuli, useful only to send it to the eyelink system
         p.path.stim_cut               = [p.path.stim 'cut' filesep];%stimuli without borders, necessary for the facecircle
         %
@@ -508,8 +509,8 @@ cleanup;
         p.keys.pulse                   = KbName('5');
         p.keys.el_calib                = KbName('v');
         p.keys.el_valid                = KbName('c');
-        p.keys.escape                  = KbName('Escape');
-        p.keys.enter                   = KbName('Return');
+        p.keys.escape                  = KbName('esc');
+        p.keys.enter                   = KbName('return');
         
         %% %%%%%%%%%%%%%%%%%%%%%%%%%
         %Communication business
@@ -539,7 +540,8 @@ cleanup;
         p.duration.prestim             = .85;
         %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %stimulus sequence: Explanation of the fields:
-        load([fileparts(which('exp_FearGen_NoHardWare.m')) filesep 'bin' filesep 'feargen_seq.mat']);
+        s = load([fileparts(which('exp_FearGen_ForAll.m')) filesep 'bin' filesep 'feargen_seq.mat']);
+        s = s.s;
         %Explanation of the fields:
         %.cond_id        => Condition id, this is the face to be loaded. 1-8: face id, 9 => oddball, 10 => UCS.
         %.UCS            => 1 if it is UCS trial, otherwise 0
