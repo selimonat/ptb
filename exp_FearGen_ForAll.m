@@ -285,9 +285,9 @@ cleanup;
             Buzz;
         end
         %
-        message   = 'Bewege den "Zeiger" mit der rechten und linken Pfeiltaste\n und bestï¿½tige deine Einschï¿½tzung mit der mit der oberen Pfeiltaste.';
+        message   = 'Bewege den "Zeiger" mit der rechten und linken Pfeiltaste\n und bestätige deine Einschätzung mit der mit der oberen Pfeiltaste.';
         rect        = [p.ptb.width*0.2  p.ptb.midpoint(2) p.ptb.width*0.6 100];
-        response = RatingSlider(rect,2,1,p.keys.increase,p.keys.decrease,p.keys.confirm,{ 'nicht\nertrï¿½glich' 'ertrï¿½glich'},message,0);
+        response = RatingSlider(rect,2,1,p.keys.increase,p.keys.decrease,p.keys.confirm,{ 'nicht\nerträglich' 'erträglich'},message,0);
         if response == 2
             fprintf('All is fine :)\n');
             fprintf('Subject confirmed the shock intensity inside the scanner...\n');
