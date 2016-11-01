@@ -53,7 +53,7 @@ fprintf('saving parameter file. \n');
 save(p.path.path_param,'p');
 if run == 0
     p.var.ExpPhase  = run;%set this after the calibration;
-    
+
     ShowInstruction(1,1);
     ShowInstruction(2,1);
     TENSdemo(basetemp,middletemp,lowtemp);
@@ -415,9 +415,9 @@ cleanup;
         for dc = 1:length(demotemps)
             text = textstring{dc};
             fixon     = GetSecs + .1;
-            redon     = GetSecs + .1 + 5/3;
-            rampon    = GetSecs + .1 + 5/3 + 1 + rand(1)*.25;
-            rampback  = rampon + rampdurs(dc) + p.duration.treatment./3;
+            redon     = GetSecs + .1 + 5;
+            rampon    = GetSecs + .1 + 5 + 1 + rand(1)*.25;
+            rampback  = rampon + rampdurs(dc) + p.duration.treatment;
             rateon    = rampback + rampdurs(dc)+ 1;
             %white cross
             Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
@@ -425,7 +425,7 @@ cleanup;
             Screen('DrawingFinished',p.ptb.w,0);
             Screen('Flip',p.ptb.w,fixon,0);
             Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
-            Screen('FillRect', p.ptb.w,  p.stim.white, p.ptb.centralFixCross');%draw the prestimus cross atop
+            Screen('FillRect', p.ptb.w,  p.stim.fc_color, p.ptb.centralFixCross');%draw the prestimus cross atop
             DrawFormattedText(p.ptb.w, text, 'center', p.ptb.midpoint(2)./1.2,p.stim.white);
             Screen('DrawingFinished',p.ptb.w,0);
             Screen('Flip',p.ptb.w,redon,0);
@@ -1094,10 +1094,12 @@ cleanup;
                 '\n'...
                 'Drücken Sie die obere Taste um mit den Erklärungen fortzufahren.\n' ...
                 ];
+            
         elseif nInstruct == 2%second Instr. of the training phase.
             text = ['Sie erhalten nun vier Behandlungsdurchgänge, jeweils im Wechsel mit und ohne TENS.\n' ...
-                'Ob die TENS aktiviert ist, werden wir Ihnen in diesem Teil noch angeben, damit Sie den Unterschied kennen lernen.\n' ...
-                'Im Hauptexperiment wird dies nicht so sein. \n' ...
+                'Ob die TENS unterschwellig aktiviert ist, werden wir Ihnen in diesem Teil noch angeben,\n'...
+                'damit Sie den Unterschied kennen lernen.\n' ...
+                'Im Hauptexperiment wird dies nicht angezeigt.\n' ...
                 '\n' ...
                 'Bitte bewerten Sie nach jedem Durchgang, wie schmerzhaft dieser war.\n' ...
                 'Sie haben dazu wie in der Kalibration jeweils 5 Sekunden Zeit, um zu antworten.\n' ...
@@ -1260,7 +1262,7 @@ cleanup;
     end
     function  [cross_positions]=FixationCrossPool
         radius   = 290; %in px (around 14 degrees (37 px/deg))
-        center   = [960 600];
+        center   = [p.ptb.midpoint(1) p.ptb.midpoint(2)];
         
         %setting up fixation cross pool vector of size
         % totaltrials x 4 (face_1_x face_1_y face_2_x face_2_y)
