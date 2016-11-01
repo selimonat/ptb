@@ -140,7 +140,7 @@ cleanup;
         end
         p.presentation.limits.RT        = RT;
         p.presentation.limits.threshold = stoplim;%uncorrected
-        p.presentation.limits.threshold_c = .05+.98*stoplim; %rough correction from lin. regression of pilote test
+        %p.presentation.limits.threshold_c = .05+.98*stoplim; %rough correction from lin. regression of pilote test
         fprintf('------------------------------------------------------------------\n');
         fprintf('Estimated limits are: \n')
         for n = 1:p.presentation.limits.ntrials
@@ -397,8 +397,8 @@ cleanup;
         p.presentation.ror             = 5;
         p.presentation.run             = run;
         
-        p.presentation.limits.base      = 20;
-        p.presentation.limits.ror       = .5;
+        p.presentation.limits.base      = 25;
+        p.presentation.limits.ror       = 5;
         p.presentation.limits.isi       = 5;
         p.presentation.limits.ntrials   = 3;
         p.presentation.limits.RT        = zeros(p.presentation.limits.ntrials,1);
@@ -621,7 +621,7 @@ cleanup;
         elseif nInstruct == 2 %Instruction
             text = ['Im Folgenden möchten wir Ihre individuelle Schmerzempfindung noch genauer bestimmen.\n' ...
                 'Dazu senden wir Ihnen mehrere Hitzereize, die Sie anschließend mittels\n' ...
-                'einer Schmerz-Skala bewerten sollen. Falsche Antworten gibt es bei dieser\n' ...
+                'einer Schmerz-Skala bewerten sollen. Sie haben dazu 5 Sek Zeit. Falsche Antworten gibt es bei dieser\n' ...
                 'Aufgabe nicht, da individuelle Empfindungen sehr unterschiedlich sein können.\n' ...
                 'Nutzen Sie die Pfeiltasten zum Bewerten & bestätigen Sie Ihre Eingabe immer\n' ...
                 'mit der oberen Pfeiltaste. Bitte versuchen Sie sich auch auf kleinste Reizänderungen\n' ...
