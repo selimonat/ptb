@@ -1,4 +1,4 @@
-function [p]=exp_treatgen_calib16(subject,run,threshold)
+function [p]=exp_treatgen_calib16(subject,run)
 %[p]=FearGen_eyelab(subject,run,csp,PainThreshold)
 %
 %Used for fearamy project, based on the FearGen_eyelab code. It increments
@@ -7,6 +7,7 @@ function [p]=exp_treatgen_calib16(subject,run,threshold)
 %
 
 debug = 0;%debug mode;
+arduino = 0;
 commandwindow;
 %clear everything
 clear mex global functions
@@ -21,7 +22,9 @@ p         = [];
 s         = [];
 
 SetParams;
-SetArduino;
+if arduino
+    SetArduino;
+end
 SetPTB;
 %
 %init all the variables
@@ -49,10 +52,13 @@ if run == 0
     LimitsProcedure;
     ShowInstruction(10,1);
 elseif run == 1
-    ShowInstruction(2,1); % explains all
-    PresentStimuli;
-elseif run ==2
-    ShowInstruction(3,1); % a bit shorter
+    ShowInstruction(0,0,3)
+    BuzzDemo;
+    ShowInstruction(1,1);
+    LimitsProcedure;
+    ShowInstruction(10,0,3);
+    ExperimenterInput(1);sc
+    ShowInstruction(2,1); % calibration with long instruction
     PresentStimuli;
 end
 
@@ -95,8 +101,10 @@ cleanup;
                 TimeCrossOn  = Screen('Flip',p.ptb.w);
                 WaitSecs(1);
             end
-%             serialcom(s,'START');
-            tic;
+            if arduino
+                serialcom(s,'START');
+            end
+            tic
             %prepare red cross
             Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
             Screen('FillRect',  p.ptb.w, p.ptb.fc_color, p.ptb.FixCross');%draw the prestimus cross atop
@@ -104,6 +112,7 @@ cleanup;
             TimeCrossOn  = Screen('Flip',p.ptb.w);
             fprintf('Trigger sent, raising temperature. ');
             fprintf('Waiting for keypress...\n')
+            toc
             %wait for keypress
             k = 0;
             while ~(k == p.keys.space);
@@ -111,8 +120,10 @@ cleanup;
                 [~, k] = KbStrokeWait(p.ptb.device);
                 k = find(k);
             end
+            if arduino
+                serialcom(s,'MOVE',20)%this opens the "up" channel for xx ms, to stop thermode;
+            end
             RT(n) = toc;
-%             serialcom(s,'MOVE',20)%this opens the "up" channel for 20 ms, to stop thermode;
             %turn back to white cross
             Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
             Screen('FillRect', p.ptb.w,  p.stim.white, p.ptb.FixCross');%draw the prestimus cross atop
@@ -128,7 +139,8 @@ cleanup;
             end
         end
         p.presentation.limits.RT        = RT;
-        p.presentation.limits.threshold = stoplim;
+        p.presentation.limits.threshold = stoplim;%uncorrected
+        %p.presentation.limits.threshold_c = .05+.98*stoplim; %rough correction from lin. regression of pilote test
         fprintf('------------------------------------------------------------------\n');
         fprintf('Estimated limits are: \n')
         for n = 1:p.presentation.limits.ntrials
@@ -136,7 +148,23 @@ cleanup;
         end
         fprintf('Mean limits temp is %5.2f °C.\n',mean(stoplim));
     end
+    function BuzzDemo
+        ShowInstruction(3,1);
+        Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
+        Screen('FillRect', p.ptb.w,  p.stim.white, p.ptb.FixCross');%draw the prestimus cross atop
+        Screen('DrawingFinished',p.ptb.w,0);
+        Screen('Flip',p.ptb.w);
+        fprintf('When done, turn the digitimer OFF and press v to continue.\n')
+        k = 0;
+        while ~(k == p.keys.v);
+            pause(0.1);
+            [~, k] = KbStrokeWait(p.ptb.device);
+            k = find(k);
+        end
+        Screen('Flip',p.ptb.w);
+    end
     function PresentStimuli
+        
         %Enter the presentation loop and wait for the first pulse to
         %arrive.
         %wait for the dummy scans
@@ -171,8 +199,7 @@ cleanup;
         end
         Screen('Flip',p.ptb.w);
         WaitSecs(1);
-        ShowInstruction(14,0,4);
-        WaitSecs(3);
+        ShowInstruction(10,0,3);
     end
     function PainTrial(numTrial,FixOnset,FixColor,Ramp1Onset,PlateauOnset,Ramp2Onset, RateOnset,RateOffset, tempC,rampdur)
         
@@ -193,22 +220,28 @@ cleanup;
         Log(TimeCrossOn, 3, p.ptb.FixCross');%red cross onset.
         MarkCED(p.com.lpt.address, p.com.lpt.Fix2)
         %% Ramp to destination, wait there, ramp down.
-        serialcom(s,'START',[],'verbose');
+        if arduino
+            serialcom(s,'START',[],'verbose');
+        end
         Log(Ramp1Onset, 4, p.presentation.ror) % ramp up
         MarkCED(p.com.lpt.address, p.com.lpt.RampUp)
         fprintf('Ramping to %5.2f C in %.02f s.\n',tempC,rampdur)
-        serialcom(s,'SET',tempC);
+        if arduino
+            serialcom(s,'SET',tempC);
+        end
         while GetSecs < PlateauOnset
         end
         Log(PlateauOnset, 5, tempC); % begin of stim plateau
         MarkCED(p.com.lpt.address, p.com.lpt.Plateau)
-        fprintf('\nPlateau is on. \n')
+        fprintf('Plateau is on. \n')
         countedDown = 1;
         while GetSecs < Ramp2Onset
             [countedDown]=CountDown(GetSecs-PlateauOnset,countedDown,'.');
         end
         fprintf('\nRamping back to baseline %5.2f C in %.02f s. \n',p.presentation.basetemp,rampdur)
-        serialcom(s,'SET',p.presentation.basetemp)
+        if arduino
+            serialcom(s,'SET',p.presentation.basetemp)
+        end
         WaitSecs(rampdur);
         Log(Ramp2Onset, 6, p.presentation.ror) % ramp down
         MarkCED(p.com.lpt.address, p.com.lpt.RampDown)
@@ -235,7 +268,28 @@ cleanup;
         while GetSecs < RateOffset
         end
     end
-
+    function ExperimenterInput(num)
+        if num == 1
+           mantemps =  input('Please enter the limits temps: \n');
+           p.stim.limits.threshold_m   = mantemps;
+           p.stim.limits.threshold_ave = mean(mantemps);
+           p.presentation.basetemp     = mean(mantemps);
+           p.presentation.stimlist     = p.presentation.basetemp + p.presentation.steps;
+           fprintf('Your stimlist: %g \n',p.presentation.stimlist');
+           fprintf('----------------------------------\n')
+           fprintf('Please set thermode baseline to: %5.2f C.\n',p.presentation.stimlist');
+           fprintf('----------------------------------\n')
+           fprintf('Is the thermode set? Press v to start calibration procedure from your side!\n')
+           k = 0;
+           while ~(k == p.keys.v);
+               pause(0.1);
+               [~, k] = KbStrokeWait(p.ptb.device);
+               k = find(k);
+           end
+        else
+            %other options
+        end
+    end
     function SetParams
         %relative path to stim and experiments
         %Path Business.
@@ -256,7 +310,7 @@ cleanup;
         p.path.edf                    = sprintf([p.subID 'p%02d' ],run);
         timestamp                     = datestr(now,30);
         p.path.subject                = [p.path.experiment 'data\tmp\' p.subID '_' timestamp '\'];
-        p.path.finalsubject           = [p.path.experiment 'data\calibration\' p.subID '_Session' num2str(run) '_' timestamp '\' ];
+        p.path.finalsubject           = [p.path.experiment 'data\calibration\' p.subID '_Session' num2str(run) '\' ];
         %create folder hierarchy
         mkdir(p.path.subject);
         mkdir([p.path.subject 'scr']);
@@ -337,14 +391,14 @@ cleanup;
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %stimulus sequence
         s = load([p.path.stim 'stimlist\caliblist.mat']);
-        steps = s.steps;
+        p.presentation.steps = s.steps;
         
-        p.presentation.basetemp        = threshold;
+        p.presentation.basetemp        = NaN;
         p.presentation.ror             = 5;
         p.presentation.run             = run;
         
-        p.presentation.limits.base      = 20;
-        p.presentation.limits.ror       = .5;
+        p.presentation.limits.base      = 25;
+        p.presentation.limits.ror       = 5;
         p.presentation.limits.isi       = 5;
         p.presentation.limits.ntrials   = 3;
         p.presentation.limits.RT        = zeros(p.presentation.limits.ntrials,1);
@@ -352,7 +406,7 @@ cleanup;
         
         %this will deal all the presentation sequence related information
 %         p.presentation.Tmax            = threshold + 3;
-        p.presentation.stimlist        = p.presentation.basetemp + steps;%Threshold + 3 is maximum temperature
+        p.presentation.stimlist        = p.presentation.basetemp + p.presentation.steps;%Threshold + 3 is maximum temperature
         p.presentation.tTrial          = length(p.presentation.stimlist);
         %
         
@@ -360,7 +414,6 @@ cleanup;
         p.log.ratings                  = [];
         p.out.log                     = zeros(1000000,4).*NaN;
         p.out.response                = zeros(p.presentation.tTrial,1);
-        p.out.threshold               = threshold;
         %Save the stuff
         save(p.path.path_param,'p');
         %
@@ -552,27 +605,45 @@ cleanup;
     function [text]=GetText(nInstruct)
         if nInstruct == 0%
             
-            text = ['Bewertung der Schmerzintensität'];
+            text = ['Kalibrationsphase'];
             
         elseif nInstruct == 1 %Instruction
-            text = ['Wir bestimmen nun Ihre individuelle Schmerzempfindung.\n' ...
+            text = ['Bestimmung der Schmerzschwelle von Hitzereizen.\n'...
+                'Wir bestimmen nun Ihre individuelle Hitzeschmerzempfindung.'
                 'Wir werden dazu die Temperatur langsam schrittweise erhöhen.\n'...
                 'Bitte schauen Sie während des Vorgangs auf das weiße Kreuz.\n'...
                 'Ihre Aufgabe ist es, die Leertaste zu drücken, sobald Sie die Temperatur als schmerzhaft empfinden,\n' ...
                 'd.h. sobald zum Gefühl von Wärme ein unangenehmes Gefühl wie Brennen oder Stechen hinzukommt.\n' ...
                 'Der Vorgang wird drei mal wiederholt.\n' ...
-                'Wenn Sie keine Fragen mehr haben, drücken Sie bitte die obere Taste, um zu starten.\n'];
+                '\n'...
+                'Falls Sie noch Fragen haben, wenden Sie sich bitte noch einmal an die Versuchsleiterin.\n' ...
+                'Drücken Sie sonst bitte die obere Taste, um zu starten.\n'];
         elseif nInstruct == 2 %Instruction
-            text = ['Im Folgenden möchten wir Ihre spezifische Schmerzempfindung bestimmen.\n' ...
+            text = ['Im Folgenden möchten wir Ihre individuelle Schmerzempfindung noch genauer bestimmen.\n' ...
                 'Dazu senden wir Ihnen mehrere Hitzereize, die Sie anschließend mittels\n' ...
-                'einer Schmerz-Skala bewerten sollen. Falsche Antworten gibt es bei dieser\n' ...
+                'einer Schmerz-Skala bewerten sollen. Sie haben dazu 5 Sek Zeit. Falsche Antworten gibt es bei dieser\n' ...
                 'Aufgabe nicht, da individuelle Empfindungen sehr unterschiedlich sein können.\n' ...
                 'Nutzen Sie die Pfeiltasten zum Bewerten & bestätigen Sie Ihre Eingabe immer\n' ...
                 'mit der oberen Pfeiltaste. Bitte versuchen Sie sich auch auf kleinste Reizänderungen\n' ...
-                'zu konzentrieren & bewerten Sie diese so präzise wie möglich. Falls Sie noch\n'...
-                'Fragen haben, wenden Sie sich bitte noch einmal an die Versuchsleiterin. Falls\n' ...
-                'Sie keine Fragen mehr haben, drücken Sie bitte die obere Taste, um zu starten.\n'];
-        elseif nInstruct == 3%short instruction for second run
+                'zu konzentrieren & bewerten Sie diese so präzise wie möglich.\n'...
+                '\n'...
+                'Falls Sie noch Fragen haben, wenden Sie sich bitte noch einmal an die Versuchsleiterin.\n' ...
+                'Drücken Sie sonst bitte die obere Taste, um zu starten.\n'];
+        elseif nInstruct == 3%short Digitimer stimulation
+            text = ['Kalibration der TENS-Intensität.\n' ...
+                '\n'...
+                'Wir werden nun als Erstes das TENS-Gerät kalibrieren.\n'...
+                'Dazu erhalten Sie kurze Stimulationen aufsteigender Intensität.\n'...
+                '\n'...
+                'Bitte geben Sie der Versuchsleiterin Bescheid, sobald Sie ein Kribbeln an der Elektrode spüren.\n'...
+                '\n'...
+                'Die Stimulation während des Experiments wird dann unterschwellig durchgeführt,\n'...
+                'd.h. Sie werden diese nicht mehr bewusst wahrnehmen.\n'...
+                '\n'...
+                '\n'...
+                'Falls Sie noch Fragen haben, wenden Sie sich bitte noch einmal an die Versuchsleiterin.\n' ...
+                'Drücken Sie sonst bitte die obere Taste, um zu starten.\n'];
+        elseif nInstruct == 200%short instruction for second run
             text = ['Wiederholung der Schwellenkalibrierung.\n'...
                 '\n'...
                 'Nutzen Sie die Tasten von Zeigefinger (links) & Ringfinger (rechts) zum Bewerten.\n'...
@@ -731,7 +802,9 @@ cleanup;
         commandwindow;
         KbQueueStop(p.ptb.device);
         KbQueueRelease(p.ptb.device);
-        fclose(s);
+        if arduino
+            fclose(s);
+        end
     end
     function Log(ptb_time, event_type, event_info)
         %Phases:
