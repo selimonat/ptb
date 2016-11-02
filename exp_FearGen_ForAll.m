@@ -31,7 +31,7 @@ function [p]=exp_FearGen_ForAll(subject,phase,Nseq,csp,PainThreshold)
 %   they 1/ follow the fixation cross as instructed and 2/ detect the
 %   oddball target. If they fail in any of these, phase 1 is repeated. This
 %   phase also helps people to familiarize with the faces if no other task
-%   has yet been carried out before.
+%   has yet been carried out befo
 %
 %   The phase 2 is baseline. All faces are shown, but non predicts the
 %   shock. Instead shocks are delivered after a shock symbol. This phase
@@ -390,8 +390,7 @@ cleanup;
         fix          = [p.ptb.CrossPosition_x p.ptb.CrossPosition_y(fix_i)];
         FixCross     = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];
         Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.imrect ); %always create a gray background
-        Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');%draw the prestimus cross atop
-        
+        Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');%draw the prestimus cross atop                
         Screen('DrawingFinished',p.ptb.w,0);
         TimeCrossOn  = Screen('Flip',p.ptb.w,TimeCrossOnset,0);
         Log(TimeCrossOn,1,fix_i);%cross onset.
@@ -403,6 +402,13 @@ cleanup;
         end
         %draw also the fixation cross
         Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');
+        %add freckles to the face if oddball
+        if oddball
+            x = randn(1,100)*35;
+            y = randn(1,100)*10;
+            s = rand(1,100);%[0 1]
+            Screen('DrawDots',p.ptb.w,[x;y],1+s.*1.5,[180 0 0 160],p.ptb.midpoint,1);        
+        end
         Screen('DrawingFinished',p.ptb.w,0);
         %% STIMULUS ONSET
         TimeStimOnset  = Screen('Flip',p.ptb.w,TimeStimOnset,0);%asap and dont clear
@@ -430,6 +436,9 @@ cleanup;
         %% CROSS JUMPS (same as before but with a different fix position)
         if ~stim_id==0
             Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(stim_id));
+        end
+        if oddball           
+            Screen('DrawDots',p.ptb.w,[x;y],1+s.*1.5,[180 0 0 160],p.ptb.midpoint,1);        
         end
         fix          = [p.ptb.CrossPosition_x p.ptb.CrossPosition_y(setdiff(1:2,fix_i))];%take the other position
         %draw also the fixation cross
