@@ -8,7 +8,7 @@ function [p]=exp_treatgen(subject,run,csp,basetemp,middletemp,lowtemp)
 mrt   = 0;
 debug = 0;%debug mode
 laptop = 0;
-arduino = 1;
+arduino =  1;
 %replace parallel port function with a dummy function
 if ismac
     %   outp = @(x,y) fprintf('[%i %i]\n',x,y);
@@ -56,7 +56,6 @@ fprintf('saving parameter file. \n');
 save(p.path.path_param,'p');
 if run == 0
     p.var.ExpPhase  = run;%set this after the calibration;
-    
     ShowInstruction(1,1);
     ShowInstruction(2,1);
     TENSdemo(basetemp,middletemp,lowtemp);
@@ -444,9 +443,40 @@ cleanup;
         end
     end
     function TENSdemo(basetemp, middletemp, lowtemp)
+         k = 0;
+            while ~ or(k == 86,k == 67);
+                pause(0.1);                
+                fprintf('Is the thermode set? Press c to correct any temperature, or v to continue.\n')
+                [~, k] = KbStrokeWait(p.ptb.device);
+                k = find(k);
+            end
+            if k == KbName('c')
+                x = input('Please enter the chosen baseline temperature.\n');
+                p.presentation.basetemp     = x;
+                fprintf('Is everything set? Press v to start calibration procedure from your side!\n')
+            elseif k == 86
+                fprintf('----------------------------------\n')
+                fprintf('Temperature is okay. Continuing!\n')
+            end
+            k = 0;
+            while ~(k == p.keys.v);
+                pause(0.1);
+                [~, k] = KbStrokeWait(p.ptb.device);
+                k = find(k);
+            end
         demotemps = [middletemp lowtemp middletemp lowtemp];
         rampdurs  = abs((basetemp-demotemps))./p.presentation.pain.ror;
-        textstring  ={'no TENS' 'TENS' 'no TENS' 'TENS'};
+        textstring  ={'ohne TENS' 'mit TENS' 'ohne TENS' 'mit TENS'};
+        Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
+        Screen('FillRect', p.ptb.w,  p.stim.white, p.ptb.centralFixCross');%draw the prestimus cross atop
+        Screen('DrawingFinished',p.ptb.w,0);
+        Screen('Flip',p.ptb.w);
+        WaitSecs(4);
+        rateinit = randi(p.rating.initrange);
+        [currentRating.finalRating,currentRating.RT,currentRating.response] = vasScale(p.ptb.w,p.ptb.rect,p.duration.rate,rateinit,...
+            p.stim.bg,p.ptb.startY,p.keys,'pain');
+        Screen('Flip',p.ptb.w);
+        PutRatingLog(0,currentRating,basetemp,rateinit,'TENSdemo')
         for dc = 1:length(demotemps)
             text = textstring{dc};
             fixon     = GetSecs + .1;
@@ -460,7 +490,7 @@ cleanup;
             Screen('DrawingFinished',p.ptb.w,0);
             Screen('Flip',p.ptb.w,fixon,0);
             Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
-            Screen('FillRect', p.ptb.w,  [0 0 255], p.ptb.centralFixCross');%draw the prestimus cross atop
+            Screen('FillRect', p.ptb.w,  p.ptb.fc_color, p.ptb.centralFixCross');%draw the prestimus cross atop
             DrawFormattedText(p.ptb.w, text, 'center', p.ptb.midpoint(2)./1.2,p.stim.white);
             Screen('DrawingFinished',p.ptb.w,0);
             Screen('Flip',p.ptb.w,redon,0);
@@ -485,7 +515,7 @@ cleanup;
         k = 0;
         while ~ or(k == 86,k == 67);
             pause(0.1);
-            fprintf('Mean VAS: middle = %g, low = %g...\n',mean(p.log.ratings.tensdemo([1 3],3)),mean(p.log.ratings.tensdemo([2 4],3)))
+            fprintf('Mean VAS: middle = %g, low = %g...\n',nanmean(p.log.ratings.tensdemo([1 3],3)),nanmean(p.log.ratings.tensdemo([2 4],3)))
             fprintf('Are you OK with these ratings? Press c to correct, or v to continue...\n')
             [~, k] = KbStrokeWait(p.ptb.device);
             k = find(k);
@@ -519,12 +549,16 @@ cleanup;
             p.log.ratings.relief(currentTrial,6)       = initVAS;
         elseif strcmp(type,'TENSdemo')
             p.log.ratingEventCount                    = p.log.ratingEventCount + 1;
-            p.log.ratings.tensDEMO(currentTrial,1)    = tempC;
-            p.log.ratings.tensdemo(currentTrial,2)    = currentTrial;
-            p.log.ratings.tensdemo(currentTrial,3)    = currentRating.finalRating;
-            p.log.ratings.tensdemo(currentTrial,4)    = currentRating.response;
-            p.log.ratings.tensdemo(currentTrial,5)    = currentRating.RT;
-            p.log.ratings.tensdemo(currentTrial,6)    = initVAS;
+            if currentTrial == 0
+                p.log.ratings.tensDEMOinitialPain = currentRating.finalRating;
+            else
+                p.log.ratings.tensdemo(currentTrial,1)    = tempC;
+                p.log.ratings.tensdemo(currentTrial,2)    = currentTrial;
+                p.log.ratings.tensdemo(currentTrial,3)    = currentRating.finalRating;
+                p.log.ratings.tensdemo(currentTrial,4)    = currentRating.response;
+                p.log.ratings.tensdemo(currentTrial,5)    = currentRating.RT;
+                p.log.ratings.tensdemo(currentTrial,6)    = initVAS;
+            end
         end
     end
     function adaptTemp(nTrial,ucs)
@@ -657,8 +691,8 @@ cleanup;
         p.text.fontsize                = 18;%30;
         p.text.fixsize                 = 60;
         %rating business
-        p.rating.division              = 101;%number of divisions for the rating slider
-        p.rating.initrange             = [35 65];
+        p.rating.division              = 201;%number of divisions for the rating slider
+        p.rating.initrange             = [70 130];
         p.rating.repetition            = 1;%how many times a given face has to be repeated...
         %% get the actual stim size (assumes all the same)
         info                           = imfinfo(p.stim.files(1,:));
@@ -854,7 +888,7 @@ cleanup;
         p.ptb.CrossPositionET_y     = [p.ptb.midpoint(2)-p.ptb.cross_shift(2) p.ptb.midpoint(2)+p.ptb.cross_shift(2)];
         p.ptb.fc_size               = 20;
         p.ptb.fc_width              = 4;
-        p.ptb.fc_color              = [255 0 0];
+        p.ptb.fc_color              = [130 50 0];
         p.ptb.startY                = p.ptb.midpoint(2);
         fix          = [p.ptb.midpoint(1) p.ptb.startY]; % yaxis is 1/4 of total yaxis
         p.ptb.centralFixCross     = [fix(1)-p.ptb.fc_width,fix(2)-p.ptb.fc_size,fix(1)+p.ptb.fc_width,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-p.ptb.fc_width,fix(1)+p.ptb.fc_size,fix(2)+p.ptb.fc_width];
@@ -953,22 +987,26 @@ cleanup;
         if isempty(durRating); error('Duration length of rating has to be specified!'); end
         
         %% Default values
+        inactive   = 1; %should the irrelevant part of the scale be inactivated?
         nRatingSteps = p.rating.division;
         scaleWidth = 700;
         textSize = 20;
         lineWidth = 4;
         scaleColor = [255 255 255];
-        if strcmp(type,'pain')
-            activeColor = [255 0 0];
-        elseif strcmp(type,'relief')
-            activeColor = [0 0 255];
-        else
-            activeColor = [255 255 255];
-        end
+        %         if strcmp(type,'pain')
+        %             activeColor = [255 0 0];
+        %         elseif strcmp(type,'relief')
+        %             activeColor = [0 0 255];
+        %         else
+        %             activeColor = [255 255 255];
+        %         end
+        activeColor = p.ptb.fc_color;
         if isempty(defaultRating); defaultRating = round(nRatingSteps/2); end
         if isempty(backgroundColor); backgroundColor = 0; end
         
-        
+        if inactive == 1
+            defaultRating = ceil(nRatingSteps/2);
+        end
         
         % if length(ratingLabels) ~= nRatingSteps
         %     error('Rating steps and label numbers do not match')
@@ -980,14 +1018,22 @@ cleanup;
         [xCenter, yCenter] = RectCenter(windowRect);
         yCenter = StartY;
         axesRect = [xCenter - scaleWidth/2; yCenter - lineWidth/2; xCenter + scaleWidth/2; yCenter + lineWidth/2];
+        leftRect = [xCenter - scaleWidth/2; yCenter - lineWidth/2; xCenter; yCenter + lineWidth/2];
+        rightRect = [xCenter; yCenter - lineWidth/2; xCenter + scaleWidth/2; yCenter + lineWidth/2];
         lowLabelRect = [axesRect(1),yCenter-20,axesRect(1)+6,yCenter+20];
+        midLabelRect = [xCenter-3,yCenter-20,xCenter+3,yCenter+20];
         highLabelRect = [axesRect(3)-6,yCenter-20,axesRect(3),yCenter+20];
         ticPositions = linspace(xCenter - scaleWidth/2,xCenter + scaleWidth/2-lineWidth,nRatingSteps);
         % ticRects = [ticPositions;ones(1,nRatingSteps)*yCenter;ticPositions + lineWidth;ones(1,nRatingSteps)*yCenter+tickHeight];
         activeTicRects = [ticPositions-activeAddon_width;ones(1,nRatingSteps)*yCenter-activeAddon_height;ticPositions + lineWidth+activeAddon_width;ones(1,nRatingSteps)*yCenter+activeAddon_height];
+        %define text rects
+        stringArray={ 'maximale', 'Linderung','neutral','unerträglicher','Schmerz'};
+        for i = 1:length(stringArray)
+            [~, ~, textBox] = DrawFormattedText(window,char(stringArray(i)),0,0,backgroundColor);
+            textWidths(i)=textBox(3)-textBox(1);
+        end
         % keyboard
-        paincolor = [255 0 0];
-        reliefcolor = [0 0 255];
+        inactivecol    = [130 130 130];
         
         Screen('TextSize',window,textSize);
         Screen('TextColor',window,[255 255 255]);
@@ -1005,28 +1051,58 @@ cleanup;
         % tic; % control if timing is as long as durRating
         while numberOfSecondsRemaining  > 0
             Screen('FillRect',window,backgroundColor);
-            Screen('FillRect',window,scaleColor,axesRect);
+            Screen('FillRect',window,scaleColor,axesRect); %draw white axis
             Screen('FillRect',window,scaleColor,lowLabelRect);
+            Screen('FillRect',window,scaleColor,midLabelRect);
             Screen('FillRect',window,scaleColor,highLabelRect);
+            if inactive ==1 %overdraw everything that needs to be inactive
+                if strcmp(type,'pain')
+                    Screen('FillRect',window,inactivecol,leftRect);
+                    Screen('FillRect',window,inactivecol,lowLabelRect);
+                    Screen('FillRect',window,scaleColor,midLabelRect);
+                elseif strcmp(type,'relief')
+                    Screen('FillRect',window,inactivecol,rightRect);
+                    Screen('FillRect',window,inactivecol,highLabelRect);
+                    Screen('FillRect',window,scaleColor,midLabelRect);
+                end
+            end
             Screen('FillRect',window,activeColor,activeTicRects(:,currentRating));
-            if strcmp(type,'pain')
-                DrawFormattedText(window, 'Bitte bewerten Sie die Schmerzhaftigkeit', 'center',yCenter-100, scaleColor);
-                DrawFormattedText(window, 'des momentanen Hitzereizes', 'center',yCenter-70, scaleColor);
-                
-                Screen('DrawText',window,'kein',axesRect(1)-17,yCenter+25,scaleColor);
-                Screen('DrawText',window,'Schmerz',axesRect(1)-40,yCenter+45,scaleColor);
-                
-                Screen('DrawText',window,'unerträglicher',axesRect(3)-55,yCenter+25,scaleColor);
-                Screen('DrawText',window,'Schmerz',axesRect(3)-40,yCenter+45,scaleColor);
-            elseif strcmp(type,'relief')
-                DrawFormattedText(window, 'Bitte bewerten Sie, wie gut der Schmerz', 'center',yCenter-100, scaleColor);
-                DrawFormattedText(window, 'soeben gelindert wurde', 'center',yCenter-70, scaleColor);
-                
-                Screen('DrawText',window,'keine',axesRect(1)-17,yCenter+25,scaleColor);
-                Screen('DrawText',window,'Linderung',axesRect(1)-40,yCenter+45,scaleColor);
-                
-                Screen('DrawText',window,'maximale',axesRect(3)-55,yCenter+25,scaleColor);
-                Screen('DrawText',window,'Linderung',axesRect(3)-40,yCenter+45,scaleColor);
+            if inactive == 0
+                if strcmp(type,'pain') %we still differentiate between pain and relief so that they know whether it is pain NOW or relief experienced BEFORE
+                    DrawFormattedText(window, 'Bitte bewerten Sie die Schmerzhaftigkeit', 'center',yCenter-100, scaleColor);
+                    DrawFormattedText(window, 'des momentanen Hitzereizes', 'center',yCenter-70, scaleColor);
+                    Screen('DrawText',window,'maximale',axesRect(1)-textWidths(1)/2,yCenter+25,scaleColor);
+                    Screen('DrawText',window,'Linderung',axesRect(1)-textWidths(2)/2,yCenter+45,scaleColor);
+                    Screen('DrawText',window,'neutral',xCenter-textWidths(3)/2,yCenter+25,scaleColor);
+                    Screen('DrawText',window,'unerträglicher',axesRect(3)-textWidths(4)/2,yCenter+25,scaleColor);
+                    Screen('DrawText',window,'Schmerz',axesRect(3)-textWidths(5)/2,yCenter+45,scaleColor);
+                elseif strcmp(type,'relief')
+                    DrawFormattedText(window,'Bitte bewerten Sie die Wirksamkeit', 'center',yCenter-100, scaleColor);
+                    DrawFormattedText(window,'der soeben erhaltenen Behandlung', 'center',yCenter-70, scaleColor);
+                    Screen('DrawText',window,'maximale',axesRect(1)-textWidths(1)/2,yCenter+25,scaleColor);
+                    Screen('DrawText',window,'Linderung',axesRect(1)-textWidths(2)/2,yCenter+45,scaleColor);
+                    Screen('DrawText',window,'neutral',xCenter-textWidths(3)/2,yCenter+25,scaleColor);
+                    Screen('DrawText',window,'unerträglicher',axesRect(3)-textWidths(4)/2,yCenter+25,scaleColor);
+                    Screen('DrawText',window,'Schmerz',axesRect(3)-textWidths(5)/2,yCenter+45,scaleColor);
+                end
+            elseif inactive == 1
+                if strcmp(type,'pain')
+                    DrawFormattedText(window, 'Bitte bewerten Sie die Intensität','center',yCenter-100, scaleColor);
+                    DrawFormattedText(window, 'des aktuellen Schmerzreizes', 'center',yCenter-70, scaleColor);
+                    Screen('DrawText',window,'maximale',axesRect(1)-textWidths(1)/2,yCenter+25,inactivecol);
+                    Screen('DrawText',window,'Linderung',axesRect(1)-textWidths(2)/2,yCenter+45,inactivecol);
+                    Screen('DrawText',window,'neutral',xCenter-textWidths(3)/2,yCenter+25,scaleColor);
+                    Screen('DrawText',window,'unerträglicher',axesRect(3)-textWidths(4)/2,yCenter+25,scaleColor);
+                    Screen('DrawText',window,'Schmerz',axesRect(3)-textWidths(5)/2,yCenter+45,scaleColor);
+                elseif strcmp(type,'relief')
+                    DrawFormattedText(window, 'Bitte bewerten Sie die Wirksamkeit','center',yCenter-100, scaleColor);
+                    DrawFormattedText(window, 'der soeben erhaltenen Behandlung', 'center',yCenter-70, scaleColor);
+                    Screen('DrawText',window,'maximale',axesRect(1)-textWidths(1)/2,yCenter+25,scaleColor);
+                    Screen('DrawText',window,'Linderung',axesRect(1)-textWidths(2)/2,yCenter+45,scaleColor);
+                    Screen('DrawText',window,'neutral',xCenter-textWidths(3)/2,yCenter+25,scaleColor);
+                    Screen('DrawText',window,'unerträglicher',axesRect(3)-textWidths(4)/2,yCenter+25,inactivecol);
+                    Screen('DrawText',window,'Schmerz',axesRect(3)-textWidths(5)/2,yCenter+45,inactivecol);
+                end
             end
             
             
@@ -1034,7 +1110,6 @@ cleanup;
             %     while KbCheck; end
             
             if response == 0
-                
                 % set time 0 (for reaction time)
                 if first_flip   == 1
                     secs0       = Screen('Flip', window); % output Flip -> starttime rating
@@ -1055,6 +1130,17 @@ cleanup;
                         if currentRating > nRatingSteps
                             currentRating = nRatingSteps;
                         end
+                        if inactive == 1
+                            if strcmp(type,'pain')
+                                if currentRating < ceil(nRatingSteps./2)
+                                    currentRating = ceil(nRatingSteps./2);
+                                end
+                            elseif strcmp(type,'relief')
+                                if currentRating > ceil(nRatingSteps./2)
+                                    currentRating = ceil(nRatingSteps./2);
+                                end
+                            end
+                        end
                     elseif keyCode(lessKey)
                         currentRating = currentRating - 1;
                         finalRating = currentRating;
@@ -1062,8 +1148,25 @@ cleanup;
                         if currentRating < 1
                             currentRating = 1;
                         end
+                        if inactive == 1
+                            if strcmp(type,'pain')
+                                if currentRating < ceil(nRatingSteps./2)
+                                    currentRating = ceil(nRatingSteps./2);
+                                end
+                            elseif strcmp(type,'relief')
+                                if currentRating > ceil(nRatingSteps./2)
+                                    currentRating = ceil(nRatingSteps./2);
+                                end
+                            end
+                        end
                     elseif keyCode(confirmKey)
                         finalRating = currentRating-1;
+                        %now recode so that middle of the scale is 0
+                        if ismember(finalRating,floor(nRatingSteps./2):nRatingSteps)
+                            finalRating = finalRating -floor(nRatingSteps./2);
+                        elseif ismember(finalRating,0:floor(nRatingSteps./2))
+                            finalRating = -(floor(nRatingSteps./2) - finalRating);
+                        end
                         disp(['VAS Rating: ' num2str(finalRating)]);
                         response = 1;
                         reactionTime = secs - secs0;
@@ -1077,12 +1180,18 @@ cleanup;
         end
         if  nrbuttonpresses ~= 0 && response == 0
             finalRating = currentRating - 1;
+            %same as above, just without confirmation
+            if ismember(finalRating,floor(nRatingSteps./2):nRatingSteps)
+                finalRating = finalRating -floor(nRatingSteps./2);
+            elseif ismember(finalRating,0:floor(nRatingSteps./2))
+                finalRating = -floor(nRatingSteps./2) - finalRating;
+            end
             reactionTime = durRating;
             disp(['VAS Rating: ' num2str(finalRating)]);
-            warning(sprintf('\n***********No Confirmation!***********\n'));
+            fprintf('***********No Confirmation!***********');
         end
         if  nrbuttonpresses == 0
-            finalRating = NaN;
+            finalRating = NaN; %NaN is NaN, no recoding necessary
             reactionTime = durRating;
             disp(['VAS Rating: ' num2str(finalRating)]);
             warning(sprintf('\n***********No Response! Please check participant!***********\n'));
@@ -1138,10 +1247,11 @@ cleanup;
                 '\n'...
                 'Wir werden Ihnen nun als Erstes demonstrieren,\n'...
                 'wie sich die Schmerzreize während des Experiments anfühlen werden. \n'...
-                'Sie spüren bereits jetzt einen konstanten Schmerz, \n'...
-                'der während des Experiments in jedem Durchgang durch kurzes Absenken der Temperatur behandelt wird.\n'...
-                'Dadurch wird der Schmerz etwas gelindert.\n'...
-                'In einigen Durchgängen werden wir zusätzlich das TENS-Gerät aktivieren, \n'...
+                'Sie stellen gleich eine für Sie individuell angepasste konstante Temperatur ein, \n'...
+                'um einen durchgängigen, aushaltbaren Schmerz zu erzeugen.\n'...
+                'Dieser wird in jedem Durchgang durch Absenken der Temperatur behandelt, d.h.\n'...
+                'der Schmerz wird gelindert.\n'...
+                'In einigen Durchgängen werden wir in diesem Teil zusätzlich das TENS-Gerät aktivieren, \n'...
                 'was zu einer noch besseren Schmerzreduktion führt. \n'...
                 'Die Funktion des TENS-Geräts werden wir Ihnen nun in einem ersten Durchgang demonstrieren.\n'...
                 '\n'...
@@ -1154,7 +1264,8 @@ cleanup;
                 'damit Sie den Unterschied kennen lernen.\n' ...
                 'Im Hauptexperiment wird dies nicht angezeigt.\n' ...
                 '\n' ...
-                'Bitte bewerten Sie nach jedem Durchgang, wie schmerzhaft dieser war.\n' ...
+                'Zu Beginn werden Sie gebeten, den momentan spürbaren Schmerzreiz zu bewerten.\n' ...
+                'Danach bewerten Sie in jedem Durchgang, wie gut der Schmerz während der Behandlung gelindert wurde.\n' ...
                 'Sie haben dazu wie in der Kalibration jeweils 5 Sekunden Zeit, um zu antworten.\n' ...
                 'Es ist sehr wichtig, dass Sie Ihr Rating innerhalb dieser Zeit abgeben und bestätigen.\n' ...
                 '\n'...
@@ -1163,18 +1274,18 @@ cleanup;
         elseif nInstruct == 3%Instruction before the faces baseline is shown
             text = ['Als nächstes werden wir Ihnen demonstrieren,\n'...
                 'wie die verschiedenen Durchgänge im Hauptexperiment funktionieren.\n' ...
-                'Jeder Durchgang beginnt mit dem nun bereits spürbaren Grundschmerz,\n' ...
-                'den Sie bei Erscheinen der Skala bewerten. \n' ...
+                'Jeder Durchgang beginnt mit der Bewertung des ständig spürbaren Grundschmerzes\n' ...
+                'auf der gewohnten Skala.\n' ...
+                'Bitte schauen Sie zudem immer auf die Fixationskreuze, die Ihre Position hin und wieder ändern.\n' ...
+                'In jedem Durchgang wird Ihnen zu dem Grundschmerz ein Gesicht präsentiert, das Sie aufmerksam betrachten sollen. \n' ...
                 '\n' ...
-                'Zudem wird Ihnen in jedem Durchgang ein Gesicht präsentiert, das Sie aufmerksam betrachten sollen. \n' ...
-                '\n' ...
-                'Direkt nach dem Gesicht folgt die Schmerzreduktion,\n' ...
-                'für die Sie anschließend wieder den Schmerz auf der gewohnten Skala bewerten.\n' ...
+                'Direkt nach dem Gesicht folgt die Schmerzbehandlung,\n' ...
+                'für die Sie anschließend wieder die Schmerzlinderung auf der gewohnten Skala bewerten.\n' ...
                 'Es ist sehr wichtig, dass Sie Ihr Rating innerhalb von 5 Sekunden abgeben und bestätigen.\n' ...
+                'Das TENS Gerät bleibt in diesem Durchgang ausgeschaltet.\n' ...
                 '\n'...
                 'Drücken Sie die obere Taste um die Demonstration zu starten.\n' ...
-                ];
-            
+                ];            
         elseif nInstruct == 299%short instruction before localizer
             text = ['Die Kalibrierung war erfolgreich.\n'...
                 'Es startet nun eine kurze Vormessung (~2 min), während der Sie nichts tun müssen.\n\n'...
