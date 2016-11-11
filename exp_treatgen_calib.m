@@ -7,7 +7,7 @@ function [p]=exp_treatgen_calib(subject,run)
 %
 
 debug = 0;%debug mode;
-arduino = 1;
+arduino = 0;
 commandwindow;
 %clear everything
 clear mex global functions
@@ -46,19 +46,21 @@ Screen('TextSize', p.ptb.w, 30);
 [nx, ny, textbounds]=DrawFormattedText(p.ptb.w, GetText(0), 'center', 'center');
 Screen('TextSize', p.ptb.w, p.text.fontsize);
 %Instructions
-if run == 0
+if run == 2
     ShowInstruction(0,0,3)
     ShowInstruction(1,1);
     LimitsProcedure;
     ShowInstruction(10,1);
 elseif run == 1
-    ShowInstruction(0,0,3)
-    BuzzDemo;
+%     ShowInstruction(0,0,3)
+%     BuzzDemo;
     ShowInstruction(1,1);
     LimitsProcedure;
     ShowInstruction(10,0,3);
     ExperimenterInput(1);
     ShowInstruction(2,1); %calibration with long instruction
+    ShowInstruction(22,1);
+    ExperimenterInput(2)
     PresentStimuli;
     GetTemps;
 end
@@ -73,17 +75,17 @@ save(p.path.path_param,'p');
 %move the file to its final location.
 movefile(p.path.subject,p.path.finalsubject);
 %close everything down
-try
-    addpath('/USER/onat/Code/globalfunctions/ssh2_v2_m1_r6/ssh2_v2_m1_r6/')
-    p.path.tarname = [p.path.finalsubject(1:end-1) '.tar'];
-    tar(p.path.tarname,p.path.finalsubject);
-    [a b c] = fileparts( p.path.tarname);
-    cd(a)
-    scp_simple_put('sanportal','onat','',[b c]);
-    fprintf('Copying to neuronass succesfull...\n');
-catch
-    fprintf('Copying to neuronass failed...\n');
-end
+% try
+%     addpath('/USER/onat/Code/globalfunctions/ssh2_v2_m1_r6/ssh2_v2_m1_r6/')
+%     p.path.tarname = [p.path.finalsubject(1:end-1) '.tar'];
+%     tar(p.path.tarname,p.path.finalsubject);
+%     [a b c] = fileparts( p.path.tarname);
+%     cd(a)
+%     scp_simple_put('sanportal','onat','',[b c]);
+%     fprintf('Copying to neuronass succesfull...\n');
+% catch
+%     fprintf('Copying to neuronass failed...\n');
+% end
 cleanup;
 
     function LimitsProcedure
@@ -190,7 +192,7 @@ cleanup;
             Ramp1Onset   = FixColor + p.duration.anticip + rand(1)*.7; % actual ramp to trial's temp
             PlateauOnset = Ramp1Onset + rampdur;                % reached plateau, then wait
             Ramp2Onset   = PlateauOnset + p.duration.painstim;      % ramp back to baseline
-            RateOnset    = Ramp2Onset + rampdur + p.duration.poststim;  %
+            RateOnset    = Ramp2Onset + rampdur + p.duration.poststim;  %                      
             RateOffset   = RateOnset + p.duration.rate;
             
             fprintf('Starting Trial %02d of %02d, Destination Temp is %5.2f C, White fix on for %5.2f s. \n',nTrial,p.presentation.tTrial,tempC,prestimdur);
@@ -222,11 +224,11 @@ cleanup;
         MarkCED(p.com.lpt.address, p.com.lpt.Fix2)
         %% Ramp to destination, wait there, ramp down.
         if arduino
-            serialcom(s,'START',[],'verbose');
+            serialcom(s,'START');
         end
         Log(Ramp1Onset, 4, p.presentation.ror) % ramp up
         MarkCED(p.com.lpt.address, p.com.lpt.RampUp)
-        fprintf('Ramping to %5.2f C in %.02f s.\n',tempC,rampdur)
+        fprintf('Ramping to %5.2f C in %.02f s.',tempC,rampdur)
         if arduino
             serialcom(s,'SET',tempC);
         end
@@ -234,12 +236,12 @@ cleanup;
         end
         Log(PlateauOnset, 5, tempC); % begin of stim plateau
         MarkCED(p.com.lpt.address, p.com.lpt.Plateau)
-        fprintf('Plateau is on. \n')
+        fprintf('Plateau is on.')
         countedDown = 1;
         while GetSecs < Ramp2Onset
             [countedDown]=CountDown(GetSecs-PlateauOnset,countedDown,'.');
         end
-        fprintf('\nRamping back to baseline %5.2f C in %.02f s. \n',p.presentation.basetemp,rampdur)
+        fprintf('Ramping back to baseline %5.2f C in %.02f s. \n',p.presentation.basetemp,rampdur)
         if arduino
             serialcom(s,'SET',p.presentation.basetemp)
         end
@@ -280,6 +282,8 @@ cleanup;
             fprintf('----------------------------------\n')
             fprintf('Please set thermode baseline to: %5.2f C.\n',p.presentation.basetemp);
             fprintf('%% ASK SUBJECT IF THIS IS OKAY.%%  \n')
+          
+        elseif num == 2
             k = 0;
             while ~ or(k == 86,k == 67);
                 pause(0.1);
@@ -350,8 +354,8 @@ cleanup;
         p.text.linespace               = 10;
         p.text.lineheight              = p.text.fontsize + p.text.linespace;
         %rating business
-        p.rating.division              = 101; %number of divisions for the rating slider
-        p.rating.initrange             = [35,65];
+        p.rating.division              = 201; %number of divisions for the rating slider
+        p.rating.initrange             = [70 130];
         %
         p.stim.white                   = [255 255 255];
         if strcmp(p.hostname,'triostim1')
@@ -475,7 +479,7 @@ cleanup;
         textSize = 20;
         lineWidth = 6;
         scaleColor = [255 255 255];
-        activeColor = [255 0 0];
+        activeColor = p.ptb.fc_color;
         if isempty(defaultRating); defaultRating = round(nRatingSteps/2); end
         if isempty(backgroundColor); backgroundColor = 0; end
         
@@ -492,12 +496,17 @@ cleanup;
         yCenter = StartY;
         axesRect = [xCenter - scaleWidth/2; yCenter - lineWidth/2; xCenter + scaleWidth/2; yCenter + lineWidth/2];
         lowLabelRect = [axesRect(1),yCenter-20,axesRect(1)+6,yCenter+20];
+        midLabelRect = [xCenter-3,yCenter-20,xCenter+3,yCenter+20];
         highLabelRect = [axesRect(3)-6,yCenter-20,axesRect(3),yCenter+20];
         ticPositions = linspace(xCenter - scaleWidth/2,xCenter + scaleWidth/2-lineWidth,nRatingSteps);
         % ticRects = [ticPositions;ones(1,nRatingSteps)*yCenter;ticPositions + lineWidth;ones(1,nRatingSteps)*yCenter+tickHeight];
         activeTicRects = [ticPositions-activeAddon_width;ones(1,nRatingSteps)*yCenter-activeAddon_height;ticPositions + lineWidth+activeAddon_width;ones(1,nRatingSteps)*yCenter+activeAddon_height];
         % keyboard
-        
+        stringArray={ 'maximale', 'Linderung','neutral','unerträglicher','Schmerz'};
+        for i = 1:length(stringArray)
+            [~, ~, textBox] = DrawFormattedText(window,char(stringArray(i)),0,0,backgroundColor);
+            textWidths(i)=textBox(3)-textBox(1);
+        end
         
         Screen('TextSize',window,textSize);
         Screen('TextColor',window,[255 255 255]);
@@ -517,19 +526,17 @@ cleanup;
             Screen('FillRect',window,backgroundColor);
             Screen('FillRect',window,scaleColor,axesRect);
             Screen('FillRect',window,scaleColor,lowLabelRect);
+            Screen('FillRect',window,scaleColor,midLabelRect);
             Screen('FillRect',window,scaleColor,highLabelRect);
             Screen('FillRect',window,activeColor,activeTicRects(:,currentRating));
             
-            DrawFormattedText(window, 'Bitte bewerten Sie die Schmerzhaftigkeit', 'center',yCenter-100, scaleColor);
-            DrawFormattedText(window, 'des Hitzereizes', 'center',yCenter-70, scaleColor);
+            DrawFormattedText(window, 'Bitte bewerten Sie den soeben erhaltenen Reiz.', 'center',yCenter-100, scaleColor);
             
-            Screen('DrawText',window,'kein',axesRect(1)-17,yCenter+25,scaleColor);
-            Screen('DrawText',window,'Schmerz',axesRect(1)-40,yCenter+45,scaleColor);
-            
-            Screen('DrawText',window,'unerträglicher',axesRect(3)-55,yCenter+25,scaleColor);
-            Screen('DrawText',window,'Schmerz',axesRect(3)-40,yCenter+45,scaleColor);
-            
-            
+            Screen('DrawText',window,'maximale',axesRect(1)-textWidths(1)/2,yCenter+25,scaleColor);
+            Screen('DrawText',window,'Linderung',axesRect(1)-textWidths(2)/2,yCenter+45,scaleColor);
+            Screen('DrawText',window,'neutral',xCenter-textWidths(3)/2,yCenter+25,scaleColor);
+            Screen('DrawText',window,'unerträglicher',axesRect(3)-textWidths(4)/2,yCenter+25,scaleColor);
+            Screen('DrawText',window,'Schmerz',axesRect(3)-textWidths(5)/2,yCenter+45,scaleColor);
             
             % Remove this line if a continuous key press should result in a continuous change of the scale
             %     while KbCheck; end
@@ -565,6 +572,11 @@ cleanup;
                         end
                     elseif keyCode(confirmKey)
                         finalRating = currentRating-1;
+                        if ismember(finalRating,floor(nRatingSteps./2):nRatingSteps)
+                            finalRating = finalRating -floor(nRatingSteps./2);
+                        elseif ismember(finalRating,0:floor(nRatingSteps./2))
+                            finalRating = -(floor(nRatingSteps./2) - finalRating);
+                        end
                         disp(['VAS Rating: ' num2str(finalRating)]);
                         response = 1;
                         reactionTime = secs - secs0;
@@ -578,6 +590,11 @@ cleanup;
         end
         if  nrbuttonpresses ~= 0 && response == 0
             finalRating = currentRating - 1;
+            if ismember(finalRating,floor(nRatingSteps./2):nRatingSteps)
+                finalRating = finalRating -floor(nRatingSteps./2);
+            elseif ismember(finalRating,0:floor(nRatingSteps./2))
+                finalRating = -(floor(nRatingSteps./2) - finalRating);
+            end
             reactionTime = durRating;
             disp(['VAS Rating: ' num2str(finalRating)]);
             warning(sprintf('\n***********\nNo Confirmation!\n***********\n'));
@@ -628,7 +645,7 @@ cleanup;
             text = 'Kalibrationsphase';
         elseif nInstruct == 1 %Instruction
             text = ['Bestimmung der Schmerzschwelle von Hitzereizen.\n'...
-                'Wir bestimmen nun Ihre individuelle Hitzeschmerzempfindung.'...
+                'Wir bestimmen nun Ihre individuelle Hitzeschmerzschwelle.'...
                 'Wir werden dazu die Temperatur schrittweise erhöhen.\n'...
                 'Bitte schauen Sie während des Vorgangs auf das kleine Kreuz.\n'...
                 'Ihre Aufgabe ist es, die Leertaste zu drücken, sobald Sie die Temperatur als schmerzhaft empfinden,\n'...
@@ -638,16 +655,23 @@ cleanup;
                 'Falls Sie noch Fragen haben, wenden Sie sich bitte noch einmal an die Versuchsleiterin.\n'...
                 'Drücken Sie sonst bitte die obere Taste, um zu starten.\n'];
         elseif nInstruct == 2 %Instruction
-            text = ['Im Folgenden möchten wir Ihre individuelle Schmerzempfindung noch genauer bestimmen.\n' ...
-                'Dazu senden wir Ihnen mehrere Hitzereize, die Sie anschließend mittels\n' ...
-                'einer Skala bewerten sollen. Sie haben dazu 5 Sek Zeit. Falsche Antworten gibt es bei dieser\n' ...
-                'Aufgabe nicht, da individuelle Empfindungen sehr unterschiedlich sein können.\n' ...
+            text = ['Im Folgenden möchten wir Ihre individuelle Schmerzwahrnehmung noch genauer bestimmen.\n' ...
+                'Dazu erhalten Sie Reize unterschiedlicher Temperaturen, d.h. sowohl schmerzhafte wärmere als auch angenehme, kältere Reize.\n' ...
+                'Anschließend bewerten Sie den jeweiligen Reiz auf einer Skala,\n' ...
+                'die von "maximale Linderung" bis "unerträglicher Schmerz" reicht. Sie haben dazu 5 Sek Zeit.\n' ...
+                'Falsche Antworten gibt es bei dieser Aufgabe nicht, da individuelle Empfindungen sehr unterschiedlich sein können.\n' ...
                 'Nutzen Sie die Pfeiltasten zum Bewerten & bestätigen Sie Ihre Eingabe immer\n' ...
                 'mit der oberen Pfeiltaste. Bitte versuchen Sie sich auch auf kleinste Reizänderungen\n' ...
                 'zu konzentrieren & bewerten Sie diese so präzise wie möglich.\n'...
                 '\n'...
                 'Falls Sie noch Fragen haben, wenden Sie sich bitte noch einmal an die Versuchsleiterin.\n' ...
-                'Drücken Sie sonst bitte die obere Taste, um zu starten.\n'];
+                'Drücken Sie sonst bitte die obere Taste, um weiterzumachen.\n'];
+        elseif nInstruct == 22 %Instruction
+            text = ['Wir werden nun die für Sie individuell ausgewählte Grundtemperatur\n' ...
+                'für die folgende Kalibration anbringen.\n' ...
+                'Diese kann sich etwas unangenehm anfühlen, sollte aber nicht zu schmerzhaft sein.\n' ...
+                '\n' ...
+                'Drücken Sie bitte die obere Taste, wenn Sie bereit sind zu starten.\n'];
         elseif nInstruct == 3%short Digitimer stimulation
             text = ['Kalibration der TENS-Intensität.\n' ...
                 '\n'...
@@ -724,7 +748,7 @@ cleanup;
         
         p.ptb.fc_size               = 20;
         p.ptb.fc_width              = 4;
-        p.ptb.fc_color              = [255 0 0];
+        p.ptb.fc_color              = [130 50 0];
         %         p.ptb.screenFix1 = [p.ptb.midpoint(1)-p.ptb.fc_size p.ptb.startY-p.ptb.fc_width p.ptb.midpoint(1)+p.ptb.fc_size p.ptb.startY+p.ptb.fc_width]; %I guess this is X
         %         p.ptb.screenFix2 = [p.ptb.midpoint(1)-p.ptb.fc_width p.ptb.startY-p.ptb.fc_size p.ptb.midpoint(1)+p.ptb.fc_width p.ptb.startY+p.ptb.fc_size]; %I guess this is Y
         fix          = [p.ptb.midpoint(1) p.ptb.startY]; % yaxis is 1/4 of total yaxis
@@ -912,36 +936,44 @@ cleanup;
         y = p.log.ratings(ind,3);
         x = p.log.ratings(ind,1);
         trial = p.log.ratings(ind,2);
-        plot(x,y,'bo','MarkerFaceColor','b')
-        hold on;
+        
         trialnum = length(y);
         fprintf('Identified %g valid trials. \n',trialnum)
+        
+        ys = (y + 100)./(100+100); %transform it to [0 1] so that sigfun can deal with it
+        plot(x,ys,'bo','MarkerFaceColor','b');hold on;
         %%
         % set params
-        target_vas = [30; 50; 70];
+        target_vas = [60 -30 -50];
+        target_vass = (target_vas -(-(p.rating.division - 1)./2))./(p.rating.division-1);
         
         % estimate linear function
-        blin = [ones(numel(x),1) x]\y;
-        est_lin(1) = linreverse(blin,target_vas(1));
-        est_lin(2) = linreverse(blin,target_vas(2));
-        est_lin(3) = linreverse(blin,target_vas(3));
-        
+        ind = ~isnan(p.log.ratings(:,3));
+        blin = [ones(numel(x(ind)),1) x(ind)]\ys(ind);
+        est_lin(1) = linreverse(blin,target_vass(1));
+        est_lin(2) = linreverse(blin,target_vass(2));
+        est_lin(3) = linreverse(blin,target_vass(3));
+
         
         % estimate sigmoid function
-        a = mean(x); b = 1; % L = 0; U = 100; % l/u bounds to be fitted
-        beta0 = [a b];
+        a = mean(x); b = 1; L = min(ys); U = max(ys); % l/u bounds to be fitted
+        beta0 = [a b L U];
         options = statset('Display','final','Robust','on','MaxIter',10000);
-        [bsig,~] = nlinfit(x,y,@localsigfun,beta0,options);
-        est_sig(1) = sigreverse([bsig 0 100],target_vas(1));
-        est_sig(2) = sigreverse([bsig 0 100],target_vas(2));
-        est_sig(3) = sigreverse([bsig 0 100],target_vas(3));
-        
+        [bsig,~] = nlinfit(x,ys,@localsigfun,beta0,options);
+        est_sig(1) = sigreverse(bsig,target_vass(1));
+        est_sig(2) = sigreverse(bsig,target_vass(2));
+        est_sig(3) = sigreverse(bsig,target_vass(3));
+        imagind = find(imag(est_sig));
+        if any(imagind)
+            warning('Complext Est Sig detected!')
+        end
         % plot
         xplot = linspace(min(x),max(x),100);
         plot(xplot,localsigfun(bsig,xplot),'r',...
-            est_sig,localsigfun(bsig,est_sig),'ro',est_lin,target_vas,'bd',...
+            est_sig,localsigfun(bsig,est_sig),'ro',est_lin,target_vass,'bd',...
             xplot,blin(1)+xplot.*blin(2),'b--');
-        xlim([min(xplot)-.5 max(xplot)+.5]); ylim([0 100]);
+        xlim([min(xplot)-.5 max(xplot)+.5]); 
+        ylim([0 1]);
         
         % display
         target_temp = est_sig; %clc;
