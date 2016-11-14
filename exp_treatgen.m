@@ -689,8 +689,8 @@ cleanup;
         p.text.fontsize                = 18;%30;
         p.text.fixsize                 = 60;
         %rating business
-        p.rating.division              = 201;%number of divisions for the rating slider
-        p.rating.initrange             = [70 130];
+        p.rating.division              = 101;%number of divisions for the rating slider
+        p.rating.initrange             = [30 70];
         p.rating.repetition            = 1;%how many times a given face has to be repeated...
         %% get the actual stim size (assumes all the same)
         info                           = imfinfo(p.stim.files(1,:));
@@ -1020,13 +1020,16 @@ cleanup;
         leftRect = [xCenter - scaleWidth/2; yCenter - lineWidth/2; xCenter; yCenter + lineWidth/2];
         rightRect = [xCenter; yCenter - lineWidth/2; xCenter + scaleWidth/2; yCenter + lineWidth/2];
         lowLabelRect = [axesRect(1),yCenter-20,axesRect(1)+6,yCenter+20];
-        midLabelRect = [xCenter-3,yCenter-20,xCenter+3,yCenter+20];
         highLabelRect = [axesRect(3)-6,yCenter-20,axesRect(3),yCenter+20];
         ticPositions = linspace(xCenter - scaleWidth/2,xCenter + scaleWidth/2-lineWidth,nRatingSteps);
         % ticRects = [ticPositions;ones(1,nRatingSteps)*yCenter;ticPositions + lineWidth;ones(1,nRatingSteps)*yCenter+tickHeight];
         activeTicRects = [ticPositions-activeAddon_width;ones(1,nRatingSteps)*yCenter-activeAddon_height;ticPositions + lineWidth+activeAddon_width;ones(1,nRatingSteps)*yCenter+activeAddon_height];
         %define text rects
-        stringArray={ 'maximale', 'Linderung','neutral','unerträglicher','Schmerz'};
+        if strcmp(type,'relief')
+            stringArray={ 'maximale','Linderung','keine','Linderung'};
+        elseif strcmp(type,'pain')
+            stringArray={ 'kein','Schmerz','maximaler','Schmerz'};
+        end
         for i = 1:length(stringArray)
             [~, ~, textBox] = DrawFormattedText(window,char(stringArray(i)),0,0,backgroundColor);
             textWidths(i)=textBox(3)-textBox(1);
@@ -1052,58 +1055,21 @@ cleanup;
             Screen('FillRect',window,backgroundColor);
             Screen('FillRect',window,scaleColor,axesRect); %draw white axis
             Screen('FillRect',window,scaleColor,lowLabelRect);
-            Screen('FillRect',window,scaleColor,midLabelRect);
             Screen('FillRect',window,scaleColor,highLabelRect);
-            if inactive ==1 %overdraw everything that needs to be inactive
-                if strcmp(type,'pain')
-                    Screen('FillRect',window,inactivecol,leftRect);
-                    Screen('FillRect',window,inactivecol,lowLabelRect);
-                    Screen('FillRect',window,scaleColor,midLabelRect);
-                elseif strcmp(type,'relief')
-                    Screen('FillRect',window,inactivecol,rightRect);
-                    Screen('FillRect',window,inactivecol,highLabelRect);
-                    Screen('FillRect',window,scaleColor,midLabelRect);
-                end
-            end
             Screen('FillRect',window,activeColor,activeTicRects(:,currentRating));
-            if inactive == 0
-                if strcmp(type,'pain') %we still differentiate between pain and relief so that they know whether it is pain NOW or relief experienced BEFORE
-                    DrawFormattedText(window, 'Bitte bewerten Sie die Schmerzhaftigkeit', 'center',yCenter-100, scaleColor);
-                    DrawFormattedText(window, 'des momentanen Hitzereizes', 'center',yCenter-70, scaleColor);
-                    Screen('DrawText',window,'maximale',axesRect(1)-textWidths(1)/2,yCenter+25,scaleColor);
-                    Screen('DrawText',window,'Linderung',axesRect(1)-textWidths(2)/2,yCenter+45,scaleColor);
-                    Screen('DrawText',window,'neutral',xCenter-textWidths(3)/2,yCenter+25,scaleColor);
-                    Screen('DrawText',window,'unerträglicher',axesRect(3)-textWidths(4)/2,yCenter+25,scaleColor);
-                    Screen('DrawText',window,'Schmerz',axesRect(3)-textWidths(5)/2,yCenter+45,scaleColor);
-                elseif strcmp(type,'relief')
-                    DrawFormattedText(window,'Bitte bewerten Sie die Wirksamkeit', 'center',yCenter-100, scaleColor);
-                    DrawFormattedText(window,'der soeben erhaltenen Behandlung', 'center',yCenter-70, scaleColor);
-                    Screen('DrawText',window,'maximale',axesRect(1)-textWidths(1)/2,yCenter+25,scaleColor);
-                    Screen('DrawText',window,'Linderung',axesRect(1)-textWidths(2)/2,yCenter+45,scaleColor);
-                    Screen('DrawText',window,'neutral',xCenter-textWidths(3)/2,yCenter+25,scaleColor);
-                    Screen('DrawText',window,'unerträglicher',axesRect(3)-textWidths(4)/2,yCenter+25,scaleColor);
-                    Screen('DrawText',window,'Schmerz',axesRect(3)-textWidths(5)/2,yCenter+45,scaleColor);
-                end
-            elseif inactive == 1
-                if strcmp(type,'pain')
-                    DrawFormattedText(window, 'Bitte bewerten Sie die Intensität','center',yCenter-100, scaleColor);
-                    DrawFormattedText(window, 'des aktuellen Schmerzreizes', 'center',yCenter-70, scaleColor);
-                    Screen('DrawText',window,'maximale',axesRect(1)-textWidths(1)/2,yCenter+25,inactivecol);
-                    Screen('DrawText',window,'Linderung',axesRect(1)-textWidths(2)/2,yCenter+45,inactivecol);
-                    Screen('DrawText',window,'neutral',xCenter-textWidths(3)/2,yCenter+25,scaleColor);
-                    Screen('DrawText',window,'unerträglicher',axesRect(3)-textWidths(4)/2,yCenter+25,scaleColor);
-                    Screen('DrawText',window,'Schmerz',axesRect(3)-textWidths(5)/2,yCenter+45,scaleColor);
-                elseif strcmp(type,'relief')
-                    DrawFormattedText(window, 'Bitte bewerten Sie die Wirksamkeit','center',yCenter-100, scaleColor);
-                    DrawFormattedText(window, 'der soeben erhaltenen Behandlung', 'center',yCenter-70, scaleColor);
-                    Screen('DrawText',window,'maximale',axesRect(1)-textWidths(1)/2,yCenter+25,scaleColor);
-                    Screen('DrawText',window,'Linderung',axesRect(1)-textWidths(2)/2,yCenter+45,scaleColor);
-                    Screen('DrawText',window,'neutral',xCenter-textWidths(3)/2,yCenter+25,scaleColor);
-                    Screen('DrawText',window,'unerträglicher',axesRect(3)-textWidths(4)/2,yCenter+25,inactivecol);
-                    Screen('DrawText',window,'Schmerz',axesRect(3)-textWidths(5)/2,yCenter+45,inactivecol);
-                end
+            if strcmp(type,'pain') %we still differentiate between pain and relief so that they know whether it is pain NOW or relief experienced BEFORE
+                DrawFormattedText(window, 'Bitte bewerten Sie den momentanen Schmerz.', 'center',yCenter-100, scaleColor);
+                Screen('DrawText',window,'kein',axesRect(1)-textWidths(1)/2,yCenter+25,scaleColor);
+                Screen('DrawText',window,'Schmerz',axesRect(1)-textWidths(2)/2,yCenter+45,scaleColor);
+                Screen('DrawText',window,'maximaler',axesRect(3)-textWidths(3)/2,yCenter+25,scaleColor);
+                Screen('DrawText',window,'Schmerz',axesRect(3)-textWidths(4)/2,yCenter+45,scaleColor);
+            elseif strcmp(type,'relief')
+               DrawFormattedText(window, 'Bitte bewerten Sie die Wirksamkeit der Behandlung.', 'center',yCenter-100, scaleColor);
+                Screen('DrawText',window,'maximale',axesRect(1)-textWidths(1)/2,yCenter+25,scaleColor);
+                Screen('DrawText',window,'Linderung',axesRect(1)-textWidths(2)/2,yCenter+45,scaleColor);
+                Screen('DrawText',window,'keine',axesRect(3)-textWidths(3)/2,yCenter+25,scaleColor);
+                Screen('DrawText',window,'Linderung',axesRect(3)-textWidths(4)/2,yCenter+45,scaleColor);
             end
-            
             
             % Remove this line if a continuous key press should result in a continuous change of the scale
             %     while KbCheck; end
@@ -1130,17 +1096,6 @@ cleanup;
                         if currentRating > nRatingSteps
                             currentRating = nRatingSteps;
                         end
-                        if inactive == 1
-                            if strcmp(type,'pain')
-                                if currentRating < ceil(nRatingSteps./2)
-                                    currentRating = ceil(nRatingSteps./2);
-                                end
-                            elseif strcmp(type,'relief')
-                                if currentRating > ceil(nRatingSteps./2)
-                                    currentRating = ceil(nRatingSteps./2);
-                                end
-                            end
-                        end
                     elseif keyCode(lessKey)
                         currentRating = currentRating - 1;
                         finalRating = currentRating;
@@ -1148,24 +1103,11 @@ cleanup;
                         if currentRating < 1
                             currentRating = 1;
                         end
-                        if inactive == 1
-                            if strcmp(type,'pain')
-                                if currentRating < ceil(nRatingSteps./2)
-                                    currentRating = ceil(nRatingSteps./2);
-                                end
-                            elseif strcmp(type,'relief')
-                                if currentRating > ceil(nRatingSteps./2)
-                                    currentRating = ceil(nRatingSteps./2);
-                                end
-                            end
-                        end
                     elseif keyCode(confirmKey)
                         finalRating = currentRating-1;
                         %now recode so that middle of the scale is 0
-                        if ismember(finalRating,floor(nRatingSteps./2):nRatingSteps)
-                            finalRating = finalRating -floor(nRatingSteps./2);
-                        elseif ismember(finalRating,0:floor(nRatingSteps./2))
-                            finalRating = -floor(nRatingSteps./2) + finalRating;
+                        if strcmp(type,'relief')
+                            finalRating = nRatingSteps -1 - finalRating;
                         end
                         disp(['VAS Rating: ' num2str(finalRating)]);
                         response = 1;
@@ -1181,10 +1123,8 @@ cleanup;
         if  nrbuttonpresses ~= 0 && response == 0
             finalRating = currentRating - 1;
             %same as above, just without confirmation
-            if ismember(finalRating,floor(nRatingSteps./2):nRatingSteps)
-                finalRating = finalRating -floor(nRatingSteps./2);
-            elseif ismember(finalRating,0:floor(nRatingSteps./2))
-                finalRating = -floor(nRatingSteps./2) + finalRating;
+            if strcmp(type,'relief')
+                finalRating = nRatingSteps -1 - finalRating;
             end
             reactionTime = durRating;
             disp(['VAS Rating: ' num2str(finalRating)]);
