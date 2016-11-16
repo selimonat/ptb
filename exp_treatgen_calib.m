@@ -7,7 +7,7 @@ function [p]=exp_treatgen_calib(subject,run)
 %
 
 debug = 0;%debug mode;
-arduino = 0;
+arduino = 1;
 commandwindow;
 %clear everything
 clear mex global functions
@@ -432,7 +432,7 @@ cleanup;
         p.presentation.tens             = NaN;
         p.presentation.calib_target_vas = NaN;
         p.presentation.calib_est        = NaN;
-        p.presentation.basetemp         = NaN;
+        p.presentation.basetemp         = NaN; % will be defined after limits procedure
         p.presentation.ror              = 5;
         p.presentation.run              = run;
         
@@ -1015,40 +1015,35 @@ cleanup;
         trialnum = length(y);
         fprintf('Identified %g valid trials. \n',trialnum)
         
-        ys = (y + 100)./(100+100); %transform it to [0 1] so that sigfun can deal with it
-        plot(x,ys,'bo','MarkerFaceColor','b');hold on;
+        plot(x,y,'bo','MarkerFaceColor','b');hold on;
         %%
         % set params
-        target_vas = [60 -30 -50];
-        target_vass = (target_vas -(-(p.rating.division - 1)./2))./(p.rating.division-1);
+        target_vas = [60 40 20];
         
         % estimate linear function
         ind = ~isnan(p.log.ratings(:,3));
-        blin = [ones(numel(x(ind)),1) x(ind)]\ys(ind);
-        est_lin(1) = linreverse(blin,target_vass(1));
-        est_lin(2) = linreverse(blin,target_vass(2));
-        est_lin(3) = linreverse(blin,target_vass(3));
+        blin = [ones(numel(x(ind)),1) x(ind)]\y(ind);
+        est_lin(1) = linreverse(blin,target_vas(1));
+        est_lin(2) = linreverse(blin,target_vas(2));
+        est_lin(3) = linreverse(blin,target_vas(3));
 
         
         % estimate sigmoid function
-        a = mean(x); b = 1; L = min(ys); U = max(ys); % l/u bounds to be fitted
-        beta0 = [a b L U];
+        a = mean(x); b = 1; % l/u bounds to be fitted
+        beta0 = [a b 0 100];
         options = statset('Display','final','Robust','on','MaxIter',10000);
-        [bsig,~] = nlinfit(x,ys,@localsigfun,beta0,options);
-        est_sig(1) = sigreverse(bsig,target_vass(1));
-        est_sig(2) = sigreverse(bsig,target_vass(2));
-        est_sig(3) = sigreverse(bsig,target_vass(3));
-        imagind = find(imag(est_sig));
-        if any(imagind)
-            warning('Complext Est Sig detected!')
-        end
+        [bsig,~] = nlinfit(x,y,@localsigfun,beta0,options);
+        est_sig(1) = sigreverse(bsig,target_vas(1));
+        est_sig(2) = sigreverse(bsig,target_vas(2));
+        est_sig(3) = sigreverse(bsig,target_vas(3));
+
         % plot
         xplot = linspace(min(x),max(x),100);
         plot(xplot,localsigfun(bsig,xplot),'r',...
-            est_sig,localsigfun(bsig,est_sig),'ro',est_lin,target_vass,'bd',...
+            est_sig,localsigfun(bsig,est_sig),'ro',est_lin,target_vas,'bd',...
             xplot,blin(1)+xplot.*blin(2),'b--');
         xlim([min(xplot)-.5 max(xplot)+.5]); 
-        ylim([0 1]);
+        ylim([0 100]);
         
         % display
         target_temp = est_sig; %clc;
@@ -1060,7 +1055,7 @@ cleanup;
         fprintf(1,'%g : %2.1f °C \tlinear: %2.1f °C\n',target_vas(3),target_temp(3),est_lin(3));
         
         p.presentation.calib_est = [est_sig; est_lin];
-        p.presentation.calib_target_vas;
+        p.presentation.calib_target_vas = target_vas;
         function xsigpred = sigreverse(bsig1,ytarget)
             v=.5; a1 = bsig1(1); b1 = bsig1(2); L1 = bsig1(3); U1 = bsig1(4);
             xsigpred = a1 + 1/-b1 * log((((U1-L1)/(ytarget-L1))^v-1)./v);
