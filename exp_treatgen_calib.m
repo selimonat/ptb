@@ -26,7 +26,7 @@ if arduino
     SetArduino;
 end
 SetPTB;
-%
+%Tes
 %init all the variables
 t                         = [];
 nTrial                    = 0;
@@ -42,7 +42,7 @@ save(p.path.path_param,'p');
 
 
 p.var.ExpPhase = run;
-Screen('TextSize', p.ptb.w, 30);
+Screen('TextSize', p.ptb.w, p.text.fontsize+4);
 [nx, ny, textbounds]=DrawFormattedText(p.ptb.w, GetText(0), 'center', 'center');
 Screen('TextSize', p.ptb.w, p.text.fontsize);
 %Instructions
@@ -52,14 +52,16 @@ if run == 2
     LimitsProcedure;
     ShowInstruction(10,1);
 elseif run == 1
-%     ShowInstruction(0,0,3)
-%     BuzzDemo;
+    ShowInstruction(0,0,3)
+    ShowInstruction(3,1);
+    BuzzDemo;
     ShowInstruction(1,1);
     LimitsProcedure;
     ShowInstruction(10,0,3);
     ExperimenterInput(1);
     ShowInstruction(2,1); %calibration with long instruction
     ShowInstruction(22,1);
+    ConfirmIntensity;
     ExperimenterInput(2)
     PresentStimuli;
     GetTemps;
@@ -115,11 +117,10 @@ cleanup;
             TimeCrossOn  = Screen('Flip',p.ptb.w);
             fprintf('Trigger sent, raising temperature. ');
             fprintf('Waiting for keypress...\n')
-            toc
+            %toc
             %wait for keypress
             k = 0;
             while ~(k == p.keys.space);
-                pause(0.1);
                 [~, k] = KbStrokeWait(p.ptb.device);
                 k = find(k);
             end
@@ -127,18 +128,20 @@ cleanup;
                 serialcom(s,'MOVE',20)%this opens the "up" channel for xx ms, to stop thermode;
             end
             RT(n) = toc;
-            %turn back to white cross
-            Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
-            Screen('FillRect', p.ptb.w,  p.stim.white, p.ptb.FixCross');%draw the prestimus cross atop
-            Screen('DrawingFinished',p.ptb.w,0);
-            Screen('Flip',p.ptb.w);
             stoplim(n) = RT(n)*p.presentation.limits.ror + p.presentation.limits.base;
             fprintf('Subject stopped at %5.2f °C.\n',stoplim(n));
-            fprintf('ISI is on.')
-            tic
-            while toc<=p.presentation.limits.isi
-                pause(1)
-                fprintf('.')
+            %turn back to white cross
+            if n<p.presentation.limits.ntrials
+                Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
+                Screen('FillRect', p.ptb.w,  p.stim.white, p.ptb.FixCross');%draw the prestimus cross atop
+                Screen('DrawingFinished',p.ptb.w,0);
+                Screen('Flip',p.ptb.w);
+                fprintf('ISI is on.')
+                tic
+                while toc<=p.presentation.limits.isi
+                    pause(1)
+                    fprintf('.')
+                end
             end
         end
         p.presentation.limits.RT        = RT;
@@ -152,19 +155,41 @@ cleanup;
         fprintf('Mean limits temp is %5.2f °C.\n',mean(stoplim));
     end
     function BuzzDemo
-        ShowInstruction(3,1);
         Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
         Screen('FillRect', p.ptb.w,  p.stim.white, p.ptb.FixCross');%draw the prestimus cross atop
         Screen('DrawingFinished',p.ptb.w,0);
         Screen('Flip',p.ptb.w);
-        fprintf('When done, turn the digitimer OFF and press v to continue.\n')
+        fprintf('Experimenter: Set digitimer and press v when ready.\n');
+        fprintf([repmat('=',1,50) '\n']);
         k = 0;
         while ~(k == p.keys.v);
             pause(0.1);
             [~, k] = KbStrokeWait(p.ptb.device);
             k = find(k);
         end
-        Screen('Flip',p.ptb.w);
+        Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
+        Screen('FillRect', p.ptb.w,  p.ptb.fc_color, p.ptb.FixCross');%draw the prestimus cross atop
+        Screen('DrawingFinished',p.ptb.w,0);
+        Screen('Flip',p.ptb.w);        
+        fprintf('STIMULATE.\n');
+        Buzzduino(p.duration.tens);
+        WaitSecs(p.duration.tens);
+        response = vasScale(p.ptb.w,p.ptb.rect,180,1,p.stim.bg,p.ptb.startY,p.keys,'confirm',102); %180 means three minutes to answer
+        Screen('Flip',p.ptb.w,0);
+        if response == 0
+            fprintf('Response: YES. So subject felt TENS..\n');
+            p.presentation.tens = input('Final intensity: ');
+        elseif response == 1
+            fprintf('Response: NO. :( Must repeat, too weak.\n');
+            BuzzDemo;
+        end        
+        fprintf('DONE, turn the digitimer OFF and press v to continue.\n')
+        k = 0;
+        while ~(k == p.keys.v);
+            pause(0.1);
+            [~, k] = KbStrokeWait(p.ptb.device);
+            k = find(k);
+        end
     end
     function PresentStimuli
         
@@ -195,7 +220,7 @@ cleanup;
             RateOnset    = Ramp2Onset + rampdur + p.duration.poststim;  %                      
             RateOffset   = RateOnset + p.duration.rate;
             
-            fprintf('Starting Trial %02d of %02d, Destination Temp is %5.2f C, White fix on for %5.2f s. \n',nTrial,p.presentation.tTrial,tempC,prestimdur);
+            fprintf('Starting Trial %02d of %02d, Destination Temp is %5.2f C, White fix on for %3.2f s. \n',nTrial,p.presentation.tTrial,tempC,prestimdur);
             %Start with the trial, here is time-wise sensitive must be
             %optimal
             PainTrial(nTrial,FixOnset,FixColor,Ramp1Onset,PlateauOnset,Ramp2Onset,RateOnset,RateOffset, tempC,rampdur);
@@ -239,7 +264,7 @@ cleanup;
         fprintf('Plateau is on.')
         countedDown = 1;
         while GetSecs < Ramp2Onset
-            [countedDown]=CountDown(GetSecs-PlateauOnset,countedDown,'.');
+            [countedDown] = CountDown(GetSecs-PlateauOnset,countedDown,'.');
         end
         fprintf('Ramping back to baseline %5.2f C in %.02f s. \n',p.presentation.basetemp,rampdur)
         if arduino
@@ -257,7 +282,7 @@ cleanup;
         MarkCED(p.com.lpt.address, p.com.lpt.RateOn)
         rateinit = randi(p.rating.initrange);
         [currentRating.finalRating,currentRating.RT,currentRating.response] = vasScale(p.ptb.w,p.ptb.rect,p.duration.rate,rateinit,...
-            p.stim.bg,p.ptb.startY,p.keys);
+            p.stim.bg,p.ptb.startY,p.keys,'pain');
         Log(GetSecs,10,NaN); % log the rating offset
         MarkCED(p.com.lpt.address, p.com.lpt.RateOff)
         PutRatingLog(numTrial,currentRating,tempC,rateinit)
@@ -274,34 +299,20 @@ cleanup;
     function ExperimenterInput(num)
         if num == 1
             mantemps =  input('Please enter the limits temps: \n');
-            p.stim.limits.threshold_m   = mantemps;
-            p.stim.limits.threshold_ave = round(10*mean(mantemps))/10;
-            p.presentation.basetemp     = p.stim.limits.threshold_ave-2;
+            p.presentation.limits.threshold_m   = mantemps;
+            p.presentation.limits.threshold_ave = round(10*mean(mantemps))/10;
+            p.presentation.basetemp     = p.presentation.limits.threshold_ave-2;
             p.presentation.stimlist     = p.presentation.basetemp + p.presentation.steps;
-            fprintf('Your stimlist: %g \n',p.presentation.stimlist');
-            fprintf('----------------------------------\n')
-            fprintf('Please set thermode baseline to: %5.2f C.\n',p.presentation.basetemp);
-            fprintf('%% ASK SUBJECT IF THIS IS OKAY.%%  \n')
-          
+            fprintf('Please set thermode BASELINE to: %5.2f C.\n',p.presentation.basetemp);
         elseif num == 2
-            k = 0;
-            while ~ or(k == 86,k == 67);
-                pause(0.1);
-                fprintf('Is subject OK with this temp? Press c to correct, or v to continue...\n')
-                [~, k] = KbStrokeWait(p.ptb.device);
-                k = find(k);
-            end
-            if k == KbName('c')
-                x = input('Please enter the chosen temperature.\n');
+            prompt = 'Enter final temp: ';x = input(prompt);
+            if ~isempty(x)
                 p.presentation.basetemp     = x;
-                p.presentation.stimlist     = p.presentation.basetemp + p.presentation.steps;
-                fprintf('Your (NEW) stimlist: %g \n',p.presentation.stimlist');
-                fprintf('----------------------------------\n')
-                fprintf('Is everything set? Press v to start calibration procedure from your side!\n')
-            elseif k == 86
-                fprintf('----------------------------------\n')
-                fprintf('Temperature is okay. Press v to start calibration procedure from your side!\n')
             end
+            p.presentation.stimlist     = p.presentation.basetemp + p.presentation.steps;
+            fprintf('Your (NEW) stimlist: %g \n',p.presentation.stimlist');
+            fprintf('----------------------------------\n')
+            fprintf('Is everything set? Press v to start calibration procedure from your side!\n')
             k = 0;
             while ~(k == p.keys.v);
                 pause(0.1);
@@ -354,8 +365,8 @@ cleanup;
         p.text.linespace               = 10;
         p.text.lineheight              = p.text.fontsize + p.text.linespace;
         %rating business
-        p.rating.division              = 201; %number of divisions for the rating slider
-        p.rating.initrange             = [70 130];
+        p.rating.division              = 101; %number of divisions for the rating slider
+        p.rating.initrange             = [30 70];
         %
         p.stim.white                   = [255 255 255];
         if strcmp(p.hostname,'triostim1')
@@ -366,7 +377,7 @@ cleanup;
             p.keys.esc                     = KbName('esc');
         else
             %All settings for laptop computer.
-            p.keys.confirm                 = KbName('up');
+            p.keys.confirm                 = KbName('Return');
             p.keys.increase                = KbName('right');
             p.keys.decrease                = KbName('left');
             p.keys.space                   = KbName('space');
@@ -411,11 +422,14 @@ cleanup;
         p.duration.ISI                       = 1;
         p.duration.rate                      = 5;
         
+        p.duration.tens                      = .7; %this is only for TensDEMO
+        
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %stimulus sequence
         s = load([p.path.stim 'stimlist\caliblist.mat']);
         p.presentation.steps = s.steps;
         
+        p.presentation.tens             = NaN;
         p.presentation.calib_target_vas = NaN;
         p.presentation.calib_est        = NaN;
         p.presentation.basetemp         = NaN;
@@ -460,7 +474,16 @@ cleanup;
         serialcom(s,'DIAG');
         WaitSecs(1);
     end
-    function [finalRating,reactionTime,response] = vasScale(window,windowRect,durRating,defaultRating,backgroundColor,StartY,keys)
+    function Buzzduino(duration)
+        arg = ['SHOCK;' num2str(duration)];
+        try
+            fprintf(s,arg);
+        catch
+            fprintf([repmat('*',1,50) '\n']);
+            fprintf(['Didn' char(39) 't find Arduino!\n'])
+        end
+    end
+    function [finalRating,reactionTime,response] = vasScale(window,windowRect,durRating,defaultRating,backgroundColor,StartY,keys,type,varargin)
         
         %% key settings
         KbName('UnifyKeyNames');
@@ -475,16 +498,24 @@ cleanup;
         
         %% Default values
         nRatingSteps = p.rating.division;
+        if strcmp(type,'confirm')
+            nRatingSteps = 2;
+        end
         scaleWidth = 700;
         textSize = 20;
-        lineWidth = 6;
+        lineWidth = 4;
         scaleColor = [255 255 255];
+        %         if strcmp(type,'pain')
+        %             activeColor = [255 0 0];
+        %         elseif strcmp(type,'relief')
+        %             activeColor = [0 0 255];
+        %         else
+        %             activeColor = [255 255 255];
+        %         end
         activeColor = p.ptb.fc_color;
         if isempty(defaultRating); defaultRating = round(nRatingSteps/2); end
         if isempty(backgroundColor); backgroundColor = 0; end
-        
-        
-        
+
         % if length(ratingLabels) ~= nRatingSteps
         %     error('Rating steps and label numbers do not match')
         % end
@@ -495,18 +526,33 @@ cleanup;
         [xCenter, yCenter] = RectCenter(windowRect);
         yCenter = StartY;
         axesRect = [xCenter - scaleWidth/2; yCenter - lineWidth/2; xCenter + scaleWidth/2; yCenter + lineWidth/2];
-        lowLabelRect = [axesRect(1),yCenter-20,axesRect(1)+6,yCenter+20];
-        midLabelRect = [xCenter-3,yCenter-20,xCenter+3,yCenter+20];
+        lowLabelRect = [axesRect(1),yCenter-20,axesRect(1)+6,yCenter+20]; %6 means width of the Rect
         highLabelRect = [axesRect(3)-6,yCenter-20,axesRect(3),yCenter+20];
-        ticPositions = linspace(xCenter - scaleWidth/2,xCenter + scaleWidth/2-lineWidth,nRatingSteps);
-        % ticRects = [ticPositions;ones(1,nRatingSteps)*yCenter;ticPositions + lineWidth;ones(1,nRatingSteps)*yCenter+tickHeight];
-        activeTicRects = [ticPositions-activeAddon_width;ones(1,nRatingSteps)*yCenter-activeAddon_height;ticPositions + lineWidth+activeAddon_width;ones(1,nRatingSteps)*yCenter+activeAddon_height];
-        % keyboard
-        stringArray={ 'maximale', 'Linderung','neutral','unerträglicher','Schmerz'};
+        ticPositions = linspace(xCenter - scaleWidth/2,xCenter + scaleWidth/2-lineWidth,nRatingSteps); %actually this lineWidth doesnt make sense, because that relies to y-coords
+        activeTicRects = [ticPositions-activeAddon_width;ones(1,nRatingSteps)*yCenter-activeAddon_height;ticPositions + activeAddon_width;ones(1,nRatingSteps)*yCenter+activeAddon_height];
+        if strcmp(type,'confirm')
+            axesRect = [xCenter - scaleWidth/8; yCenter - lineWidth/2; xCenter + scaleWidth/8; yCenter + lineWidth/2];
+            lowLabelRect = [axesRect(1)-20,yCenter-20,axesRect(1)+20,yCenter+20];
+            highLabelRect = [axesRect(3)-20,yCenter-20,axesRect(3)+20,yCenter+20];
+            activeAddon_width = 20;
+            activeAddon_height = 20;
+            ticPositions = [axesRect(1) axesRect(3)];
+            activeTicRects = [ticPositions-activeAddon_width ; ones(1,nRatingSteps)*yCenter-activeAddon_height; ticPositions + activeAddon_width; ones(1,nRatingSteps)*yCenter+activeAddon_height];
+        end
+        %define text rects
+        if strcmp(type,'relief')
+            stringArray={ 'keine','Linderung','maximale','Linderung'};
+        elseif strcmp(type,'pain')
+            stringArray={ 'kein','Schmerz','maximaler','Schmerz'};
+        elseif strcmp(type,'confirm')
+            stringArray ={ 'ja','nein'};
+        end
         for i = 1:length(stringArray)
             [~, ~, textBox] = DrawFormattedText(window,char(stringArray(i)),0,0,backgroundColor);
             textWidths(i)=textBox(3)-textBox(1);
         end
+        % keyboard
+        inactivecol    = [130 130 130];
         
         Screen('TextSize',window,textSize);
         Screen('TextColor',window,[255 255 255]);
@@ -524,25 +570,42 @@ cleanup;
         % tic; % control if timing is as long as durRating
         while numberOfSecondsRemaining  > 0
             Screen('FillRect',window,backgroundColor);
-            Screen('FillRect',window,scaleColor,axesRect);
-            Screen('FillRect',window,scaleColor,lowLabelRect);
-            Screen('FillRect',window,scaleColor,midLabelRect);
-            Screen('FillRect',window,scaleColor,highLabelRect);
-            Screen('FillRect',window,activeColor,activeTicRects(:,currentRating));
-            
-            DrawFormattedText(window, 'Bitte bewerten Sie den soeben erhaltenen Reiz.', 'center',yCenter-100, scaleColor);
-            
-            Screen('DrawText',window,'maximale',axesRect(1)-textWidths(1)/2,yCenter+25,scaleColor);
-            Screen('DrawText',window,'Linderung',axesRect(1)-textWidths(2)/2,yCenter+45,scaleColor);
-            Screen('DrawText',window,'neutral',xCenter-textWidths(3)/2,yCenter+25,scaleColor);
-            Screen('DrawText',window,'unerträglicher',axesRect(3)-textWidths(4)/2,yCenter+25,scaleColor);
-            Screen('DrawText',window,'Schmerz',axesRect(3)-textWidths(5)/2,yCenter+45,scaleColor);
-            
+            if or(strcmp(type,'relief'),strcmp(type,'pain'))
+                Screen('FillRect',window,scaleColor,axesRect); %draw white axis
+                Screen('FillRect',window,activeColor,activeTicRects(:,currentRating));
+                Screen('FillRect',window,scaleColor,lowLabelRect);
+                Screen('FillRect',window,scaleColor,highLabelRect);
+            end
+            if strcmp(type,'pain') 
+                DrawFormattedText(window, 'Bitte bewerten Sie den momentanen Schmerz.', 'center',yCenter-100, scaleColor);
+                Screen('DrawText',window,'kein',axesRect(1)-textWidths(1)/2,yCenter+25,scaleColor);
+                Screen('DrawText',window,'Schmerz',axesRect(1)-textWidths(2)/2,yCenter+45,scaleColor);
+                Screen('DrawText',window,'maximaler',axesRect(3)-textWidths(3)/2,yCenter+25,scaleColor);
+                Screen('DrawText',window,'Schmerz',axesRect(3)-textWidths(4)/2,yCenter+45,scaleColor);
+            elseif strcmp(type,'relief')
+                DrawFormattedText(window, 'Bitte bewerten Sie die Wirksamkeit der Behandlung.', 'center',yCenter-100, scaleColor);
+                Screen('DrawText',window,'keine',axesRect(1)-textWidths(1)/2,yCenter+25,scaleColor);
+                Screen('DrawText',window,'Linderung',axesRect(1)-textWidths(2)/2,yCenter+45,scaleColor);
+                Screen('DrawText',window,'maximale',axesRect(3)-textWidths(3)/2,yCenter+25,scaleColor);
+                Screen('DrawText',window,'Linderung',axesRect(3)-textWidths(4)/2,yCenter+45,scaleColor);
+                Screen('FillRect',window,activeColor,activeTicRects(:,currentRating));
+            elseif strcmp(type,'confirm')
+                text = GetText(varargin{1});
+                DrawFormattedText(window, text, 'center',yCenter-100, scaleColor);
+                Screen('TextSize', p.ptb.w, p.text.fontsize+4);
+                Screen('DrawText',window,'ja',axesRect(1)-textWidths(1)/2,yCenter-20,scaleColor);
+                Screen('DrawText',window,'nein',axesRect(3)-textWidths(2)/2,yCenter-20,scaleColor);
+                if currentRating ==1
+                    Screen('DrawText',window,'ja',axesRect(1)-textWidths(1)/2,yCenter-20,activeColor);
+                elseif currentRating == 2
+                    Screen('DrawText',window,'nein',axesRect(3)-textWidths(2)/2,yCenter-20,activeColor);
+                end
+                Screen('TextSize', p.ptb.w, p.text.fontsize);
+            end
             % Remove this line if a continuous key press should result in a continuous change of the scale
             %     while KbCheck; end
             
             if response == 0
-                
                 % set time 0 (for reaction time)
                 if first_flip   == 1
                     secs0       = Screen('Flip', window); % output Flip -> starttime rating
@@ -551,8 +614,8 @@ cleanup;
                 else
                     Screen('Flip', window);
                 end
-                
                 [ keyIsDown, secs, keyCode ] = KbCheck; % this checks the keyboard very, very briefly.
+                Log(secs,7,keyCode);
                 if keyIsDown % only if a key was pressed we check which key it was
                     response = 0; % predefine variable for confirmation button 'space'
                     nrbuttonpresses = nrbuttonpresses + 1;
@@ -572,12 +635,9 @@ cleanup;
                         end
                     elseif keyCode(confirmKey)
                         finalRating = currentRating-1;
-                        if ismember(finalRating,floor(nRatingSteps./2):nRatingSteps)
-                            finalRating = finalRating -floor(nRatingSteps./2);
-                        elseif ismember(finalRating,0:floor(nRatingSteps./2))
-                            finalRating = -(floor(nRatingSteps./2) - finalRating);
+                        if ~strcmp(type,'confirm')
+                            disp(['VAS Rating: ' num2str(finalRating)]);
                         end
-                        disp(['VAS Rating: ' num2str(finalRating)]);
                         response = 1;
                         reactionTime = secs - secs0;
                         break;
@@ -590,26 +650,20 @@ cleanup;
         end
         if  nrbuttonpresses ~= 0 && response == 0
             finalRating = currentRating - 1;
-            if ismember(finalRating,floor(nRatingSteps./2):nRatingSteps)
-                finalRating = finalRating -floor(nRatingSteps./2);
-            elseif ismember(finalRating,0:floor(nRatingSteps./2))
-                finalRating = -(floor(nRatingSteps./2) - finalRating);
-            end
             reactionTime = durRating;
-            disp(['VAS Rating: ' num2str(finalRating)]);
-            warning(sprintf('\n***********\nNo Confirmation!\n***********\n'));
+            if ~strcmp(type,'confirm')
+                disp(['VAS Rating: ' num2str(finalRating)]);
+                fprintf('***********No Confirmation!***********\n');
+            end
         end
         if  nrbuttonpresses == 0
-            finalRating = NaN;
+            finalRating = NaN; %NaN is NaN, no recoding necessary
             reactionTime = durRating;
             disp(['VAS Rating: ' num2str(finalRating)]);
-            warning(sprintf('\n***********\nNo Response!\nPlease check participant!\n***********\n'));
+            warning(sprintf('\n***********No Response! Please check participant!***********\n'));
         end
         % toc
     end
-
-
-
     function ShowInstruction(nInstruct,waitforkeypress,varargin)
         %ShowInstruction(nInstruct,waitforkeypress)
         %if waitforkeypress is 1, ==> subject presses a button to proceed
@@ -645,7 +699,7 @@ cleanup;
             text = 'Kalibrationsphase';
         elseif nInstruct == 1 %Instruction
             text = ['Bestimmung der Schmerzschwelle von Hitzereizen.\n'...
-                'Wir bestimmen nun Ihre individuelle Hitzeschmerzschwelle.'...
+                'Wir bestimmen nun Ihre individuelle Hitzeschmerzschwelle.\n'...
                 'Wir werden dazu die Temperatur schrittweise erhöhen.\n'...
                 'Bitte schauen Sie während des Vorgangs auf das kleine Kreuz.\n'...
                 'Ihre Aufgabe ist es, die Leertaste zu drücken, sobald Sie die Temperatur als schmerzhaft empfinden,\n'...
@@ -656,9 +710,9 @@ cleanup;
                 'Drücken Sie sonst bitte die obere Taste, um zu starten.\n'];
         elseif nInstruct == 2 %Instruction
             text = ['Im Folgenden möchten wir Ihre individuelle Schmerzwahrnehmung noch genauer bestimmen.\n' ...
-                'Dazu erhalten Sie Reize unterschiedlicher Temperaturen, d.h. sowohl schmerzhafte wärmere als auch angenehme, kältere Reize.\n' ...
+                'Dazu erhalten Sie Reize unterschiedlicher Temperaturen.\n' ...
                 'Anschließend bewerten Sie den jeweiligen Reiz auf einer Skala,\n' ...
-                'die von "maximale Linderung" bis "unerträglicher Schmerz" reicht. Sie haben dazu 5 Sek Zeit.\n' ...
+                'die von "kein Schmerz bis "maximaler Schmerz" reicht. Sie haben dazu 5 Sek Zeit.\n' ...
                 'Falsche Antworten gibt es bei dieser Aufgabe nicht, da individuelle Empfindungen sehr unterschiedlich sein können.\n' ...
                 'Nutzen Sie die Pfeiltasten zum Bewerten & bestätigen Sie Ihre Eingabe immer\n' ...
                 'mit der oberen Pfeiltaste. Bitte versuchen Sie sich auch auf kleinste Reizänderungen\n' ...
@@ -669,16 +723,18 @@ cleanup;
         elseif nInstruct == 22 %Instruction
             text = ['Wir werden nun die für Sie individuell ausgewählte Grundtemperatur\n' ...
                 'für die folgende Kalibration anbringen.\n' ...
-                'Diese kann sich etwas unangenehm anfühlen, sollte aber nicht zu schmerzhaft sein.\n' ...
+                'Diese kann sich etwas unangenehm anfühlen, sollte aber nicht wirklich schmerzhaft sein.\n' ...
+                'Wir fragen Sie zudem vor Beginn der Kalibration, ob diese Temperatur für Sie gut aushaltbar ist.\n' ...
                 '\n' ...
                 'Drücken Sie bitte die obere Taste, wenn Sie bereit sind zu starten.\n'];
+        elseif nInstruct == 9
+            text = 'Temperatur wird angepasst.\n';
         elseif nInstruct == 3%short Digitimer stimulation
             text = ['Kalibration der TENS-Intensität.\n' ...
                 '\n'...
                 'Wir werden nun als Erstes das TENS-Gerät kalibrieren.\n'...
-                'Dazu erhalten Sie kurze Stimulationen aufsteigender Intensität.\n'...
-                '\n'...
-                'Bitte geben Sie der Versuchsleiterin Bescheid, sobald Sie ein Kribbeln an der Elektrode spüren.\n'...
+                'Wir gehen dazu gemeinsam einige Reizintensitäten durch, und Sie geben jeweils an,\n'...
+                'ob Sie eine Stimulation verspürt haben.\n'...
                 '\n'...
                 'Die Stimulation während des Experiments wird dann unterschwellig durchgeführt,\n'...
                 'd.h. Sie werden diese nicht mehr bewusst wahrnehmen.\n'...
@@ -696,12 +752,10 @@ cleanup;
         elseif nInstruct == 10
             text = ['Vielen Dank!\n'...
                 'Es geht gleich weiter. \n'];
-        elseif nInstruct == 11 %end
-            text = ['Bitte bewerten Sie, wie schmerzhaft der soeben erhaltene Reiz für Sie war.'];
-        elseif nInstruct == 12 %These two below are the possible responses to the question in 11
-            text = {'unerträglich\nschmerzhaft'};
-        elseif nInstruct == 13
-            text = {'Überhaupt\nnicht\nschmerzhaft'};
+        elseif nInstruct == 101 %confirm intensity
+            text = 'Ist diese Temperatur gut erträglich?';
+        elseif nInstruct == 102 %These two below are the possible responses to the question in 11
+            text = 'Haben Sie eine elektrische Stimulation verspürt?';
         else
             text = {''};
         end
@@ -817,7 +871,28 @@ cleanup;
         shuffled        = vector(idx(1:N));
         shuffled        = shuffled(:);
     end
-
+    function ConfirmIntensity
+        fprintf(' Experimenter: Set thermode to %4.2f C and press v when ready.\n',p.presentation.basetemp);
+        fprintf([repmat('=',1,50) '\n']);
+        k = 0;
+        while ~(k == p.keys.v);
+            pause(0.1);
+            [~, k] = KbStrokeWait(p.ptb.device);
+            k = find(k);
+        end
+        fprintf('PRESS PRETEST.\n');
+        ShowInstruction(9,0,2);%"raising temp.."
+        response = vasScale(p.ptb.w,p.ptb.rect,5,2,p.stim.bg,p.ptb.startY,p.keys,'confirm',101);
+        Screen('Flip',p.ptb.w,0);
+        if response == 0
+            fprintf('All is fine :)\n');
+            fprintf('Subject confirmed temp..\n');
+        elseif response == 1
+            fprintf(':(, subject complained.\n');
+            p.presentation.basetemp = p.presentation.basetemp - .5;
+            ConfirmIntensity;
+        end        
+    end
     function [countedDown]=CountDown(secs, countedDown, countString)
         if secs>countedDown
             fprintf('%s', countString);
