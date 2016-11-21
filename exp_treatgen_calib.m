@@ -52,6 +52,8 @@ if run == 2
     LimitsProcedure;
     ShowInstruction(10,1);
 elseif run == 1
+    warning('Trigger connected?')
+    warning('Arduino active?')
     ShowInstruction(0,0,3)
     ShowInstruction(3,1);
     BuzzDemo;
@@ -174,7 +176,8 @@ cleanup;
         fprintf('STIMULATE.\n');
         Buzzduino(p.duration.tens);
         WaitSecs(p.duration.tens);
-        response = vasScale(p.ptb.w,p.ptb.rect,180,1,p.stim.bg,p.ptb.startY,p.keys,'confirm',102); %180 means three minutes to answer
+        timeout = 180;
+        response = vasScale(p.ptb.w,p.ptb.rect,timeout,1,p.stim.bg,p.ptb.startY,p.keys,'confirm',102); %180 means three minutes to answer
         Screen('Flip',p.ptb.w,0);
         if response == 0
             fprintf('Response: YES. So subject felt TENS..\n');
@@ -301,18 +304,32 @@ cleanup;
             mantemps =  input('Please enter the limits temps: \n');
             p.presentation.limits.threshold_m   = mantemps;
             p.presentation.limits.threshold_ave = round(10*mean(mantemps))/10;
-            p.presentation.basetemp     = p.presentation.limits.threshold_ave-2;
+            p.presentation.basetemp     = p.presentation.limits.threshold_ave-3;
             p.presentation.stimlist     = p.presentation.basetemp + p.presentation.steps;
             fprintf('Please set thermode BASELINE to: %5.2f C.\n',p.presentation.basetemp);
+            WaitSecs(1)
+            if arduino
+                serialcom(s,'T',p.presentation.basetemp);
+                WaitSecs(0.8);
+                serialcom(s,'DIAG');
+                WaitSecs(1);
+            end
         elseif num == 2
-            prompt = 'Enter final temp: ';x = input(prompt);
+            prompt = sprintf('Enter final temp (probably %5.2f C): ',p.presentation.basetemp);x = input(prompt);
             if ~isempty(x)
                 p.presentation.basetemp     = x;
+            end
+            if arduino
+                serialcom(s,'T',p.presentation.basetemp);
+                WaitSecs(0.8);
+                serialcom(s,'DIAG');
+                WaitSecs(1);
             end
             p.presentation.stimlist     = p.presentation.basetemp + p.presentation.steps;
             fprintf('Your (NEW) stimlist: %g \n',p.presentation.stimlist');
             fprintf('----------------------------------\n')
-            fprintf('Is everything set? Press v to start calibration procedure from your side!\n')
+            fprintf('Is everything set? Thermode waiting for TTL?\n')
+            fprintf('Press v!\n')
             k = 0;
             while ~(k == p.keys.v);
                 pause(0.1);
@@ -377,7 +394,7 @@ cleanup;
             p.keys.esc                     = KbName('esc');
         else
             %All settings for laptop computer.
-            p.keys.confirm                 = KbName('Return');
+            p.keys.confirm                 = KbName('space');
             p.keys.increase                = KbName('right');
             p.keys.decrease                = KbName('left');
             p.keys.space                   = KbName('space');
@@ -435,6 +452,7 @@ cleanup;
         p.presentation.basetemp         = NaN; % will be defined after limits procedure
         p.presentation.ror              = 5;
         p.presentation.run              = run;
+        p.presentation.hardwarebasetemp = 25;
         
         p.presentation.limits.base      = 20;
         p.presentation.limits.ror       = 2;
@@ -521,7 +539,7 @@ cleanup;
         % end
         
         %% Calculate rects
-        activeAddon_width = 1.5;
+        activeAddon_width = 3;
         activeAddon_height = 20;
         [xCenter, yCenter] = RectCenter(windowRect);
         yCenter = StartY;
@@ -577,7 +595,7 @@ cleanup;
                 Screen('FillRect',window,scaleColor,highLabelRect);
             end
             if strcmp(type,'pain') 
-                DrawFormattedText(window, 'Bitte bewerten Sie den momentanen Schmerz.', 'center',yCenter-100, scaleColor);
+                DrawFormattedText(window, 'Bitte bewerten Sie den zuvor erhaltenen Reiz.', 'center',yCenter-100, scaleColor);
                 Screen('DrawText',window,'kein',axesRect(1)-textWidths(1)/2,yCenter+25,scaleColor);
                 Screen('DrawText',window,'Schmerz',axesRect(1)-textWidths(2)/2,yCenter+45,scaleColor);
                 Screen('DrawText',window,'maximaler',axesRect(3)-textWidths(3)/2,yCenter+25,scaleColor);
@@ -592,7 +610,6 @@ cleanup;
             elseif strcmp(type,'confirm')
                 text = GetText(varargin{1});
                 DrawFormattedText(window, text, 'center',yCenter-100, scaleColor);
-                Screen('TextSize', p.ptb.w, p.text.fontsize+4);
                 Screen('DrawText',window,'ja',axesRect(1)-textWidths(1)/2,yCenter-20,scaleColor);
                 Screen('DrawText',window,'nein',axesRect(3)-textWidths(2)/2,yCenter-20,scaleColor);
                 if currentRating ==1
@@ -600,7 +617,6 @@ cleanup;
                 elseif currentRating == 2
                     Screen('DrawText',window,'nein',axesRect(3)-textWidths(2)/2,yCenter-20,activeColor);
                 end
-                Screen('TextSize', p.ptb.w, p.text.fontsize);
             end
             % Remove this line if a continuous key press should result in a continuous change of the scale
             %     while KbCheck; end
@@ -707,7 +723,7 @@ cleanup;
                 'Der Vorgang wird drei mal wiederholt.\n'...
                 '\n'...
                 'Falls Sie noch Fragen haben, wenden Sie sich bitte noch einmal an die Versuchsleiterin.\n'...
-                'Drücken Sie sonst bitte die obere Taste, um zu starten.\n'];
+                'Drücken Sie sonst bitte die Entertaste, um zu starten.\n'];
         elseif nInstruct == 2 %Instruction
             text = ['Im Folgenden möchten wir Ihre individuelle Schmerzwahrnehmung noch genauer bestimmen.\n' ...
                 'Dazu erhalten Sie Reize unterschiedlicher Temperaturen.\n' ...
@@ -719,16 +735,16 @@ cleanup;
                 'zu konzentrieren & bewerten Sie diese so präzise wie möglich.\n'...
                 '\n'...
                 'Falls Sie noch Fragen haben, wenden Sie sich bitte noch einmal an die Versuchsleiterin.\n' ...
-                'Drücken Sie sonst bitte die obere Taste, um weiterzumachen.\n'];
+                'Drücken Sie sonst bitte die Entertaste, um weiterzumachen.\n'];
         elseif nInstruct == 22 %Instruction
             text = ['Wir werden nun die für Sie individuell ausgewählte Grundtemperatur\n' ...
                 'für die folgende Kalibration anbringen.\n' ...
                 'Diese kann sich etwas unangenehm anfühlen, sollte aber nicht wirklich schmerzhaft sein.\n' ...
                 'Wir fragen Sie zudem vor Beginn der Kalibration, ob diese Temperatur für Sie gut aushaltbar ist.\n' ...
                 '\n' ...
-                'Drücken Sie bitte die obere Taste, wenn Sie bereit sind zu starten.\n'];
+                'Drücken Sie bitte die Entertaste, wenn Sie bereit sind zu starten.\n'];
         elseif nInstruct == 9
-            text = 'Temperatur wird angepasst.\n';
+            text = 'Temperatur wird angepasst...\n';
         elseif nInstruct == 3%short Digitimer stimulation
             text = ['Kalibration der TENS-Intensität.\n' ...
                 '\n'...
@@ -741,7 +757,7 @@ cleanup;
                 '\n'...
                 '\n'...
                 'Falls Sie noch Fragen haben, wenden Sie sich bitte noch einmal an die Versuchsleiterin.\n' ...
-                'Drücken Sie sonst bitte die obere Taste, um zu starten.\n'];
+                'Drücken Sie sonst bitte die Entertaste, um zu starten.\n'];
         elseif nInstruct == 200%short instruction for second run
             text = ['Wiederholung der Schwellenkalibrierung.\n'...
                 '\n'...
@@ -872,7 +888,7 @@ cleanup;
         shuffled        = shuffled(:);
     end
     function ConfirmIntensity
-        fprintf(' Experimenter: Set thermode to %4.2f C and press v when ready.\n',p.presentation.basetemp);
+        fprintf(' Experimenter: Set thermode sequence baseline to %4.2f C and press v to start.\n',p.presentation.basetemp);
         fprintf([repmat('=',1,50) '\n']);
         k = 0;
         while ~(k == p.keys.v);
@@ -880,15 +896,20 @@ cleanup;
             [~, k] = KbStrokeWait(p.ptb.device);
             k = find(k);
         end
-        fprintf('PRESS PRETEST.\n');
-        ShowInstruction(9,0,2);%"raising temp.."
-        response = vasScale(p.ptb.w,p.ptb.rect,5,2,p.stim.bg,p.ptb.startY,p.keys,'confirm',101);
+        rampdur = (p.presentation.basetemp - 25)./p.presentation.ror;
+        ShowInstruction(9,0,rampdur+.5);%"raising temp.."
+        Screen('Flip',p.ptb.w,0);
+        WaitSecs(2)
+        response = vasScale(p.ptb.w,p.ptb.rect,180,2,p.stim.bg,p.ptb.startY,p.keys,'confirm',101);
         Screen('Flip',p.ptb.w,0);
         if response == 0
             fprintf('All is fine :)\n');
             fprintf('Subject confirmed temp..\n');
         elseif response == 1
-            fprintf(':(, subject complained.\n');
+            if arduino
+                serialcom(s,'SET',p.presentation.hardwarebasetemp);
+            end
+            fprintf(':(, subject complained, press Stop!\n');
             p.presentation.basetemp = p.presentation.basetemp - .5;
             ConfirmIntensity;
         end        
