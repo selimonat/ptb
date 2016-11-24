@@ -368,8 +368,10 @@ cleanup;
         % mkdir([p.path.subject 'quadruplet']);
         mkdir([p.path.subject 'stimulation']);
         mkdir([p.path.subject 'midlevel']);
+        mkdir([p.path.subject 'diary'])
         p.path.path_param             = sprintf([regexprep(p.path.subject,'\\','\\\') 'stimulation\\param_phase_%02d'],run);
-        
+        p.path.diary                  = sprintf([regexprep(p.path.subject,'\\','\\\') 'diary']);
+        diary(p.path.diary)
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
         %get stim files to anticipate bg color
         [p.stim.files p.stim.label]   = FileMatrix([p.path.stim '*.bmp']);
@@ -723,7 +725,7 @@ cleanup;
                 'Der Vorgang wird drei mal wiederholt.\n'...
                 '\n'...
                 'Falls Sie noch Fragen haben, wenden Sie sich bitte noch einmal an die Versuchsleiterin.\n'...
-                'Drücken Sie sonst bitte die Entertaste, um zu starten.\n'];
+                'Drücken Sie sonst bitte die Leertaste, um zu starten.\n'];
         elseif nInstruct == 2 %Instruction
             text = ['Im Folgenden möchten wir Ihre individuelle Schmerzwahrnehmung noch genauer bestimmen.\n' ...
                 'Dazu erhalten Sie Reize unterschiedlicher Temperaturen.\n' ...
@@ -735,14 +737,14 @@ cleanup;
                 'zu konzentrieren & bewerten Sie diese so präzise wie möglich.\n'...
                 '\n'...
                 'Falls Sie noch Fragen haben, wenden Sie sich bitte noch einmal an die Versuchsleiterin.\n' ...
-                'Drücken Sie sonst bitte die Entertaste, um weiterzumachen.\n'];
+                'Drücken Sie sonst bitte die Leertaste, um weiterzumachen.\n'];
         elseif nInstruct == 22 %Instruction
             text = ['Wir werden nun die für Sie individuell ausgewählte Grundtemperatur\n' ...
                 'für die folgende Kalibration anbringen.\n' ...
                 'Diese kann sich etwas unangenehm anfühlen, sollte aber nicht wirklich schmerzhaft sein.\n' ...
                 'Wir fragen Sie zudem vor Beginn der Kalibration, ob diese Temperatur für Sie gut aushaltbar ist.\n' ...
                 '\n' ...
-                'Drücken Sie bitte die Entertaste, wenn Sie bereit sind zu starten.\n'];
+                'Drücken Sie bitte die Leertaste, wenn Sie bereit sind zu starten.\n'];
         elseif nInstruct == 9
             text = 'Temperatur wird angepasst...\n';
         elseif nInstruct == 3%short Digitimer stimulation
@@ -757,7 +759,7 @@ cleanup;
                 '\n'...
                 '\n'...
                 'Falls Sie noch Fragen haben, wenden Sie sich bitte noch einmal an die Versuchsleiterin.\n' ...
-                'Drücken Sie sonst bitte die Entertaste, um zu starten.\n'];
+                'Drücken Sie sonst bitte die Leertaste, um zu starten.\n'];
         elseif nInstruct == 200%short instruction for second run
             text = ['Wiederholung der Schwellenkalibrierung.\n'...
                 '\n'...
@@ -897,7 +899,7 @@ cleanup;
             k = find(k);
         end
         rampdur = (p.presentation.basetemp - 25)./p.presentation.ror;
-        ShowInstruction(9,0,rampdur+.5);%"raising temp.."
+        ShowInstruction(9,0,rampdur+1);%"raising temp.."
         Screen('Flip',p.ptb.w,0);
         WaitSecs(2)
         response = vasScale(p.ptb.w,p.ptb.rect,180,2,p.stim.bg,p.ptb.startY,p.keys,'confirm',101);
@@ -944,6 +946,7 @@ cleanup;
         if arduino
             fclose(s);
         end
+        diary off
     end
     function Log(ptb_time, event_type, event_info)
         %Phases:
