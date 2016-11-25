@@ -8,7 +8,7 @@ function [p]=exp_treatgen(subject,run,csp,tonic,middletemp,lowtemp)
 mrt   = 0;
 debug = 0;%debug mode
 laptop = 0;
-arduino = 1;
+arduino = 0;
 %replace parallel port function with a dummy function
 if ismac
     %   outp = @(x,y) fprintf('[%i %i]\n',x,y);
@@ -53,13 +53,13 @@ KbQueueStop(p.ptb.device);
 KbQueueRelease(p.ptb.device);
 %save again the parameter file
 fprintf('saving parameter file. \n');
-save(p.path.path_param,'p');
+% save(p.path.path_param,'p');
 if run == 0
     p.var.ExpPhase  = run;%set this after the calibration;
     ShowInstruction(1,1);
     ApplyAndRate;
     ShowInstruction(2,1);
-    TENSdemo(p.presentation.pain.tonic(1),middletemp,lowtemp);
+    TENSdemo;
     ShowInstruction(3,1);
     PresentStimuli;
     ShowInstruction(20,0,2);
@@ -77,10 +77,10 @@ else
     else
         ShowInstruction(44,1)
     end
-    ShowInstruction(11,1)
     ApplyAndRate;
     PresentStimuli;
-    WaitSecs(5);
+    Summary;
+    WaitSecs(3);
     %turn scanner off
     if run == 5
         AskDetectionSelectable;
@@ -187,7 +187,11 @@ cleanup;
         Eyelink('Message', 'BLANK_SCREEN');
         StopEyelinkRecording;
     end
+
     function PresentStimuli
+        if arduino
+            serialcom(s,'T',p.presentation.pain.tonic(1));
+        end
         %Enter the presentation loop and wait for the first pulse to
         %arrive.
         %wait for the dummy scans
@@ -266,7 +270,7 @@ cleanup;
         %             WaitSecs(10);
         %         end
     end
-    function RatePain(nTrial,tonictemp)
+    function rating = RatePain(nTrial,tonictemp);
         time2rate = p.duration.rate;
         if nTrial == 0;
             time2rate = p.duration.rate +10;
@@ -274,7 +278,7 @@ cleanup;
         OnSetTime = GetSecs + .1;
         RateOn    = GetSecs + min(p.presentation.tonicpain);
         EndTrial  = OnSetTime + 5 + p.duration.rate;
-        if nTrial ==1
+        if nTrial < 2
             Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
             Screen('FillRect',  p.ptb.w, p.stim.white, p.ptb.centralFixCross');%draw the prestimus cross atop        TimeCrossOn  = Screen('Flip',p.ptb.w,Fix1On,0);
             Screen('DrawingFinished',p.ptb.w,0);
@@ -289,18 +293,16 @@ cleanup;
         RateOff = Screen('Flip',p.ptb.w);
         Log(RateOff,2,p.ptb.centralFixCross);
         MarkCED(p.com.lpt.address, p.com.lpt.Fix1Onset);
-        if run == 0
-            PutRatingLog(nTrial,currentRating,tonictemp,rateinit,'TENSdemo')
-        else
-            PutRatingLog(nTrial,currentRating,tonictemp,rateinit,'pain')
-        end
+        PutRatingLog(nTrial,currentRating,tonictemp,rateinit,'pain')
         while GetSecs < EndTrial;end
+        rating = currentRating.finalRating;
     end
     function ApplyAndRate
-       rampdur = abs(tonic - p.presentation.pain.base)./p.presentation.pain.ror;
        ShowInstruction(11,1);
        ok = 0;
        while ok == 0
+           rampdur = abs(p.presentation.pain.tonic(1) - p.presentation.pain.base)./p.presentation.pain.ror;
+           p.log.ARcount = p.log.ARcount + 1;
            Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
            Screen('FillRect',  p.ptb.w, p.stim.white, p.ptb.centralFixCross');%draw the prestimus cross atop
            Screen('DrawingFinished',p.ptb.w,0);
@@ -325,13 +327,15 @@ cleanup;
            TimeCrossOn  = Screen('Flip',p.ptb.w,0);
            Log(TimeCrossOn,2,p.ptb.centralFixCross);%cross onset.
            WaitSecs(3);
-           RatePain(0,p.presentation.pain.tonic(1));
+           rating = RatePain(0,p.presentation.pain.tonic(1));
            Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
            Screen('FillRect',  p.ptb.w, p.stim.white, p.ptb.centralFixCross');%draw the prestimus cross atop        TimeCrossOn  = Screen('Flip',p.ptb.w,Fix1On,0);
            Screen('DrawingFinished',p.ptb.w,0);
            TimeCrossOn  = Screen('Flip',p.ptb.w,0);
            MarkCED( p.com.lpt.address, p.com.lpt.Fix1Onset);
            Log(TimeCrossOn,2,p.ptb.centralFixCross);%cross onset.
+           putAR    = [tonic rating];
+           p.log.AR = [p.log.AR; putAR];
            k = 0;
            while ~ or(k == KbName('v'),k == KbName('c'));
                pause(0.1);
@@ -345,16 +349,32 @@ cleanup;
            elseif k == KbName('c')         
                ShowInstruction(12,1);
                x = input('.\nEnter the next tonic pain temperature we will try.\n');
-               
                delta = x - p.presentation.pain.tonic(1);
                p.presentation.pain.tonic(1:end) = x;
                p.presentation.pain.middle       = p.presentation.pain.middle + delta;
                p.presentation.pain.low          = p.presentation.pain.low + delta;
+               fprintf('Temps are now:\n');
+               fprintf('Tonic:  %5.2f C\n',p.presentation.pain.tonic(1));
+               fprintf('Middle: %5.2f C\n',p.presentation.pain.middle(1));
+               fprintf('Low:    %5.2f C.\n',p.presentation.pain.low(1));
                if arduino
                    serialcom(s,'T',p.presentation.pain.tonic(1));
                end
            end
        end
+    end
+    function Summary
+        fprintf('=================\n')
+        fprintf('Rating results:\n')
+        fprintf('single ratings for middle temp: %s\n',num2str(p.log.ratings.relief(:,3)'));
+        fprintf('Mean rating for middle temp:    %5.2f\n',nanmean(p.log.ratings.relief(:,3)));
+        fprintf('single ratings for UCS:         %s\n',num2str(p.log.ratings.relief(logical(p.presentation.ucs),3)'));
+        fprintf('Mean rating for UCS:            %5.2f\n',nanmean(p.log.ratings.relief(logical(p.presentation.ucs),3)));
+        fprintf('=================\nYour final temperatures were:\n')
+        fprintf('Your final temperatures were: tonic:  %5.2f\n',p.presentation.pain.tonic(end))
+        fprintf('                              middle: %5.2f\n',p.presentation.pain.middle(end))
+        fprintf('                              low:    %5.2f\n',p.presentation.pain.low(end))
+        
     end
     function [TimeEndStim] = Trial(nTrial, ISI, tempC, stim_id, ucs, dist, fix)
         tonic = p.presentation.pain.tonic(nTrial);
@@ -462,7 +482,10 @@ cleanup;
             RatePain(nTrial,tonic);
         end
     end
-    function TENSdemo(basetemp, middletemp, lowtemp)
+    function TENSdemo
+        basetemp   = p.presentation.pain.tonic(1);
+        middletemp = p.presentation.pain.middle(1);
+        lowtemp    = p.presentation.pain.low(1);
         demotemps = [middletemp lowtemp middletemp lowtemp];
         rampdurs  = abs((basetemp-demotemps))./p.presentation.pain.ror;
         textstring  ={'TENS aktiv' 'TENS aktiv' 'TENS aktiv' 'TENS aktiv'};
@@ -541,13 +564,17 @@ cleanup;
     end
     function PutRatingLog(currentTrial,currentRating,tempC,initVAS,type)
         if strcmp(type,'pain')
-            p.log.ratingEventCount                = p.log.ratingEventCount + 1;
-            p.log.ratings.pain(currentTrial,1)    = tempC;
-            p.log.ratings.pain(currentTrial,2)    = currentTrial;
-            p.log.ratings.pain(currentTrial,3)    = currentRating.finalRating;
-            p.log.ratings.pain(currentTrial,4)    = currentRating.response;
-            p.log.ratings.pain(currentTrial,5)    = currentRating.RT;
-            p.log.ratings.pain(currentTrial,6)    = initVAS;
+            if currentTrial == 0
+                p.log.ratings.initialPain = currentRating.finalRating;
+            else
+                p.log.ratingEventCount                = p.log.ratingEventCount + 1;
+                p.log.ratings.pain(currentTrial,1)    = tempC;
+                p.log.ratings.pain(currentTrial,2)    = currentTrial;
+                p.log.ratings.pain(currentTrial,3)    = currentRating.finalRating;
+                p.log.ratings.pain(currentTrial,4)    = currentRating.response;
+                p.log.ratings.pain(currentTrial,5)    = currentRating.RT;
+                p.log.ratings.pain(currentTrial,6)    = initVAS;
+            end
         elseif strcmp(type,'relief')
             p.log.ratingEventCount                    = p.log.ratingEventCount + 1;
             p.log.ratings.relief(currentTrial,1)       = tempC;
@@ -827,7 +854,8 @@ cleanup;
         %Record which Phase are we going to run in this run.
         p.stim.phase                   = run;
         
-        
+        p.log.ARcount                 = 0;
+        p.log.AR                      = [];
         p.log.ratingEventCount        = 0;
         p.log.ratings.pain            = nan(p.presentation.tTrial,6);
         p.log.ratings.relief          = nan(p.presentation.tTrial,6);
@@ -965,10 +993,10 @@ cleanup;
                 if run ~= 0
                     circle_order = Shuffle(unique(p.presentation.dist(p.presentation.dist < 500)));%
                     circle_order(end+1)=circle_order(1);
-                    while any(abs(diff(circle_order)) < 50);%check that neighbors will not be neighbors in the next order.
-                        circle_order        = Shuffle(unique(p.presentation.dist(p.presentation.dist < 500)));
-                        circle_order(end+1) = circle_order(1);%to be successful the check has to consider the circularity.
-                    end
+%                     while any(abs(diff(circle_order)) < 50);%check that neighbors will not be neighbors in the next order.
+%                         circle_order        = Shuffle(unique(p.presentation.dist(p.presentation.dist < 500)));
+%                         circle_order(end+1) = circle_order(1);%to be successful the check has to consider the circularity.
+%                     end
                     p.stim.circle_order   = circle_order(1:end-1);%conditions in distances from CSP, 0 = CS+, randomized
                     p.stim.circle_angles  = sort(p.stim.circle_order);%this is just angles with steps of 45
                     %transform the angles to rects
