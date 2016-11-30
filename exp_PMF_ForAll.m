@@ -464,7 +464,7 @@ movefile(p.path.subject,p.path.finalsubject);
         
         
         p.stim.tFile                  = size(p.stim.files,1);%number of different files
-        p.stim.tFace                  = p.stim.tFile - 2;%number of faces (- oddball & shock)
+        p.stim.tFace                  = p.stim.tFile;%number of faces (- oddball & shock)
         %
         display([mat2str(p.stim.tFile) ' found in the destination.']);
         display([mat2str(p.stim.tFace) ' of which are considered faces.']);
