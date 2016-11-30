@@ -438,7 +438,7 @@ movefile(p.path.subject,p.path.finalsubject);
         end
         
         p.path.experiment             = [p.path.baselocation 'FearGen\'];
-        p.path.stim                   = [fileparts(which('exp_PMF_ForAll.m')) filesep 'bin' filesep 'FearGen_Stimuli' filesep];
+        p.path.stim                   = [fileparts(which('exp_PMF_ForAll.m')) filesep 'bin' filesep 'FearGen_Stimuli_32' filesep];
         p.path.stim24                 = [p.path.stim '24bit' filesep];%location of 24bit stimuli, useful only to send it to the eyelink system
         %
         p.subID                       = sprintf('sub%02d',subject);
