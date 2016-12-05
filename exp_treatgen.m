@@ -63,6 +63,9 @@ if run == 0
     ShowInstruction(3,1);
     PresentStimuli;
     ShowInstruction(20,0,2);
+elseif run == 5
+    AskDetectionSelectable;
+    ShowInstruction(21,1);
 else
     %
     if el
@@ -80,11 +83,7 @@ else
     ApplyAndRate;
     PresentStimuli;
     Summary;
-    WaitSecs(3);
-    %turn scanner off
-    if run == 5
-        AskDetectionSelectable;
-    end
+    WaitSecs(2);
     ShowInstruction(21,1);
 end
 
@@ -100,7 +99,11 @@ p.out.log      = p.out.log;%copy it to the output variable.
 save(p.path.path_param,'p');
 %
 %move the file to its final location.
-movefile(p.path.subject,p.path.finalsubject);
+try
+    copyfile(p.path.subject,p.path.finalsubject);
+catch
+    movefile(p.path.subject,p.path.finalsubject);
+end
 %close everything down
 % try
 %     addpath('/USER/onat/Code/globalfunctions/ssh2_v2_m1_r6/ssh2_v2_m1_r6/')
@@ -145,9 +148,8 @@ cleanup;
         p.out.selectedface = p.stim.circle_order(positions(1));
     end
     function DrawCircle
-        Screen('FillRect', p.ptb.w ,[0 0 0], p.ptb.rect ); %black background
         for npos = 1:p.stim.tFace
-            Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites_cut(p.stim.circle_file_id(npos)),[],p.stim.circle_rect(npos,:));
+            Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(p.stim.circle_file_id(npos)),[],p.stim.circle_rect(npos,:));
             %Screen('DrawText', p.ptb.w, sprintf('%i_%i_%i',p.stim.circle_order(npos),p.stim.circle_file_id(npos),npos),mean(p.stim.circle_rect(npos,[1 3])) ,mean(p.stim.circle_rect(npos,[2 4])));
         end
     end
@@ -283,16 +285,17 @@ cleanup;
             Screen('FillRect',  p.ptb.w, p.stim.white, p.ptb.centralFixCross');%draw the prestimus cross atop        TimeCrossOn  = Screen('Flip',p.ptb.w,Fix1On,0);
             Screen('DrawingFinished',p.ptb.w,0);
             TimeCrossOn  = Screen('Flip',p.ptb.w,0);
-            MarkCED( p.com.lpt.address, p.com.lpt.Fix1Onset);
+            MarkCED( p.com.lpt.address, p.com.lpt.FixOnset);
             Log(TimeCrossOn,2,p.ptb.centralFixCross);%cross onset.
         end
         while GetSecs < RateOn;end
         rateinit = randi(p.rating.initrange);
+        MarkCED( p.com.lpt.address, p.com.lpt.RateP);
         [currentRating.finalRating,currentRating.RT,currentRating.response] = vasScale(p.ptb.w,p.ptb.rect,time2rate,rateinit,...
             p.stim.bg,p.ptb.startY,p.keys,'pain');
         RateOff = Screen('Flip',p.ptb.w);
         Log(RateOff,2,p.ptb.centralFixCross);
-        MarkCED(p.com.lpt.address, p.com.lpt.Fix1Onset);
+        MarkCED(p.com.lpt.address, p.com.lpt.FixOnset);
         PutRatingLog(nTrial,currentRating,tonictemp,rateinit,'pain')
         while GetSecs < EndTrial;end
         rating = currentRating.finalRating;
@@ -307,7 +310,7 @@ cleanup;
            Screen('FillRect',  p.ptb.w, p.stim.white, p.ptb.centralFixCross');%draw the prestimus cross atop
            Screen('DrawingFinished',p.ptb.w,0);
            TimeCrossOn  = Screen('Flip',p.ptb.w,0);
-           MarkCED( p.com.lpt.address, p.com.lpt.Fix1Onset);
+           MarkCED( p.com.lpt.address, p.com.lpt.FixOnset);
            Log(TimeCrossOn,2,p.ptb.centralFixCross);%cross onset.
            k = 0;
            while k ~= KbName('v');
@@ -332,7 +335,7 @@ cleanup;
            Screen('FillRect',  p.ptb.w, p.stim.white, p.ptb.centralFixCross');%draw the prestimus cross atop        TimeCrossOn  = Screen('Flip',p.ptb.w,Fix1On,0);
            Screen('DrawingFinished',p.ptb.w,0);
            TimeCrossOn  = Screen('Flip',p.ptb.w,0);
-           MarkCED( p.com.lpt.address, p.com.lpt.Fix1Onset);
+           MarkCED( p.com.lpt.address, p.com.lpt.FixOnset);
            Log(TimeCrossOn,2,p.ptb.centralFixCross);%cross onset.
            putAR    = [tonic rating];
            p.log.AR = [p.log.AR; putAR];
@@ -366,8 +369,8 @@ cleanup;
     function Summary
         fprintf('=================\n')
         fprintf('Rating results:\n')
-        fprintf('single ratings for middle temp: %s\n',num2str(p.log.ratings.relief(:,3)'));
-        fprintf('Mean rating for middle temp:    %5.2f\n',nanmean(p.log.ratings.relief(:,3)));
+        fprintf('single ratings for middle temp: %s\n',num2str(p.log.ratings.relief(logical(~p.presentation.ucs),3)'));
+        fprintf('Mean rating for middle temp:    %5.2f\n',nanmean(p.log.ratings.relief(logical(~p.presentation.ucs),3)'));
         fprintf('single ratings for UCS:         %s\n',num2str(p.log.ratings.relief(logical(p.presentation.ucs),3)'));
         fprintf('Mean rating for UCS:            %5.2f\n',nanmean(p.log.ratings.relief(logical(p.presentation.ucs),3)));
         fprintf('=================\nYour final temperatures were:\n')
@@ -404,7 +407,7 @@ cleanup;
             Screen('FillRect',  p.ptb.w, p.stim.white, p.ptb.centralFixCross');%draw the prestimus cross atop        TimeCrossOn  = Screen('Flip',p.ptb.w,Fix1On,0);
             Screen('DrawingFinished',p.ptb.w,0);
             TimeCrossOn  = Screen('Flip',p.ptb.w,Fix1On,0);
-            MarkCED( p.com.lpt.address, p.com.lpt.Fix1Onset);
+            MarkCED( p.com.lpt.address, p.com.lpt.FixOnset);
             Log(TimeCrossOn,2,p.ptb.centralFixCross);%cross onset.
         end
         %% Show 2nd Fixcross, before Face
@@ -412,6 +415,7 @@ cleanup;
         Screen('FillRect', p.ptb.w, p.stim.white, FixCross');%draw the prestimus cross atop
         Screen('DrawingFinished',p.ptb.w,0);
         TimeCrossOn  = Screen('Flip',p.ptb.w,Fix2On,0);
+        MarkCED( p.com.lpt.address, p.com.lpt.FixJump);
         Log(TimeCrossOn,15,FixCross')
         %% Draw the stimulus to the buffer
         if stim_id ~=0
@@ -436,19 +440,20 @@ cleanup;
             serialcom(s,'START');
         end
         Log(Ramp1On, 4, p.presentation.pain.ror); % ramp up
-        MarkCED(p.com.lpt.address, p.com.lpt.Ramp1);
+        MarkCED(p.com.lpt.address, p.com.lpt.Ramp);
+        if ucs
+            MarkCED(p.com.lpt.address, p.com.lpt.ucs);
+        end
         fprintf('Ramping to %5.2f C in %.02f s.\n',tempC,rampdur)
         if arduino
             serialcom(s,'SET',tempC);
         end
         while GetSecs < Plateau
         end
-        MarkCED(p.com.lpt.address,p.com.lpt.Plateau);
+%         MarkCED(p.com.lpt.address,p.com.lpt.Plateau);
         Log(Plateau, 5, tempC); % begin of stim plateau
-        MarkCED(p.com.lpt.address,p.com.lpt.Plateau);
         if ucs == 1
             fprintf('This is a UCS trial!');
-            MarkCED(p.com.lpt.address, p.com.lpt.ucs);
         end
         countedDown = 1;
         while GetSecs < RateTOn
@@ -457,6 +462,7 @@ cleanup;
          %% Flip to Rating
         Log(RateTOn,11,NaN);%VAS Treatment onset.
         rateinit = randi(p.rating.initrange);
+        MarkCED(p.com.lpt.address,p.com.lpt.RateR)
         [currentRating.finalRating,currentRating.RT,currentRating.response] = vasScale(p.ptb.w,p.ptb.rect,p.duration.rate,rateinit,...
             p.stim.bg,p.ptb.startY,p.keys,'relief');       
         RateOff = Screen('Flip',p.ptb.w);
@@ -465,7 +471,7 @@ cleanup;
         if arduino
             serialcom(s,'SET',p.presentation.pain.tonic(nTrial));
         end
-        MarkCED(p.com.lpt.address, p.com.lpt.Ramp2)
+%         MarkCED(p.com.lpt.address, p.com.lpt.Ramp2)
         Log(GetSecs, 6, p.presentation.pain.ror) % ramp back to baseline
         fprintf('Took subject %5.2f seconds to respond. \n',currentRating.RT);
         PutRatingLog(nTrial,currentRating,tempC,rateinit,'relief');
@@ -474,7 +480,7 @@ cleanup;
         Screen('FillRect',  p.ptb.w, p.stim.white, p.ptb.centralFixCross');%draw the prestimus cross atop        TimeCrossOn  = Screen('Flip',p.ptb.w,Fix1On,0);
         Screen('DrawingFinished',p.ptb.w,0);
         TimeCrossOn  = Screen('Flip',p.ptb.w);
-        MarkCED( p.com.lpt.address, p.com.lpt.Fix1Onset);
+        MarkCED( p.com.lpt.address, p.com.lpt.FixOnset);
         Log(TimeCrossOn,2,p.ptb.centralFixCross');%cross onset.
         while GetSecs < TimeEndStim %otherwise the trial just ends
         end
@@ -770,14 +776,13 @@ cleanup;
         %parallel port
         p.com.lpt.address = 888;
         %codes for different events
-        p.com.lpt.Fix1Onset = 2;
+        p.com.lpt.FixOnset  = 2;
         p.com.lpt.FaceOnset = 4;
-        p.com.lpt.RateB     = 8;
-        p.com.lpt.RateT     = 16;
-        p.com.lpt.Ramp1     = 32;
-        p.com.lpt.Plateau   = 64;
-        p.com.lpt.Ramp2     = 128;
-        p.com.lpt.ucs       = 1;
+        p.com.lpt.Ramp      = 8;
+        p.com.lpt.RateP     = 16;
+        p.com.lpt.RateR     = 32;
+        p.com.lpt.ucs       = 64;
+        p.com.lpt.FixJump   = 128;
         
         
         %
@@ -976,7 +981,8 @@ cleanup;
         k = 0;
         while ~(k == 25 | k == 86 );
             pause(0.1);
-            outp(p.com.lpt.address,256);%256 means all channels.
+            outp(p.com.lpt.address,1);%256 means all channels.
+%             outp(p.com.lpt.address,256);%256 means all channels.
             fprintf('Is everything set?\n\n')
             fprintf('Digitimer still off?\n\n')
             fprintf('Did the trigger test work?\n\nPress c to send it again, v to continue...\n')
@@ -990,13 +996,13 @@ cleanup;
         p.ptb.stim_sprites_cut = CreateStimSprites(p.stim.files_cut);%
         %% take care of the circle presentation
         %order of faces on the circle that will be shown at the end.
-                if run ~= 0
+                if run > 1
                     circle_order = Shuffle(unique(p.presentation.dist(p.presentation.dist < 500)));%
                     circle_order(end+1)=circle_order(1);
-%                     while any(abs(diff(circle_order)) < 50);%check that neighbors will not be neighbors in the next order.
-%                         circle_order        = Shuffle(unique(p.presentation.dist(p.presentation.dist < 500)));
-%                         circle_order(end+1) = circle_order(1);%to be successful the check has to consider the circularity.
-%                     end
+                    while any(abs(diff(circle_order)) < 50);%check that neighbors will not be neighbors in the next order.
+                        circle_order        = Shuffle(unique(p.presentation.dist(p.presentation.dist < 500)));
+                        circle_order(end+1) = circle_order(1);%to be successful the check has to consider the circularity.
+                    end
                     p.stim.circle_order   = circle_order(1:end-1);%conditions in distances from CSP, 0 = CS+, randomized
                     p.stim.circle_angles  = sort(p.stim.circle_order);%this is just angles with steps of 45
                     %transform the angles to rects
