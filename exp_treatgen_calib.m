@@ -22,6 +22,8 @@ p         = [];
 s         = [];
 
 SetParams;
+echo on
+diary(p.path.diary)
 if arduino
     SetArduino;
 end
@@ -67,6 +69,15 @@ elseif run == 1
     ExperimenterInput(2)
     PresentStimuli;
     GetTemps;
+elseif run == 3
+     ShowInstruction(10,0,3);
+    ExperimenterInput(1);
+    ShowInstruction(2,1); %calibration with long instruction
+    ShowInstruction(22,1);
+    ConfirmIntensity;
+    ExperimenterInput(2)
+    PresentStimuli;
+    GetTemps;
 end
 
 
@@ -75,9 +86,14 @@ p.out.log = p.out.log(sum(isnan(p.out.log),2) ~= size(p.out.log,2),:);
 %shift the time so that the first timestamp is equal to zero
 p.out.log(:,1) = p.out.log(:,1) - p.out.log(1);
 save(p.path.path_param,'p');
+diary off
 %
 %move the file to its final location.
-movefile(p.path.subject,p.path.finalsubject);
+try
+    copyfile(p.path.subject,p.path.finalsubject);
+catch
+    movefile(p.path.subject,p.path.finalsubject);
+end
 %close everything down
 % try
 %     addpath('/USER/onat/Code/globalfunctions/ssh2_v2_m1_r6/ssh2_v2_m1_r6/')
@@ -127,7 +143,7 @@ cleanup;
                 k = find(k);
             end
             if arduino
-                serialcom(s,'MOVE',20)%this opens the "up" channel for xx ms, to stop thermode;
+                serialcom(s,'MOVE',20);%this opens the "up" channel for xx ms, to stop thermode;
             end
             RT(n) = toc;
             stoplim(n) = RT(n)*p.presentation.limits.ror + p.presentation.limits.base;
@@ -271,7 +287,7 @@ cleanup;
         end
         fprintf('Ramping back to baseline %5.2f C in %.02f s. \n',p.presentation.basetemp,rampdur)
         if arduino
-            serialcom(s,'SET',p.presentation.basetemp)
+            serialcom(s,'SET',p.presentation.basetemp);
         end
         WaitSecs(rampdur);
         Log(Ramp2Onset, 6, p.presentation.ror) % ramp down
@@ -368,10 +384,11 @@ cleanup;
         % mkdir([p.path.subject 'quadruplet']);
         mkdir([p.path.subject 'stimulation']);
         mkdir([p.path.subject 'midlevel']);
-        mkdir([p.path.subject 'diary'])
+        mkdir([p.path.subject 'diary']);
+        p.path.diary  = [p.path.subject '\diary\diary.txt'];
         p.path.path_param             = sprintf([regexprep(p.path.subject,'\\','\\\') 'stimulation\\param_phase_%02d'],run);
-        p.path.diary                  = sprintf([regexprep(p.path.subject,'\\','\\\') 'diary']);
-        diary(p.path.diary)
+%         p.path.diary                  = sprintf([regexprep(p.path.subject,'\\','\\\') 'diary']);
+%         diary(p.path.diary)
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
         %get stim files to anticipate bg color
         [p.stim.files p.stim.label]   = FileMatrix([p.path.stim '*.bmp']);
@@ -733,7 +750,7 @@ cleanup;
                 'die von "kein Schmerz bis "maximaler Schmerz" reicht. Sie haben dazu 5 Sek Zeit.\n' ...
                 'Falsche Antworten gibt es bei dieser Aufgabe nicht, da individuelle Empfindungen sehr unterschiedlich sein können.\n' ...
                 'Nutzen Sie die Pfeiltasten zum Bewerten & bestätigen Sie Ihre Eingabe immer\n' ...
-                'mit der oberen Pfeiltaste. Bitte versuchen Sie sich auch auf kleinste Reizänderungen\n' ...
+                'mit der Leertaste. Bitte versuchen Sie sich auch auf kleinste Reizänderungen\n' ...
                 'zu konzentrieren & bewerten Sie diese so präzise wie möglich.\n'...
                 '\n'...
                 'Falls Sie noch Fragen haben, wenden Sie sich bitte noch einmal an die Versuchsleiterin.\n' ...
