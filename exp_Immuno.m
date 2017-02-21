@@ -2,7 +2,7 @@ function [p]=exp_Immuno(subject, phase)
 
 debug   = 0; %debug mode => 1: transparent window enabling viewing the background.
 NoEyelink = 0; %is Eyelink wanted?
-test_sequences = 1; % Load shorter test sequences
+test_sequences = 0; % Load shorter test sequences
 
 
 %replace parallel port function with a dummy function
@@ -183,6 +183,7 @@ cleanup;
                 %stop the queue
                 KbQueueStop(p.ptb.device);
                 KbQueueRelease(p.ptb.device);
+                sca
                 throw(MException('EXP:QUIT', ...
                         'User wants to quit'));
             end
@@ -425,8 +426,8 @@ cleanup;
         p.keys.escape                  = 'ESCAPE';
         p.keys.enter                   = 'return';
         p.keys.quit                    = 'q';
-        p.keylist = {p.keys.confirm, p.keys.answer_a, p.keys.answer_b,  p.keys.answer_a_trial,...
-            p.keys.answer_b_trial, p.keys.pulse,...
+        p.keylist = {p.keys.confirm, p.keys.answer_a, p.keys.answer_b,  p.keys.answer_a_train,...
+            p.keys.answer_b_train, p.keys.pulse,...
             p.keys.el_calib, p.keys.el_valid, p.keys.enter};
         %% %%%%%%%%%%%%%%%%%%%%%%%%%
         %Communication business
