@@ -8,7 +8,7 @@ function [p]=exp_Immuno(subject, phase)
 %
 %   Adapted from Selim Onats scripts.
 
-debug   = 1; %debug mode => 1: transparent window enabling viewing the background.
+debug   = 0; %debug mode => 1: transparent window enabling viewing the background.
 NoEyelink = 1; %is Eyelink wanted?
 
 %replace parallel port function with a dummy function
@@ -66,12 +66,8 @@ p.var.event_count         = 0;
 %% Load stimulus sequence
 sequences = load('stimulus_sequences.mat');
 sequences = sequences.sequences;
-sequence = sequences{subject}{phase}
+sequence = sequences{subject}{phase};
 
-
-
-%% Setup reward probabilities: Fixed across subjects
-reward_probabilities = [0.8, 0.5, 0.2];
 
 %%
 
@@ -83,12 +79,14 @@ reward_probabilities = [0.8, 0.5, 0.2];
 % 5 - training day three
 % 6 - fMRI day three
 
+p.subject = subject;
+
 %% Training
 if mod(phase,2) == 1
     p.mrt.dummy_scan = 0 ; %for the training we don't want any pulses
     p.phase = phase;
-    for block = 1:7
-        p.sequence = sequence(block);
+    for block = 1:length(sequence)
+        p.sequence = sequence{block};
         p.block = block;
         ExperimentBlock(p);
     end    
@@ -111,68 +109,49 @@ elseif mod(phase, 2) == 0
         p.block = 2;
         Retinotopy
     end
-    p.block = 3;
-    p.sequence = sequence(1);
-    ExperimentBlock(p);
-    block = 4;
-    while p.block <= 10         
-        p.block = block;
-        p.sequence = sequence(block-3);
-        block = block+1;
-        QuadrantLoc(p);        
-        p.block = block;
-        p.sequence = sequence(block-3);
-        ExperimentBlock(p);
-        block = block+1;
+    for b = 1:length(sequence)
+        p.block = b + p.block;
+        p.sequence = sequence{b};
+        p = ExperimentBlock(p);    
     end
     WaitSecs(2.5);
     
 end
 
-%get the eyelink file back to this computer
-StopEyelink(p.path.edf);
-%trim the log file and save
-p.out.log = p.out.log(sum(isnan(p.out.log),2) ~= size(p.out.log,2),:);
-%shift the time so that the first timestamp is equal to zero
-p.out.log(:,1) = p.out.log(:,1) - p.out.log(1);
-p.out.log      = p.out.log;%copy it to the output variable.
-save(p.path.path_param,'p');
-%
-%move the file to its final location.
-movefile(p.path.subject,p.path.finalsubject);
-%close everything down
 cleanup;
 
 
-    function ExperimentBlock(p)
+    function p = ExperimentBlock(p)
         KbQueueStop(p.ptb.device);
         KbQueueRelease(p.ptb.device);
         
         %Enter the presentation loop and wait for the first pulse to
         %arrive.
         %wait for the dummy scans
-        p = InitEyeLink(p);        
-        CalibrateEL;    
+        p = InitEyeLink(p);
+        CalibrateEL;
         KbQueueCreate(p.ptb.device);%, p.ptb.keysOfInterest);%default device.
         KbQueueStart(p.ptb.device)
         KbQueueFlush(p.ptb.device)
         
-        [secs] = WaitPulse(p.keys.pulse,p.mrt.dummy_scan);%will log it        
+        [secs, p] = WaitPulse(p, p.keys.pulse,p.mrt.dummy_scan);%will log it
         WaitSecs(.05);
         
         
         Eyelink('StartRecording');
-        WaitSecs(0.01);           
+        WaitSecs(0.01);
         
         Eyelink('Message', sprintf('SUBJECT %d', p.subject));
         Eyelink('Message', sprintf('PHASE %d', p.phase));
         Eyelink('Message', sprintf('BLOCK %d', p.block));
         
         TimeEndStim     = secs(end)- p.ptb.slack;%take the first valid pulse as the end of the last stimulus.
-        for trial  = 1:size(p.sequence.stim, 2);            
+        for trial  = 1:size(p.sequence.stim, 2);
             %Get the variables that Trial function needs.
             stim_id      = p.sequence.stim(trial);
             RP           = p.sequence.reward_probability(trial);
+            pRP          = p.sequence.pRP(trial);
+            gv           = p.sequence.give_reward(trial);
             ISI          = p.sequence.isi(trial);
             
             OnsetTime     = TimeEndStim + ISI;
@@ -180,25 +159,33 @@ cleanup;
                 trial, size(p.sequence.stim, 2), stim_id, RP, ISI, OnsetTime, p.block);
             
             %Start with the trial, here is time-wise sensitive must be optimal
-            [TimeEndStim] = Trial(trial, OnsetTime, stim_id, RP, p.block, p.phase);
-            
+            [TimeEndStim, p, abort] = Trial(p, trial, OnsetTime, stim_id, RP, pRP, gv, p.block, p.phase);
             fprintf('OffsetTime: %2.2f secs, Difference of %2.2f secs\n', TimeEndStim, TimeEndStim-OnsetTime);
             
             [keycode, secs] = KbQueueDump;%this contains both the pulses and keypresses.
             if numel(keycode)
                 %log everything but "pulse keys" as pulses, not as keypresses.
                 pulses = (keycode == KbName(p.keys.pulse));
-
+                
                 if any(~pulses);%log keys presses if only there is one
-                    Log(secs(~pulses), 1000,keycode(~pulses), p.phase, p.block);
+                    p = Log(p,secs(~pulses), 1000,keycode(~pulses), p.phase, p.block);
                 end
                 if any(pulses);%log pulses if only there is one
-                    Log(secs(pulses), 0, keycode(pulses), p.phase, p.block);
+                    p = Log(p,secs(pulses), 0, keycode(pulses), p.phase, p.block);
                 end
             end
             
+            if abort
+                %% Save Data
+                p = save_data(p);
+                %stop the queue
+                KbQueueStop(p.ptb.device);
+                KbQueueRelease(p.ptb.device);
+                throw(MException('EXP:QUIT', ...
+                        'User wants to quit'));
+            end
         end
-        %wait 6 seconds for the BOLD signal to come back to the baseline...                
+        %wait 6 seconds for the BOLD signal to come back to the baseline...
         if mod(p.phase, 2) == 0
             WaitPulse(p.keys.pulse, p.mrt.dummy_scan);%
             fprintf('OK!! Stop the Scanner\n');
@@ -208,36 +195,34 @@ cleanup;
         %log everything but "pulse keys" as pulses, not as keypresses.
         pulses          = (keycode == KbName(p.keys.pulse));
         if any(~pulses);%log keys presses if only there is one
-            Log(secs(~pulses), 1000,keycode(~pulses), p.phase, p.block);
+            p = Log(p,secs(~pulses), 1000,keycode(~pulses), p.phase, p.block);
         end
         if any(pulses);%log pulses if only there is one
-            Log(secs(pulses), 0,keycode(pulses), p.phase, p.block);
+            p = Log(p,secs(pulses), 0,keycode(pulses), p.phase, p.block);
         end
         
-        %% Save Data  
-        save_data(p);
-        
+        p = save_data(p);
         %stop the queue
         KbQueueStop(p.ptb.device);
         KbQueueRelease(p.ptb.device);
         
-    end
-
-    function QuadrantLoc(p)        
-    end
+    end  
 
     function Retinotopy(p)        
     end
 
-    function [TimeFeedbackOffset]=Trial(nTrial,TimeStimOnset, stim_id, RP, block, phase)
+    function [TimeFeedbackOffset, p, abort]=Trial(p, nTrial, TimeStimOnset, stim_id, RP, pRP, gv, block, phase)        
         %% Run one trial
-        StartEyelinkRecording(nTrial,stim_id,p.var.ExpPhase, stim_id, RP); %I would be cautious here, the first trial is never recorded in the EDF file, reason yet unknown.
+        abort = false;
+        TimeFeedbackOffset = nan;
+        StartEyelinkRecording(nTrial,stim_id,p.phase, stim_id, RP); %I would be cautious here, the first trial is never recorded in the EDF file, reason yet unknown.
         % Save trial info
         TrialStart = GetSecs;
         Eyelink('message', sprintf('ACTIVE_RULE %i', RP));
         Eyelink('message', sprintf('STIM_ID %i', stim_id));
-        Log(TrialStart, 1, stim_id, phase, block); 
-        Log(TrialStart, 2, RP, phase, block); 
+        p = Log(p,TrialStart, 1, stim_id, phase, block); 
+
+        p = Log(p,TrialStart, 2, RP, phase, block); 
         MarkCED( p.com.lpt.address, 100+RP);
         MarkCED( p.com.lpt.address, 110+stim_id);
         
@@ -248,20 +233,23 @@ cleanup;
         Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');%draw the prestimus cross atop
         Screen('DrawingFinished',p.ptb.w,0);        
         TimeCrossOn  = Screen('Flip',p.ptb.w);
-        Log(TimeCrossOn, 3, nan, phase, block);
+        p = Log(p,TimeCrossOn, 3, nan, phase, block);
         Eyelink('Message', 'FIXON');
         MarkCED(p.com.lpt.address, 3);
         
         %% Draw the stimulus to the buffer
-        Screen('DrawTexture', p.ptb.w, p.ptb.gabortex, [], [], ...
-                0+90*stim_id, [], [], [], [], kPsychDontDoRotation, [0, .1, 50, 100, 1, 0, 0, 0]);        
+        
+        Screen('DrawTexture', p.ptb.w, p.ptb.gabortex, [], [0, 0, p.ptb.rect(3) p.ptb.rect(4)], ...
+                0+90*stim_id, [], [], [], [], kPsychDontDoRotation, [0, .05, 75, 100, 1, 0, 0, 0]); 
+        oc = [p.ptb.midpoint(1)-25, p.ptb.midpoint(2)-25, p.ptb.midpoint(1)+25, p.ptb.midpoint(2)+25];
+        Screen('FillOval', p.ptb.w, p.stim.bg, oc);
         %draw also the fixation cross
         Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');        
         Screen('DrawingFinished',p.ptb.w,0);
         
         %% STIMULUS ONSET
         TimeStimOnset  = Screen('Flip',p.ptb.w,TimeStimOnset,0);%asap and dont clear
-        Log(TimeStimOnset, 4, nan, phase, block); 
+        p = Log(p,TimeStimOnset, 4, nan, phase, block); 
         Eyelink('Message', 'StimOnset');
         Eyelink('Message', 'SYNCTIME');
         MarkCED( p.com.lpt.address, 4);        
@@ -272,7 +260,7 @@ cleanup;
             %log pulses            
             pulses = (keycode == KbName(p.keys.pulse));            
             if any(pulses);%log pulses if only there is one
-                Log(secs(pulses), 0, keycode(pulses), p.phase, p.block);
+                p = Log(p,secs(pulses), 0, keycode(pulses), p.phase, p.block);
             end
         end
         KbQueueFlush(p.ptb.device);
@@ -280,7 +268,7 @@ cleanup;
         Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');                
         TimeStimOffset  = Screen('Flip', p.ptb.w, TimeStimOnset+0.5, 0); %asap and dont clear
         
-        Log(TimeStimOffset, 5, nan, phase, block); 
+        p = Log(p,TimeStimOffset, 5, nan, phase, block); 
         Eyelink('Message', 'StimOff');
         MarkCED( p.com.lpt.address, 5);        
 
@@ -297,7 +285,8 @@ cleanup;
                     keys = KbName(keycodes(iii));
                     switch keys
                         case  p.keys.quit
-                            throw(MException('EXP:Quit', 'User request quit'));
+                            abort = true;
+                            return
                         case p.keys.answer_a                        
                             response = 0;
                             break
@@ -305,7 +294,7 @@ cleanup;
                             response = 1;    
                             break
                         case p.keys.pulse
-                          Log(RT, 0, NaN, phase, block);
+                          p = Log(p,RT, 0, NaN, phase, block);
                     end  
                 end
                 if ~isnan(response)
@@ -315,8 +304,8 @@ cleanup;
         end
         MarkCED(p.com.lpt.address, 70+response);
         Eyelink('message', sprintf('ANSWER %i', response));
-        Log(RT, 5, response, phase, block);         
-        Log(RT, 6, RT-start, phase, block);
+        p = Log(p,RT, 5, response, phase, block);         
+        p = Log(p,RT, 6, RT-start, phase, block);
         
         %% Show feedback
         TimeFeedbackOnset = RT + 0.1;
@@ -324,26 +313,25 @@ cleanup;
         % If rule A then seq.reward_probability(trial) == 0 and:
         %   Rule rewards ANSWER_A and STIM_A and ANSWER_B and STIM_B      
         correct = 0;
-        give_reward = 0;
+        give_reward = gv;
         if RP == 0
             % Rule A is active
             if response == stim_id
-                correct = 1;
-                give_reward = binornd(1, reward_probabilities(1));
+                correct = 1;                
             end
         elseif RP == 1
             % No rule is active / both rules are active
-                correct = 1;
-                give_reward = binornd(1, reward_probabilities(2));
+                correct = 1;                
         else
             % Rule B is active
             if response ~= stim_id
-                correct = 1;
-                give_reward = binornd(1, 1-reward_probabilities(3));
+                correct = 1;                
             end
-        end
-        fprintf('RESPONSE: %i, RP: %i, %2.2f, GR: %i, C:%i\n', response, RP, reward_probabilities(RP+1), give_reward, correct)        
-        Log(RT, 7, correct, phase, block); 
+        end        
+        give_reward = give_reward & correct;
+        
+        fprintf('RESPONSE: %i, RP: %i, %2.2f, GR: %i, C:%i\n', response, RP, pRP, give_reward, correct)        
+        p = Log(p,RT, 7, correct, phase, block); 
         Eyelink('message', sprintf('CORRECT %i', correct));
         MarkCED( p.com.lpt.address, 120+correct);
         
@@ -357,7 +345,7 @@ cleanup;
         TimeFeedback  = Screen('Flip',p.ptb.w,TimeFeedbackOnset,0);        
         
         Eyelink('message', sprintf('FEEDBACK %i', give_reward));
-        Log(TimeFeedback, 8, give_reward, phase, block);      
+        p = Log(p,TimeFeedback, 8, give_reward, phase, block);      
         MarkCED( p.com.lpt.address, 130+give_reward);
         
         %% STIM OFF immediately
@@ -366,7 +354,7 @@ cleanup;
         TimeFeedbackOffset = Screen('Flip',p.ptb.w,TimeFeedback+0.4, 0);    
         
         Eyelink('message', 'FEEDBACKOFF');        
-        Log(TimeFeedbackOffset, 9, 0, phase, block); 
+        p = Log(p,TimeFeedbackOffset, 9, 0, phase, block); 
         MarkCED( p.com.lpt.address, 140);
 
     end
@@ -401,11 +389,9 @@ cleanup;
         p.subject                       = subject; %subject id
         p.timestamp                     = datestr(now, 30); %the time_stamp of the current experiment.
         
-        %% %%%%%%%%%%%%%%%%%%%%%%%%%
-        
-        p.stim.bg                   = [.5, .5, .5];                
-        p.stim.white                = get_color('white');
-        %% font size and background gray level
+        %% %%%%%%%%%%%%%%%%%%%%%%%%%        
+        p.stim.bg                   = [128, 128, 128];                
+        p.stim.white                = get_color('white');        
         p.text.fontname                = 'Times New Roman';
         p.text.fontsize                = 18;
         p.text.fixsize                 = 60;
@@ -467,7 +453,6 @@ cleanup;
             Screen('FillRect',p.ptb.w,p.var.current_bg);
             DrawFormattedText(p.ptb.w, text, 'center', 'center', p.stim.white,[],[],[],2,[]);
             t=Screen('Flip',p.ptb.w);
-            Log(t,-1,nInstruct, nan, nan);
             %show the messages at the experimenter screen
             fprintf('=========================================================\n');
             fprintf('Text shown to the subject:\n');
@@ -543,7 +528,10 @@ cleanup;
         fprintf('Resolution of the screen is %dx%d...\n',res.width,res.height);
         
         %Open a graphics window using PTB
-        [p.ptb.w p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, p.var.current_bg);
+        %[p.ptb.w p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, [0.5, 0.5, 0.5]);
+        [p.ptb.w p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, [128, 128, 128], [0, 0, 1000, 500]);
+        
+        
         %Screen('BlendFunction', p.ptb.w, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         Screen('Flip',p.ptb.w);%make the bg
         
@@ -551,21 +539,20 @@ cleanup;
         [p.ptb.width, p.ptb.height] = Screen('WindowSize', p.ptb.screenNumber);
         
         %find the mid position on the screen.
-        p.ptb.midpoint              = [ p.ptb.width./2 p.ptb.height./2];
+        x = p.ptb.rect(1) + (p.ptb.rect(3)/2);
+        y = p.ptb.rect(2) + (p.ptb.rect(4)/2);
+        
+        p.ptb.midpoint              = [x, y] % p.ptb.width./2 p.ptb.height./2];
         %NOTE about RECT:
         %RectLeft=1, RectTop=2, RectRight=3, RectBottom=4.                
         p.ptb.CrossPosition_x       = p.ptb.midpoint(1);
         p.ptb.CrossPosition_y       = p.ptb.midpoint(2);
         %cross position for the eyetracker screen.                
         p.ptb.fc_size               = 10;
-        %
-        %%
-        %priorityLevel=MaxPriority(['GetSecs'],['KbCheck'],['KbWait'],['GetClicks']);
+ 
         Priority(MaxPriority(p.ptb.w));
-        %this is necessary for the Eyelink calibration
-        %InitializePsychSound(0)
-        %sound('Open')
-        %         Beeper(1000)
+ 
+ 
         if IsWindows
             LoadPsychHID;
         end
@@ -575,27 +562,8 @@ cleanup;
         p.ptb.keysOfInterest = [];
         for i = fields(p.keys)';
             p.ptb.keysOfInterest = [p.ptb.keysOfInterest KbName(p.keys.(i{1}))];
-        end
-        p.ptb.keysOfInterest
-        % fprintf('Key listening will be restricted to %d\n', p.keys.keylist)
-        %p.keys.keylist
-        %
-        %p.ptb.keysOfInterest=zeros(1,256);
-        %p.ptb.keysOfInterest(p.keys.confirm) = 1;
-        %p.ptb.keysOfInterest = zeros(1, 256);       
-        %p.ptb.keysOfInterest(KbName(p.keylist)) = 1; % only listen to those keys!
-        RestrictKeysForKbCheck(p.ptb.keysOfInterest);
-        % first four are the buttons in mode 001, escape and space are for
-        % the experimenter, rest is for esting
-        %[idx, names, all] = GetKeyboardIndices();        
-        %for kbqdev = idx
-        %    PsychHID('KbQueueCreate', kbqdev,  p.ptb.keysOfInterest);
-        %    PsychHID('KbQueueStart', kbqdev);
-        %    WaitSecs(.1);
-        %    PsychHID('KbQueueFlush', kbqdev);
-        %end
-        %create a queue sensitive to only relevant keys.
-        %p.ptb.device = idx;
+        end        
+        RestrictKeysForKbCheck(p.ptb.keysOfInterest);        
         KbQueueCreate(p.ptb.device);%, p.ptb.keysOfInterest);%default device.
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
         %prepare parallel port communication. This relies on cogent i
@@ -646,7 +614,6 @@ cleanup;
             Eyelink('Message', 'TRIALID: %04d, PHASE: %04d, RP: %04d, STIM: %04d, BLOCK %04d', nTrial, phase, rp, stim, block_id);                        
             Eyelink('Command', 'record_status_message "Stim: %02d, rp: %d"', stim, rp);             
             t = GetSecs;
-            Log(t, 199, NaN, nan, nan);
         else
             t = GetSecs;
         end
@@ -721,7 +688,6 @@ cleanup;
             try
                 fprintf('Trying to stop the Eyelink system with StopEyelink\n');
                 Eyelink('StopRecording');
-                Log(t, 198, NaN, nan, nan);
                 WaitSecs(0.5);
                 Eyelink('Closefile');
                 display('receiving the EDF file...');
@@ -762,7 +728,7 @@ cleanup;
 
     end
 
-    function Log(ptb_time, event_type, event_info, phase, block)
+    function p = Log(p, ptb_time, event_type, event_info, phase, block)
         %Phases:        
         % 1 - training day one
         % 2 - fMRI day one
@@ -799,7 +765,7 @@ cleanup;
         
     end
 
-    function [secs]=WaitPulse(keycode,n)
+    function [secs, p]=WaitPulse(p, keycode,n)
         %[secs]=WaitPulse(keycode,n)
         %
         %   This function waits for the Nth upcoming pulse. If N=1, it will wait for
@@ -822,7 +788,7 @@ cleanup;
                 dummy         = KbTriggerWait(keycode,p.ptb.device);
                 pulse         = pulse + 1;
                 secs(pulse+1) = dummy;
-                Log(dummy,0,NaN);
+                p = Log(p, dummy,0,NaN,0,0);
             end
         else
             secs = GetSecs;
@@ -858,15 +824,18 @@ cleanup;
         end
     end
 
-    function save_data(p)
-        path = fullfile(p.path.baselocation, p.subject, sprintf('%d_%d', p.phase, p.block)); %subject folder, first we save it to the temp folder.        
-        path_edf = fullfile(path, sprintf('%d_%d_%d.edf', p.subject, p.phase, p.block));
-        path_data = fullfile(path, sprintf('%d_%d_%d_data.mat', p.subject, p.phase, p.block));
+    function p = save_data(p)
+        path = fullfile(p.path.baselocation, sprintf('SUB_%i', p.subject), sprintf('PH_%d_BL_%d', p.phase, p.block)); %subject folder, first we save it to the temp folder.        
+        if ~exist(path)
+            mkdir(path)
+        end
+        
+        path_edf = fullfile(path, sprintf('S%d_P%d_B%d.edf', p.subject, p.phase, p.block));
+        path_data = fullfile(path, sprintf('S%d_P%d_B%d_data.mat', p.subject, p.phase, p.block));
         
         %get the eyelink file back to this computer
         StopEyelink(p.edffile, path_edf);
         %trim the log file and save
-        p.out.log(p.var.event_count, :)
         p.out.log = p.out.log(1:p.var.event_count,:);
         %shift the time so that the first timestamp is equal to zero
         p.out.log(:,1) = p.out.log(:,1) - p.out.log(1);
