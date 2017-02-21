@@ -1,4 +1,4 @@
-function stimuli = make_sequence(ns, mean_inter_change_length, trials, reward_probabilities)
+function stimuli = make_sequence(ns, mean_inter_change_length, trials, reward_probabilities, duration)
 stimuli = {};
 
 % Course of experiment:
@@ -63,7 +63,7 @@ end
         end
         
         seq.reward_probability = seq.reward_probability(1:trials);
-        seq.isi = 2. + (8-2).*rand(1, trials);
+        seq.isi = duration(1) + (duration(2)-duration(1)).*rand(1, trials);
         gv = [];
         for iii = 1:trials
             seq.pRP = [seq.pRP reward_probabilities(seq.reward_probability(iii)+1)];
@@ -84,7 +84,8 @@ end
         end
         seq.stim = randi(2, 1, trials)-1;
         es = [];
-        seq.isi = 2. + (8-2).*rand(1, trials);
-        seq.give_reward = ones(1, trials);
+        seq.isi = duration(1) + (duration(2)-duration(1)).*rand(1, trials);        
+        seq.pRP = ones(1, trials);
+        seq.give_reward = ones(1, trials);            
     end
 end

@@ -1,15 +1,9 @@
 function [p]=exp_Immuno(subject, phase)
 
-%[p]=exp_FearGen_ForAll(subject,phase,csp,PainThreshold)
-%   To do before you start:
-%   Set the baselocation for the experiment in SetParams around line 420:
-%   p.path.baselocation variable. this location will be used to save
-%   the experiment-related data for the current subject.
-%
-%   Adapted from Selim Onats scripts.
-
 debug   = 0; %debug mode => 1: transparent window enabling viewing the background.
-NoEyelink = 1; %is Eyelink wanted?
+NoEyelink = 0; %is Eyelink wanted?
+test_sequences = 1; % Load shorter test sequences
+
 
 %replace parallel port function with a dummy function
 if ~IsWindows
@@ -52,19 +46,16 @@ p         = [];%parameter structure that contains all info about the experiment.
 SetParams;%set parameters of the experiment
 SetPTB;%set visualization parameters.
 
-%%
-%init all the variables
-t                         = [];
-nTrial                    = 0;
 
 %Time Storage
-TimeEndStim               = [];
-TimeTrackerOff            = [];
-TimeCrossOn               = [];
 p.var.event_count         = 0;
 
 %% Load stimulus sequence
-sequences = load('stimulus_sequences.mat');
+if ~test_sequences
+    sequences = load('stimulus_sequences.mat');
+else
+    sequences = load('short_stimulus_sequences.mat');
+end
 sequences = sequences.sequences;
 sequence = sequences{subject}{phase};
 
@@ -95,7 +86,7 @@ elseif mod(phase, 2) == 0
     % Vormessung
     p.phase = phase;
     k = 0;
-    while ~(k == p.keys.el_calib);
+    while ~(k == KbName(p.keys.el_calib));
         pause(0.1);
         fprintf('Experimenter!! press V key when the vormessung is finished.\n');
         [~, k] = KbStrokeWait(p.ptb.device);
@@ -110,8 +101,9 @@ elseif mod(phase, 2) == 0
         Retinotopy
     end
     for b = 1:length(sequence)
-        p.block = b + p.block;
+        p.block = 1 + p.block;
         p.sequence = sequence{b};
+        p.block
         p = ExperimentBlock(p);    
     end
     WaitSecs(2.5);
@@ -122,6 +114,7 @@ cleanup;
 
 
     function p = ExperimentBlock(p)
+                
         KbQueueStop(p.ptb.device);
         KbQueueRelease(p.ptb.device);
         
@@ -130,6 +123,15 @@ cleanup;
         %wait for the dummy scans
         p = InitEyeLink(p);
         CalibrateEL;
+        
+        ismrt = mod(p.phase, 2)==0;
+        if strcmp(p.sequence.type, 'EXP')
+            ShowInstruction(2, 1, ~ismrt)
+        elseif strcmp(p.sequence.type, 'QA')
+            ShowInstruction(3, 1, ~ismrt)
+        else
+            ShowInstruction(4, 1, ~ismrt)
+        end
         KbQueueCreate(p.ptb.device);%, p.ptb.keysOfInterest);%default device.
         KbQueueStart(p.ptb.device)
         KbQueueFlush(p.ptb.device)
@@ -187,7 +189,7 @@ cleanup;
         end
         %wait 6 seconds for the BOLD signal to come back to the baseline...
         if mod(p.phase, 2) == 0
-            WaitPulse(p.keys.pulse, p.mrt.dummy_scan);%
+            WaitPulse(p, p.keys.pulse, p.mrt.dummy_scan);%
             fprintf('OK!! Stop the Scanner\n');
         end
         %dump the final events
@@ -240,7 +242,7 @@ cleanup;
         %% Draw the stimulus to the buffer
         
         Screen('DrawTexture', p.ptb.w, p.ptb.gabortex, [], [0, 0, p.ptb.rect(3) p.ptb.rect(4)], ...
-                0+90*stim_id, [], [], [], [], kPsychDontDoRotation, [0, .05, 75, 100, 1, 0, 0, 0]); 
+                0+90*stim_id, [], [], [], [], kPsychDontDoRotation, [0, .05, 150, 100, 1, 0, 0, 0]); 
         oc = [p.ptb.midpoint(1)-25, p.ptb.midpoint(2)-25, p.ptb.midpoint(1)+25, p.ptb.midpoint(2)+25];
         Screen('FillOval', p.ptb.w, p.stim.bg, oc);
         %draw also the fixation cross
@@ -287,10 +289,10 @@ cleanup;
                         case  p.keys.quit
                             abort = true;
                             return
-                        case p.keys.answer_a                        
+                        case {p.keys.answer_a, p.keys.answer_a_train}
                             response = 0;
                             break
-                        case p.keys.answer_b
+                        case {p.keys.answer_b, p.keys.answer_b_train}
                             response = 1;    
                             break
                         case p.keys.pulse
@@ -314,29 +316,33 @@ cleanup;
         %   Rule rewards ANSWER_A and STIM_A and ANSWER_B and STIM_B      
         correct = 0;
         give_reward = gv;
-        if RP == 0
-            % Rule A is active
-            if response == stim_id
-                correct = 1;                
-            end
-        elseif RP == 1
-            % No rule is active / both rules are active
-                correct = 1;                
-        else
-            % Rule B is active
-            if response ~= stim_id
-                correct = 1;                
-            end
-        end        
+        if ~isnan(response)
+            if RP == 0
+                % Rule A is active
+                if response == stim_id
+                    correct = 1;                
+                end
+            elseif RP == 1
+                % No rule is active / both rules are active
+                    correct = 1;                
+            else
+                % Rule B is active
+                if response ~= stim_id
+                    correct = 1;                
+                end
+            end        
+        end
         give_reward = give_reward & correct;
         
-        fprintf('RESPONSE: %i, RP: %i, %2.2f, GR: %i, C:%i\n', response, RP, pRP, give_reward, correct)        
+        fprintf('RESPONSE: %i, RP: %i, %2.2f, GR: %i, C:%f\n', response, RP, pRP, give_reward, correct)        
         p = Log(p,RT, 7, correct, phase, block); 
         Eyelink('message', sprintf('CORRECT %i', correct));
         MarkCED( p.com.lpt.address, 120+correct);
         
         Screen('FillRect', p.ptb.w , p.stim.bg, []); 
-        if give_reward
+        if isnan(correct)
+            Screen('FillRect',  p.ptb.w, [200,0,0], FixCross');        
+        elseif give_reward
             Screen('FillRect',  p.ptb.w, [0,200,0], FixCross');        
         else
            Screen('FillRect',  p.ptb.w, [200,0,0], FixCross');        
@@ -376,10 +382,10 @@ cleanup;
         
         if strcmp(p.hostname, 'larry.local')
             p.path.baselocation           = '/Users/nwilming/u/immuno/data/';
-        elseif strcmp(p.hostname, 'behavioral_lab')
-            p.path.baselocation           = 'XXX';
+        elseif strcmp(p.hostname, 'donnerlab-Precision-T1700')
+            p.path.baselocation           = '/home/donnerlab/experiments/immuno/data';
         else
-            p.path.baselocation           = 'C:\Users\...\Documents\Experiments\Immuno';
+            p.path.baselocation           = 'C:\Users\...\Documents\Experiments\immuno/data';
         end
         %create the base folder if not yet there.
         if exist(p.path.baselocation) == 0
@@ -410,14 +416,17 @@ cleanup;
         KbName('UnifyKeyNames');
         p.keys.confirm                 = '4$';%
         p.keys.answer_a                = '1!';
+        p.keys.answer_a_train          = 'x';
         p.keys.answer_b                = '2@';       
+        p.keys.answer_b_train          = 'm';       
         p.keys.pulse                   = '5%';
         p.keys.el_calib                = 'v';
         p.keys.el_valid                = 'c';
         p.keys.escape                  = 'ESCAPE';
         p.keys.enter                   = 'return';
         p.keys.quit                    = 'q';
-        p.keylist = {p.keys.confirm, p.keys.answer_a, p.keys.answer_b, p.keys.pulse,...
+        p.keylist = {p.keys.confirm, p.keys.answer_a, p.keys.answer_b,  p.keys.answer_a_trial,...
+            p.keys.answer_b_trial, p.keys.pulse,...
             p.keys.el_calib, p.keys.el_valid, p.keys.enter};
         %% %%%%%%%%%%%%%%%%%%%%%%%%%
         %Communication business
@@ -433,18 +442,18 @@ cleanup;
         %save(p.path.path_param,'p');                
     end
 
-    function ShowInstruction(nInstruct,waitforkeypress,varargin)
+    function ShowInstruction(nInstruct,waitforkeypress, train)
         %ShowInstruction(nInstruct,waitforkeypress)
         %if waitforkeypress is 1, ==> subject presses a button to proceed
-        %if waitforkeypress is 0, ==> text is shown for VARARGIN seconds.
+        %if waitforkeypress is <0, ==> text is shown for -waitforkeypress seconds.
         
         
-        [text]= GetText(nInstruct);
+        [text]= GetText(nInstruct, train);
         ShowText(text);
-        if waitforkeypress %and blank the screen as soon as the key is pressed
+        if waitforkeypress==1 %and blank the screen as soon as the key is pressed
             KbStrokeWait(p.ptb.device);
         else
-            WaitSecs(varargin{1});
+            WaitSecs(-waitforkeypress);
         end
         Screen('FillRect',p.ptb.w,p.var.current_bg);
         t = Screen('Flip',p.ptb.w);
@@ -462,43 +471,40 @@ cleanup;
         end
     end
 
-    function [text]=GetText(nInstruct)
-        if nInstruct == 0 %Eyetracking calibration            
-            text = ['Wir kalibrieren jetzt den Eye-Tracker.\n\n' ...
-                'Bitte fixieren Sie die nun folgenden Kreise und \n' ...
-                'schauen Sie so lange darauf, wie sie zu sehen sind.\n\n' ...
-                'Nach der Kalibrierung duerfen Sie Ihren Kopf nicht mehr bewegen.\n'...
-                'Sollten Sie Ihre Position noch veraendern muessen, tun Sie dies jetzt.\n'...
-                'Die beste Position ist meist die bequemste.\n\n'...
-                'Bitte druecken Sie jetzt den oberen Knopf, \n' ...
-                'um mit der Kalibrierung weiterzumachen.\n' ...
-                ];
-            
-        elseif nInstruct == 1 %Retinotopy.
+    function [text]=GetText(nInstruct, train)
+        if nInstruct == 1 %Retinotopy.
             text = ['Ihre naechste Aufgabe ist es auf Veraenderungen des\n' ...
                 'Fixationskreuzes zu achten. Sollte der linke Arm des Kreuzes\n'...
                 'verschwinden druecken sie die Linke Taste! Verschwindet der rechte\n'...
                 'Arm druecken Sie die rechte Taste\n'...
-                'Druecken Sie einen Knopf um weiter zu machen.'];
+                'Druecken Sie einen Knopf um weiter zu machen.\n'];
+            
             
         elseif nInstruct == 2 %Task.
             text = ['Nun beginnt ein weitere Block des Experimentes.\n'...
                 'Finden Sie herraus welche Regel gerade korrekt ist!\n'...
-                'Zur Erinnerung:\n Regel A: Links = -, Rechts = |\n'...
-                ' Regel B: Rechts = -, Links = |\n'...
-                'Druecken Sie einen Knopf um weiter zu machen.'];
+                'Zur Erinnerung:\n     Regel I -> ANSWERA: ||  ANSWERB: =\n'...
+                '    Regel II -> ANSWERA: =  ANSWERB: ||\n'...
+                'Druecken Sie einen Knopf um weiter zu machen.\n'];
             
-        elseif nInstruct == 3 %Q Rule A.
-            text = ['Im naechsten Block ist Regel A die richtige.\n'...                
-                'Zur Erinnerung:\n Regel A: Links = -, Rechts = |\n'...                
-                'Druecken Sie einen Knopf um weiter zu machen.'];
+        elseif nInstruct == 3 %Q Rule I.
+            text = ['Im naechsten Block ist Regel I die richtige.\n'...                
+                'Zur Erinnerung:\n ANSWERA: ||\n  ANSWERB: = \n'...                
+                'Druecken Sie einen Knopf um weiter zu machen.\n'];
             
         elseif nInstruct == 4 %Q Rule B.
-            text = ['Im naechsten Block ist Regel B die richtige.\n'...                
-                'Zur Erinnerung:\n Regel B: Rechts = -, Links = |\n'...                
-                'Druecken Sie einen Knopf um weiter zu machen.'];
+            text = ['Im naechsten Block ist Regel II die richtige.\n'...                
+                'Zur Erinnerung:\n ANSWERA: =\n  ANSWERB: ||\n'...                
+                'Druecken Sie einen Knopf um weiter zu machen.\n'];
         else
             text = {''};
+        end
+        if ~train
+            text = strrep(text, 'ANSWERA', '1');
+            text = strrep(text, 'ANSWERB', '2');
+        else
+            text = strrep(text, 'ANSWERA', 'x');
+            text = strrep(text, 'ANSWERB', 'm');
         end
     end
 
@@ -528,8 +534,8 @@ cleanup;
         fprintf('Resolution of the screen is %dx%d...\n',res.width,res.height);
         
         %Open a graphics window using PTB
-        %[p.ptb.w p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, [0.5, 0.5, 0.5]);
-        [p.ptb.w p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, [128, 128, 128], [0, 0, 1000, 500]);
+        [p.ptb.w p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, [0.5, 0.5, 0.5]);
+        %[p.ptb.w p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, [128, 128, 128], [0, 0, 1000, 500]);
         
         
         %Screen('BlendFunction', p.ptb.w, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -664,7 +670,7 @@ cleanup;
         PsychEyelinkDispatchCallback(el);
 
         % open file.
-        p.edffile = sprintf('%d%d%d.edf', p.subject, p.phase, p.block)
+        p.edffile = sprintf('%d%d%d.edf', p.subject, p.phase, p.block);
         res = Eyelink('Openfile', p.edffile);
         %
         %Eyelink('command', 'add_file_preamble_text ''Recorded by EyelinkToolbox FearAmy Experiment (Selim Onat)''');
@@ -825,7 +831,7 @@ cleanup;
     end
 
     function p = save_data(p)
-        path = fullfile(p.path.baselocation, sprintf('SUB_%i', p.subject), sprintf('PH_%d_BL_%d', p.phase, p.block)); %subject folder, first we save it to the temp folder.        
+        path = fullfile(p.path.baselocation, sprintf('SUB_%i', p.subject), sprintf('PH_%d', p.phase, p.block)); %subject folder, first we save it to the temp folder.        
         if ~exist(path)
             mkdir(path)
         end
