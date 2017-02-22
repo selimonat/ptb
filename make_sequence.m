@@ -64,14 +64,17 @@ end
         
         seq.reward_probability = seq.reward_probability(1:trials);
         seq.isi = duration(1) + (duration(2)-duration(1)).*rand(1, trials);
-        gv = [];
+        gv_rule_a = [];
+        gv_rule_b = [];
         for iii = 1:trials
             seq.pRP = [seq.pRP reward_probabilities(seq.reward_probability(iii)+1)];
-            P = seq.pRP(iii);
-            P = max(P, 1-P);
-            gv = [gv binornd(1, P)]; %#ok<AGROW>
+            P_a = seq.pRP(iii);
+            P_b = 1-P_a;
+            gv_rule_a = [gv_rule_a binornd(1, P_a)]; %#ok<AGROW>
+            gv_rule_b = [gv_rule_b binornd(1, P_b)]; %#ok<AGROW>
         end
-        seq.give_reward = gv;
+        seq.give_reward_rule_a = gv_rule_a;
+        seq.give_reward_rule_b = gv_rule_b;
     end
 
     function [seq, es] = make_Q_sequence(trials, type)
