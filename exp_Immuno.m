@@ -1,7 +1,7 @@
 function [p]=exp_Immuno(subject, phase)
 
 debug   = 0; %debug mode => 1: transparent window enabling viewing the background.
-NoEyelink = 0; %is Eyelink wanted?
+NoEyelink = 1; %is Eyelink wanted?
 test_sequences = 0; % Load shorter test sequences
 
 
@@ -153,15 +153,24 @@ cleanup;
             stim_id      = p.sequence.stim(trial);
             RP           = p.sequence.reward_probability(trial);
             pRP          = p.sequence.pRP(trial);
-            gv           = p.sequence.give_reward(trial);
+            gv_a         = p.sequence.give_reward_rule_a(trial);
+            gv_b         = p.sequence.give_reward_rule_b(trial);
             ISI          = p.sequence.isi(trial);
             
             OnsetTime     = TimeEndStim + ISI;
-            fprintf('%d of %d, S: %i, R: %i, ISI: %2.2f, OnsetTime: %2.2f secs, Block: %i \n',...
-                trial, size(p.sequence.stim, 2), stim_id, RP, ISI, OnsetTime, p.block);
+            keys = [p.keys.answer_a_train p.keys.answer_b_train];
+            if RP ==  0             
+                correct_answer = keys(stim_id+1);
+            elseif RP == 1
+                correct_answer = 'any';
+            else
+                correct_answer = keys((~stim_id)+1);
+            end
+            fprintf('%d of %d, STIM: %i,  RULE: %i, CRCTANSW: %s,  ISI: %2.2f, Block: %i \n',...
+                trial, size(p.sequence.stim, 2), stim_id, RP, correct_answer, ISI,  p.block);
             
             %Start with the trial, here is time-wise sensitive must be optimal
-            [TimeEndStim, p, abort] = Trial(p, trial, OnsetTime, stim_id, RP, pRP, gv, p.block, p.phase);
+            [TimeEndStim, p, abort] = Trial(p, trial, OnsetTime, stim_id, RP, pRP, gv_a, gv_b, p.block, p.phase);
             fprintf('OffsetTime: %2.2f secs, Difference of %2.2f secs\n', TimeEndStim, TimeEndStim-OnsetTime);
             
             [keycode, secs] = KbQueueDump;%this contains both the pulses and keypresses.
@@ -214,7 +223,7 @@ cleanup;
     function Retinotopy(p)        
     end
 
-    function [TimeFeedbackOffset, p, abort]=Trial(p, nTrial, TimeStimOnset, stim_id, RP, pRP, gv, block, phase)        
+    function [TimeFeedbackOffset, p, abort]=Trial(p, nTrial, TimeStimOnset, stim_id, RP, pRP, gv_a, gv_b, block, phase)        
         %% Run one trial
         abort = false;
         TimeFeedbackOffset = nan;
@@ -315,25 +324,29 @@ cleanup;
         % Was the answer correct?
         % If rule A then seq.reward_probability(trial) == 0 and:
         %   Rule rewards ANSWER_A and STIM_A and ANSWER_B and STIM_B      
-        correct = 0;
-        give_reward = gv;
+        correct = 0;        
+        if response == stim_id
+            give_reward = gv_a;
+        else
+            give_reward = gv_b;
+        end
         if ~isnan(response)
             if RP == 0
                 % Rule A is active
                 if response == stim_id
-                    correct = 1;                
-                end
+                    correct = 1;                                                
+                end                
             elseif RP == 1
                 % No rule is active / both rules are active
-                    correct = 1;                
+                    correct = 1;  
+                    give_reward = gv_b;
             else
                 % Rule B is active
                 if response ~= stim_id
-                    correct = 1;                
-                end
+                    correct = 1;                                      
+                end                
             end        
-        end
-        give_reward = give_reward & correct;
+        end                        
         
         fprintf('RESPONSE: %i, RP: %i, %2.2f, GR: %i, C:%f\n', response, RP, pRP, give_reward, correct)        
         p = Log(p,RT, 7, correct, phase, block); 
@@ -535,8 +548,8 @@ cleanup;
         fprintf('Resolution of the screen is %dx%d...\n',res.width,res.height);
         
         %Open a graphics window using PTB
-        [p.ptb.w p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, [0.5, 0.5, 0.5]);
-        %[p.ptb.w p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, [128, 128, 128], [0, 0, 1000, 500]);
+        %[p.ptb.w p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, [0.5, 0.5, 0.5]);
+        [p.ptb.w p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, [128, 128, 128], [0, 0, 1000, 500]);
         
         
         %Screen('BlendFunction', p.ptb.w, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
