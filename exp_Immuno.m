@@ -307,8 +307,8 @@ cleanup;
         end
         MarkCED(p.com.lpt.address, 70+response);
         Eyelink('message', sprintf('ANSWER %i', response));
-        p = Log(p,RT, 5, response, phase, block);         
-        p = Log(p,RT, 6, RT-start, phase, block);
+        p = Log(p,RT, 6, response, phase, block);         
+        p = Log(p,RT, 7, RT-start, phase, block);
         
         %% Show feedback
         TimeFeedbackOnset = RT + 0.1;
@@ -336,7 +336,7 @@ cleanup;
         give_reward = give_reward & correct;
         
         fprintf('RESPONSE: %i, RP: %i, %2.2f, GR: %i, C:%f\n', response, RP, pRP, give_reward, correct)        
-        p = Log(p,RT, 7, correct, phase, block); 
+        p = Log(p,RT, 8, correct, phase, block); 
         Eyelink('message', sprintf('CORRECT %i', correct));
         MarkCED( p.com.lpt.address, 120+correct);
         
@@ -352,7 +352,7 @@ cleanup;
         TimeFeedback  = Screen('Flip',p.ptb.w,TimeFeedbackOnset,0);        
         
         Eyelink('message', sprintf('FEEDBACK %i', give_reward));
-        p = Log(p,TimeFeedback, 8, give_reward, phase, block);      
+        p = Log(p,TimeFeedback, 9, give_reward, phase, block);      
         MarkCED( p.com.lpt.address, 130+give_reward);
         
         %% STIM OFF immediately
