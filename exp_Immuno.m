@@ -1,8 +1,8 @@
 function [p]=exp_Immuno(subject, phase)
 
-debug   = 0; %debug mode => 1: transparent window enabling viewing the background.
+debug   = 1; %debug mode => 1: transparent window enabling viewing the background.
 NoEyelink = 1; %is Eyelink wanted?
-test_sequences = 0; % Load shorter test sequences
+test_sequences = 1; % Load shorter test sequences
 
 
 %replace parallel port function with a dummy function
@@ -59,6 +59,17 @@ end
 sequences = sequences.sequences;
 sequence = sequences{subject}{phase};
 
+% Load reward file
+reward_file = fullfile('reward/', sprintf('SUB_%i.mat'));
+if exist(reward_file)
+    all_rewards = load(reward_file);
+    all_rewards = all_rewards.all_rewards;
+else
+    all_rewards.money = 0;
+    all_rewards.total_rewards = 0;
+    all_rewards.eur_per_reward = 0.0145;
+    save(reward_file, 'all_rewards');
+end
 
 %%
 
@@ -71,6 +82,9 @@ sequence = sequences{subject}{phase};
 % 6 - fMRI day three
 
 p.subject = subject;
+
+
+
 
 %% Training
 if mod(phase,2) == 1
@@ -148,6 +162,10 @@ cleanup;
         Eyelink('Message', sprintf('BLOCK %d', p.block));
         
         TimeEndStim     = secs(end)- p.ptb.slack;%take the first valid pulse as the end of the last stimulus.
+        
+        % Reward stuff
+        earned_rewards = 0;
+        rule = nan;
         for trial  = 1:size(p.sequence.stim, 2);
             %Get the variables that Trial function needs.
             stim_id      = p.sequence.stim(trial);
@@ -170,7 +188,8 @@ cleanup;
                 trial, size(p.sequence.stim, 2), stim_id, RP, correct_answer, ISI,  p.block);
             
             %Start with the trial, here is time-wise sensitive must be optimal
-            [TimeEndStim, p, abort] = Trial(p, trial, OnsetTime, stim_id, RP, pRP, gv_a, gv_b, p.block, p.phase);
+            [TimeEndStim, p, abort, reward, rule] = Trial(p, trial, OnsetTime, stim_id, RP, pRP, gv_a, gv_b, p.block, p.phase, rule);
+            earned_rewards = earned_rewards + reward;
             fprintf('OffsetTime: %2.2f secs, Difference of %2.2f secs\n', TimeEndStim, TimeEndStim-OnsetTime);
             
             [keycode, secs] = KbQueueDump;%this contains both the pulses and keypresses.
@@ -213,19 +232,28 @@ cleanup;
             p = Log(p,secs(pulses), 0,keycode(pulses), p.phase, p.block);
         end
         
+        money_earned = earned_rewards*all_rewards.eur_per_reward;
+        all_rewards.money = all_rewards.money+money_earned;
+        all_rewards.total_rewards = all_rewards.total_rewards + earned_rewards;
+        
+        text = RewardText(earned_rewards, earned_rewards/trial, money_earned, all_rewards.money); 
+        Screen('FillRect',p.ptb.w,p.var.current_bg);
+        DrawFormattedText(p.ptb.w, text, 'center', 'center', p.stim.white,[],[],[],2,[]);
+        Screen('Flip',p.ptb.w);
+        start = GetSecs();
         p = save_data(p);
+        while GetSecs() < start+10
+        end
         %stop the queue
         KbQueueStop(p.ptb.device);
         KbQueueRelease(p.ptb.device);
         
     end  
 
-    function Retinotopy(p)        
-    end
-
-    function [TimeFeedbackOffset, p, abort]=Trial(p, nTrial, TimeStimOnset, stim_id, RP, pRP, gv_a, gv_b, block, phase)        
+    function [TimeFeedbackOffset, p, abort, give_reward, rule]=Trial(p, nTrial, TimeStimOnset, stim_id, RP, pRP, gv_a, gv_b, block, phase, last_rule)        
         %% Run one trial
         abort = false;
+        give_reward = nan;
         TimeFeedbackOffset = nan;
         StartEyelinkRecording(nTrial,stim_id,p.phase, stim_id, RP); %I would be cautious here, the first trial is never recorded in the EDF file, reason yet unknown.
         % Save trial info
@@ -250,9 +278,13 @@ cleanup;
         MarkCED(p.com.lpt.address, 3);
         
         %% Draw the stimulus to the buffer
-        
-        Screen('DrawTexture', p.ptb.w, p.ptb.gabortex, [], [0, 0, p.ptb.rect(3) p.ptb.rect(4)], ...
-                0+90*stim_id, [], [], [], [], kPsychDontDoRotation, [0, .05, 150, 100, 1, 0, 0, 0]); 
+        angle = 90*stim_id;
+        %Screen('DrawTexture', p.ptb.w, p.ptb.gabortex, [], [0, 0, p.ptb.rect(3) p.ptb.rect(4)], ...
+        %        angle, [], [], [], [], kPsychDontDoRotation, [0, p.stim.sf, 150, 100, 1, 0, 0, 0]); 
+        df = p.ptb.rect(3) -  p.ptb.rect(4);
+        rect = [df/2., 0, p.ptb.rect(4)+df/2, p.ptb.rect(4)];
+        Screen('DrawTexture', p.ptb.w, p.ptb.gabortex, [], rect, ...
+                angle, [], [], [], [], [], [0, p.stim.sf, 150, 100, 1, 0, 0, 0]);             
         oc = [p.ptb.midpoint(1)-25, p.ptb.midpoint(2)-25, p.ptb.midpoint(1)+25, p.ptb.midpoint(2)+25];
         Screen('FillOval', p.ptb.w, p.stim.bg, oc);
         %draw also the fixation cross
@@ -326,9 +358,15 @@ cleanup;
         %   Rule rewards ANSWER_A and STIM_A and ANSWER_B and STIM_B      
         correct = 0;        
         if response == stim_id
+            rule = 0;
             give_reward = gv_a;
         else
+            rule = 1;
             give_reward = gv_b;
+        end
+        if ~isnan(rule) && rule ~= prev_rule
+            % Implements the changeover delay
+            give_reward = 0;
         end
         if ~isnan(response)
             if RP == 0
@@ -395,12 +433,19 @@ cleanup;
         p.hostname                    = deblank(hostname);
         
         if strcmp(p.hostname, 'larry.local')
+            p.display.resolution = [2560 1600];
+            p.display.dimension = [28, 17.5];
+            p.display.distance = 60;
+            
             p.path.baselocation           = '/Users/nwilming/u/immuno/data/';
         elseif strcmp(p.hostname, 'donnerlab-Precision-T1700')
             p.path.baselocation           = '/home/donnerlab/experiments/immuno/data';
         else
             p.path.baselocation           = 'C:\Users\...\Documents\Experiments\immuno/data';
         end
+        p.display.ppd = ppd(p.display.distance, p.display.resolution(1),...
+            p.display.dimension(1));
+                               
         %create the base folder if not yet there.
         if exist(p.path.baselocation) == 0
             mkdir(p.path.baselocation);
@@ -456,13 +501,21 @@ cleanup;
         %save(p.path.path_param,'p');                
     end
 
-    function ShowInstruction(nInstruct,waitforkeypress, train)
+    function text = RewardText(reward, reward_rate, earned_money, total_money)
+        text = [sprintf('Im letzten Block haben Sie %d Belohnungen erhalten (%0.2f)\n', reward, reward_rate)...
+            sprintf('Das entspricht %1.2f EUR!\n', earned_money)...
+            sprintf('Insgesamt haben sich damit %1.2f EUR Bonus angesammelt!', total_money)];
+    end
+
+    function ShowInstruction(nInstruct,waitforkeypress, train, text)
         %ShowInstruction(nInstruct,waitforkeypress)
         %if waitforkeypress is 1, ==> subject presses a button to proceed
         %if waitforkeypress is <0, ==> text is shown for -waitforkeypress seconds.
         
-        
-        [text]= GetText(nInstruct, train);
+        if nargin == 3
+            [text]= GetText(nInstruct, train);
+        end
+            
         ShowText(text);
         if waitforkeypress==1 %and blank the screen as soon as the key is pressed
             KbStrokeWait(p.ptb.device);
@@ -548,8 +601,8 @@ cleanup;
         fprintf('Resolution of the screen is %dx%d...\n',res.width,res.height);
         
         %Open a graphics window using PTB
-        %[p.ptb.w p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, [0.5, 0.5, 0.5]);
-        [p.ptb.w p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, [128, 128, 128], [0, 0, 1000, 500]);
+        [p.ptb.w p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, [0.5, 0.5, 0.5]);
+        %[p.ptb.w p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, [128, 128, 128], [0, 0, 1000, 500]);
         
         
         %Screen('BlendFunction', p.ptb.w, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -598,8 +651,14 @@ cleanup;
         
         %% Build a procedural gabor texture for a gabor with a support of tw x th
         % pixels, and a RGB color offset of 0.5 -- a 50% gray.        
-        p.ptb.gabortex = CreateProceduralGabor(p.ptb.w, p.ptb.width, p.ptb.height, 0, [0.5 0.5 0.5 0.0]);
-
+        p.display.ppd
+        p.stim.radius = p.ptb.rect(4)/2;
+        p.stim.radius_deg = (p.ptb.rect(4)/2)/p.display.ppd;
+        p.stim.sf = 2/p.display.ppd;
+        fprintf('R and SF: %f %f', p.stim.radius, p.stim.sf)
+        %p.ptb.gabortex = CreateProceduralGabor(p.ptb.w, p.ptb.width, p.ptb.height, 0, [0.5 0.5 0.5 0.0]);                
+        p.ptb.gabortex = CreateProceduralSineGrating(p.ptb.w, 2*p.stim.radius, 2*p.stim.radius,...
+            [], p.stim.radius);
         
         %% %%%%%%%%%%%%%%%%%%%%%%%%%
         %Make final reminders to the experimenter to avoid false starts,
@@ -622,8 +681,9 @@ cleanup;
 %             [~, k] = KbStrokeWait(p.ptb.device);
 %             k = find(k);
 %         end
-        fprintf('Continuing...\n');
-        
+
+    fprintf('Continuing...\n');
+
         
 
     end
@@ -865,6 +925,9 @@ cleanup;
         p.out.log      = zeros(1000000, 5).*NaN;%Experimental LOG.
     end
 
-
+    function ppd = ppd(distance, x_px, width)
+        o = tan(0.5*pi/180) * distance;
+        ppd = 2 * o*x_px/width;
+    end
 
 end

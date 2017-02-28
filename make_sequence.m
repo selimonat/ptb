@@ -23,7 +23,11 @@ for s = 1:ns
             if strcmp(type, 'E')
                 es = 0;
                 while abs(mean(es)-mean_inter_change_length) > 1
-                    [seq, es] = make_exp_sequence(mean_inter_change_length, trials);
+                    if length(reward_probabilities)==3
+                        [seq, es] = make_exp_sequence(mean_inter_change_length, trials);
+                    else
+                        [seq, es] = make_exp_sequence_two(mean_inter_change_length, trials);
+                    end
                 end
             else
                 seq = make_Q_sequence(trials, type);
@@ -48,7 +52,7 @@ end
         
         while length(seq.reward_probability)<trials
             e = round(exprnd(mean_inter_change_length));
-            if e <= 1 || e > 20
+            if e <= 1 || e > (mean_inter_change_length*2)
                 continue
             end
             if numel(seq.reward_probability)==0
@@ -70,12 +74,56 @@ end
             seq.pRP = [seq.pRP reward_probabilities(seq.reward_probability(iii)+1)];
             P_a = seq.pRP(iii);
             P_b = 1-P_a;
-            gv_rule_a = [gv_rule_a binornd(1, P_a)]; %#ok<AGROW>
-            gv_rule_b = [gv_rule_b binornd(1, P_b)]; %#ok<AGROW>
+            rew = boolean(binornd(1, P_a));
+            gv_rule_a = [gv_rule_a rew]; %#ok<AGROW>
+            gv_rule_b = [gv_rule_b ~rew]; %#ok<AGROW>
         end
         seq.give_reward_rule_a = gv_rule_a;
         seq.give_reward_rule_b = gv_rule_b;
     end
+
+
+    function [seq, es] = make_exp_sequence_two(mean_inter_change_length, trials)
+        %% Makes a sequence of rules that change with a specific hazard rate.
+        seq.type = 'EXP';
+        seq.reward_probability = [];
+        seq.pRP = [];
+        seq.stim = randi(2, 1, trials)-1;
+        es = [];
+        
+        start = [0,1];        
+        
+        while length(seq.reward_probability)<trials
+            e = round(exprnd(mean_inter_change_length));
+            if e <= 1 || e >  (mean_inter_change_length*2)
+                continue
+            end
+            if numel(seq.reward_probability)==0
+                next_rp = randsample(start,1);
+            else
+                next_rp = ~seq.reward_probability(end);
+            end
+            next_set = repmat(next_rp, 1, e);
+            
+            seq.reward_probability = [seq.reward_probability, next_set];
+            es = [es e]; %#ok<AGROW>
+        end
+        
+        seq.reward_probability = seq.reward_probability(1:trials);
+        seq.isi = duration(1) + (duration(2)-duration(1)).*rand(1, trials);
+        gv_rule_a = [];
+        gv_rule_b = [];
+        for iii = 1:trials
+            seq.pRP = [seq.pRP reward_probabilities(seq.reward_probability(iii)+1)];
+            P_a = seq.pRP(iii);            
+            rew = boolean(binornd(1, P_a));
+            gv_rule_a = [gv_rule_a rew]; %#ok<AGROW>
+            gv_rule_b = [gv_rule_b ~rew]; %#ok<AGROW>
+        end        
+        seq.give_reward_rule_a = gv_rule_a;
+        seq.give_reward_rule_b = gv_rule_b;
+    end
+
 
     function [seq, es] = make_Q_sequence(trials, type)
         %% Makes a sequence with one rule active
