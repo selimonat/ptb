@@ -1,6 +1,7 @@
 function [p]=exp_Immuno(subject, phase)
 
-debug   = 1; %debug mode => 1: transparent window enabling viewing the background.
+debug   = 0; %debug mode => 1: transparent window enabling viewing the background.
+small_window = 0; % Open a small window only
 NoEyelink = 1; %is Eyelink wanted?
 test_sequences = 1; % Load shorter test sequences
 
@@ -25,7 +26,9 @@ if nargin ~= 2
     return
 end
 
-commandwindow;%focus on the command window, so that output is not written on the editor
+commandwindow; %focus on the command window, so that output is not written on the editor
+
+
 %clear everything
 clear mex global functions;%clear all before we start.
 
@@ -177,9 +180,9 @@ cleanup;
             
             OnsetTime     = TimeEndStim + ISI;
             keys = [p.keys.answer_a_train p.keys.answer_b_train];
-            if RP ==  0             
+            if pRP >  0.5             
                 correct_answer = keys(stim_id+1);
-            elseif RP == 1
+            elseif pRP == 0.5
                 correct_answer = 'any';
             else
                 correct_answer = keys((~stim_id)+1);
@@ -250,8 +253,9 @@ cleanup;
         
     end  
 
-    function [TimeFeedbackOffset, p, abort, give_reward, rule]=Trial(p, nTrial, TimeStimOnset, stim_id, RP, pRP, gv_a, gv_b, block, phase, last_rule)        
+    function [TimeFeedbackOffset, p, abort, give_reward, rule]=Trial(p, nTrial, TimeStimOnset, stim_id, RP, pRP, gv_a, gv_b, block, phase, prev_rule)        
         %% Run one trial
+        rule = nan;
         abort = false;
         give_reward = nan;
         TimeFeedbackOffset = nan;
@@ -364,27 +368,17 @@ cleanup;
             rule = 1;
             give_reward = gv_b;
         end
-        if ~isnan(rule) && rule ~= prev_rule
+        if ~isnan(prev_rule) && rule ~= prev_rule
             % Implements the changeover delay
+            fprintf('---> COD active!\n')
             give_reward = 0;
         end
-        if ~isnan(response)
-            if RP == 0
-                % Rule A is active
-                if response == stim_id
-                    correct = 1;                                                
-                end                
-            elseif RP == 1
-                % No rule is active / both rules are active
-                    correct = 1;  
-                    give_reward = gv_b;
-            else
-                % Rule B is active
-                if response ~= stim_id
-                    correct = 1;                                      
-                end                
-            end        
-        end                        
+        fprintf('pRP is %f\n', pRP)
+        if pRP > 0.5 && rule == 0
+            correct = 1;
+        elseif pRP <= 0.5 && rule == 1
+            correct = 1;
+        end
         
         fprintf('RESPONSE: %i, RP: %i, %2.2f, GR: %i, C:%f\n', response, RP, pRP, give_reward, correct)        
         p = Log(p,RT, 8, correct, phase, block); 
@@ -392,9 +386,7 @@ cleanup;
         MarkCED( p.com.lpt.address, 120+correct);
         
         Screen('FillRect', p.ptb.w , p.stim.bg, []); 
-        if isnan(correct)
-            Screen('FillRect',  p.ptb.w, [200,0,0], FixCross');        
-        elseif give_reward
+        if give_reward
             Screen('FillRect',  p.ptb.w, [0,200,0], FixCross');        
         else
            Screen('FillRect',  p.ptb.w, [200,0,0], FixCross');        
@@ -412,7 +404,7 @@ cleanup;
         TimeFeedbackOffset = Screen('Flip',p.ptb.w,TimeFeedback+0.4, 0);    
         
         Eyelink('message', 'FEEDBACKOFF');        
-        p = Log(p,TimeFeedbackOffset, 9, 0, phase, block); 
+        p = Log(p,TimeFeedbackOffset, 10, 0, phase, block); 
         MarkCED( p.com.lpt.address, 140);
 
     end
@@ -588,22 +580,28 @@ cleanup;
         Screen('Preference', 'SuppressAllWarnings', 1);
         %%Find the number of the screen to be opened
         screens                     =  Screen('Screens');
-        p.ptb.screenNumber          =  max(screens);%the maximum is the second monitor
+        if strcmp(p.hostname, 'larry.local') || strcmp(p.hostname, 'donnerlab-Precision-T1700')
+            p.ptb.screenNumber          =  min(screens);%the maximum is the second monitor
+        else
+            p.ptb.screenNumber          =  max(screens);%the maximum is the second monitor
+        end
         %Make everything transparent for debugging purposes.
         if debug
             commandwindow;
             PsychDebugWindowConfiguration;
         end
         %set the resolution correctly
-        res = Screen('resolution',p.ptb.screenNumber);
+        res = Screen('resolution', p.ptb.screenNumber);
         HideCursor(p.ptb.screenNumber);%make sure that the mouse is not shown at the participant's monitor
         %spit out the resolution,
         fprintf('Resolution of the screen is %dx%d...\n',res.width,res.height);
         
         %Open a graphics window using PTB
-        [p.ptb.w p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, [0.5, 0.5, 0.5]);
-        %[p.ptb.w p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, [128, 128, 128], [0, 0, 1000, 500]);
-        
+        if ~small_window
+            [p.ptb.w p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, [0.5, 0.5, 0.5]);
+        else
+            [p.ptb.w p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, [128, 128, 128], [0, 0, 1000, 500]);
+        end
         
         %Screen('BlendFunction', p.ptb.w, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         Screen('Flip',p.ptb.w);%make the bg

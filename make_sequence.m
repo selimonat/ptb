@@ -52,7 +52,7 @@ end
         
         while length(seq.reward_probability)<trials
             e = round(exprnd(mean_inter_change_length));
-            if e <= 1 || e > (mean_inter_change_length*2)
+            if e <= 5 || e > (mean_inter_change_length*2)
                 continue
             end
             if numel(seq.reward_probability)==0
