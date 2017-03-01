@@ -2,7 +2,7 @@ function [p]=exp_Immuno(subject, phase)
 
 debug   = 0; %debug mode => 1: transparent window enabling viewing the background.
 small_window = 0; % Open a small window only
-NoEyelink = 1; %is Eyelink wanted?
+NoEyelink = 0; %is Eyelink wanted?
 test_sequences = 1; % Load shorter test sequences
 
 
@@ -27,6 +27,7 @@ if nargin ~= 2
 end
 
 commandwindow; %focus on the command window, so that output is not written on the editor
+        
 
 
 %clear everything
@@ -64,6 +65,7 @@ sequence = sequences{subject}{phase};
 
 % Load reward file
 reward_file = fullfile('reward/', sprintf('SUB_%i.mat'));
+mkdir('reward');
 if exist(reward_file)
     all_rewards = load(reward_file);
     all_rewards = all_rewards.all_rewards;
@@ -187,13 +189,13 @@ cleanup;
             else
                 correct_answer = keys((~stim_id)+1);
             end
-            fprintf('%d of %d, STIM: %i,  RULE: %i, CRCTANSW: %s,  ISI: %2.2f, Block: %i \n',...
+            fprintf('%d of %d, STIM: %i,  RULE: %i, CRCTANSW: %s,  ISI: %2.2f, Block: %i ',...
                 trial, size(p.sequence.stim, 2), stim_id, RP, correct_answer, ISI,  p.block);
             
             %Start with the trial, here is time-wise sensitive must be optimal
             [TimeEndStim, p, abort, reward, rule] = Trial(p, trial, OnsetTime, stim_id, RP, pRP, gv_a, gv_b, p.block, p.phase, rule);
             earned_rewards = earned_rewards + reward;
-            fprintf('OffsetTime: %2.2f secs, Difference of %2.2f secs\n', TimeEndStim, TimeEndStim-OnsetTime);
+            %fprintf('OffsetTime: %2.2f secs, Difference of %2.2f secs\n', TimeEndStim, TimeEndStim-OnsetTime);
             
             [keycode, secs] = KbQueueDump;%this contains both the pulses and keypresses.
             if numel(keycode)
@@ -368,19 +370,19 @@ cleanup;
             rule = 1;
             give_reward = gv_b;
         end
+        cod = 0;
         if ~isnan(prev_rule) && rule ~= prev_rule
             % Implements the changeover delay
-            fprintf('---> COD active!\n')
+            cod = 1;
             give_reward = 0;
         end
-        fprintf('pRP is %f\n', pRP)
         if pRP > 0.5 && rule == 0
             correct = 1;
         elseif pRP <= 0.5 && rule == 1
             correct = 1;
         end
         
-        fprintf('RESPONSE: %i, RP: %i, %2.2f, GR: %i, C:%f\n', response, RP, pRP, give_reward, correct)        
+        fprintf(' RESPONSE: %i, RP: %i, %2.2f, GR: %i, C:%f, COD=%i\n', response, RP, pRP, give_reward, correct, cod)        
         p = Log(p,RT, 8, correct, phase, block); 
         Eyelink('message', sprintf('CORRECT %i', correct));
         MarkCED( p.com.lpt.address, 120+correct);
@@ -427,15 +429,17 @@ cleanup;
         if strcmp(p.hostname, 'larry.local')
             p.display.resolution = [2560 1600];
             p.display.dimension = [28, 17.5];
-            p.display.distance = 60;
-            
+            p.display.distance = [62, 59];            
             p.path.baselocation           = '/Users/nwilming/u/immuno/data/';
         elseif strcmp(p.hostname, 'donnerlab-Precision-T1700')
+            p.display.resolution = [1920 1080];
+            p.display.dimension = [52, 29.5];
+            p.display.distance = [62, 59];
             p.path.baselocation           = '/home/donnerlab/experiments/immuno/data';
         else
             p.path.baselocation           = 'C:\Users\...\Documents\Experiments\immuno/data';
         end
-        p.display.ppd = ppd(p.display.distance, p.display.resolution(1),...
+        p.display.ppd = ppd(mean(p.display.distance), p.display.resolution(1),...
             p.display.dimension(1));
                                
         %create the base folder if not yet there.
@@ -580,11 +584,17 @@ cleanup;
         Screen('Preference', 'SuppressAllWarnings', 1);
         %%Find the number of the screen to be opened
         screens                     =  Screen('Screens');
-        if strcmp(p.hostname, 'larry.local') || strcmp(p.hostname, 'donnerlab-Precision-T1700')
+        if strcmp(p.hostname, 'larry.local') 
             p.ptb.screenNumber          =  min(screens);%the maximum is the second monitor
+            p.ptb.device        = 1;
+        elseif strcmp(p.hostname, 'donnerlab-Precision-T1700')
+            p.ptb.screenNumber          =  1;
+            p.ptb.device        = 9;
         else
             p.ptb.screenNumber          =  max(screens);%the maximum is the second monitor
+            p.ptb.device        = -1;
         end
+        p.ptb.screenNumber
         %Make everything transparent for debugging purposes.
         if debug
             commandwindow;
@@ -628,7 +638,7 @@ cleanup;
             LoadPsychHID;
         end
         %%%%%%%%%%%%%%%%%%%%%%%%%%%Prepare the keypress queue listening.
-        p.ptb.device        = -1;
+        
         %get all the required keys in a vector
         p.ptb.keysOfInterest = [];
         for i = fields(p.keys)';
@@ -638,7 +648,7 @@ cleanup;
         KbQueueCreate(p.ptb.device);%, p.ptb.keysOfInterest);%default device.
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
         %prepare parallel port communication. This relies on cogent i
-        %think. We could do it with PTB as well.
+        %think. We could do it with PTB as well.options
         if IsWindows
             config_io;
             outp(p.com.lpt.address,0);
@@ -733,7 +743,7 @@ cleanup;
         el.msgfont                  = 'Times New Roman';
         el.cal_target_beep          =  [0 0 0];%[1250 0.6 0.05];
         %shut all sounds off
-        el.drift_correction_target_beep = [0 0 0];
+        el.drift_correction_targetp.ptb.wid_beep = [0 0 0];
         el.calibration_failed_beep      = [0 0 0];
         el.calibration_success_beep     = [0 0 0];
         el.drift_correction_failed_beep = [0 0 0];
@@ -744,10 +754,23 @@ cleanup;
         % open file.
         p.edffile = sprintf('%d%d%d.edf', p.subject, p.phase, p.block);
         res = Eyelink('Openfile', p.edffile);
-        %
+        
         %Eyelink('command', 'add_file_preamble_text ''Recorded by EyelinkToolbox FearAmy Experiment (Selim Onat)''');
         Eyelink('command', 'screen_pixel_coords = %ld %ld %ld %ld', 0, 0, p.ptb.width-1, p.ptb.height-1);
         Eyelink('message', 'DISPLAY_COORDS %ld %ld %ld %ld', 0, 0, p.ptb.width-1, p.ptb.height-1);
+        
+        pw = p.display.dimension(1);
+        ph = p.display.dimension(2);
+        phys_coord = sprintf('screen_phys_coords = %ld, %ld, %ld, %ld'...
+            , -floor(10*pw/2)... %half width
+            ,  floor(10*ph/2)... %half height
+            ,  floor(10*pw/2)... %half width
+            , -floor(10*ph/2));   %half height %rv 2
+        Eyelink('command', phys_coord);
+
+        Eyelink('command', 'screen_distance = %ld %ld', ...
+            10*p.display.distance(2), 10*p.display.distance(2)); %rv 3
+
         % set calibration type.
         Eyelink('command','auto_calibration_messages = YES');
         Eyelink('command', 'calibration_type = HV13');
