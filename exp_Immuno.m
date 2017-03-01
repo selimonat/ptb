@@ -111,16 +111,9 @@ elseif mod(phase, 2) == 0
     end
     fprintf('Continuing...\n');
     %%
-    p.block = 1;
-    Retinotopy;
-    if phase==2
-        p.block = 2;
-        Retinotopy
-    end
     for b = 1:length(sequence)
-        p.block = 1 + p.block;
+        p.block = b;
         p.sequence = sequence{b};
-        p.block
         p = ExperimentBlock(p);    
     end
     WaitSecs(2.5);

@@ -130,8 +130,14 @@ end
         seq.type = type;
         if strcmp(type, 'QA')
             seq.reward_probability = 0*ones(1, trials);
+            seq.pRP = ones(1, trials);
+            seq.give_reward_rule_a = 1*ones(1, trials);
+            seq.give_reward_rule_b = 0*seq.give_reward_rule_a;
         else
             seq.reward_probability = 2*ones(1, trials);
+            seq.pRP = 0*ones(1, trials);
+            seq.give_reward_rule_a = 0*ones(1, trials);
+            seq.give_reward_rule_b = 1+seq.give_reward_rule_a;
         end
         seq.stim = randi(2, 1, trials)-1;
         es = [];
