@@ -58,7 +58,7 @@ p.var.event_count         = 0;
 if ~test_sequences
     sequences = load('stimulus_sequences.mat');
 else
-    sequences = load('short_stimulus_sequences.mat');
+    sequences = load('short_stimulus_sequences_IBI10.mat');
 end
 sequences = sequences.sequences;
 sequence = sequences{subject}{phase};
@@ -364,11 +364,11 @@ cleanup;
             give_reward = gv_b;
         end
         cod = 0;
-        if ~isnan(prev_rule) && rule ~= prev_rule
+        %if ~isnan(prev_rule) && rule ~= prev_rule
             % Implements the changeover delay
-            cod = 1;
-            give_reward = 0;
-        end
+        %    cod = 1;
+        %    give_reward = 0;
+        %end
         if pRP > 0.5 && rule == 0
             correct = 1;
         elseif pRP <= 0.5 && rule == 1
@@ -581,7 +581,7 @@ cleanup;
             p.ptb.screenNumber          =  min(screens);%the maximum is the second monitor
             p.ptb.device        = 1;
         elseif strcmp(p.hostname, 'donnerlab-Precision-T1700')
-            p.ptb.screenNumber          =  1;
+            p.ptb.screenNumber          =  0;
             p.ptb.device        = 9;
         else
             p.ptb.screenNumber          =  max(screens);%the maximum is the second monitor
