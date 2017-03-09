@@ -1,3 +1,4 @@
+
 function stimuli = make_sequence(ns, mean_inter_change_length, trials, reward_probabilities, duration)
 stimuli = {};
 
@@ -68,6 +69,8 @@ end
         
         seq.reward_probability = seq.reward_probability(1:trials);
         seq.isi = duration(1) + (duration(2)-duration(1)).*rand(1, trials);
+        seq.jitter = 0.3 + 0.7*rand(1, trials);
+        seq.isi = seq.isi-seq.jitter;
         gv_rule_a = [];
         gv_rule_b = [];
         for iii = 1:trials
@@ -91,7 +94,7 @@ end
         seq.stim = randi(2, 1, trials)-1;
         es = [];
         
-        start = [0,1];        
+        start = [0,1];
         
         while length(seq.reward_probability)<trials
             e = round(exprnd(mean_inter_change_length));
@@ -111,15 +114,17 @@ end
         
         seq.reward_probability = seq.reward_probability(1:trials);
         seq.isi = duration(1) + (duration(2)-duration(1)).*rand(1, trials);
+        seq.jitter = 0.3 + 0.7*rand(1, trials);
+        seq.isi = seq.isi-seq.jitter;
         gv_rule_a = [];
         gv_rule_b = [];
         for iii = 1:trials
             seq.pRP = [seq.pRP reward_probabilities(seq.reward_probability(iii)+1)];
-            P_a = seq.pRP(iii);            
+            P_a = seq.pRP(iii);
             rew = boolean(binornd(1, P_a));
             gv_rule_a = [gv_rule_a rew]; %#ok<AGROW>
             gv_rule_b = [gv_rule_b ~rew]; %#ok<AGROW>
-        end        
+        end
         seq.give_reward_rule_a = gv_rule_a;
         seq.give_reward_rule_b = gv_rule_b;
     end
@@ -141,8 +146,10 @@ end
         end
         seq.stim = randi(2, 1, trials)-1;
         es = [];
-        seq.isi = duration(1) + (duration(2)-duration(1)).*rand(1, trials);        
+        seq.isi = duration(1) + (duration(2)-duration(1)).*rand(1, trials);
+        seq.jitter = 0.3 + 0.7*rand(1, trials);
+        seq.isi = seq.isi-seq.jitter;
         seq.pRP = ones(1, trials);
-        seq.give_reward = ones(1, trials);            
+        seq.give_reward = ones(1, trials);
     end
 end

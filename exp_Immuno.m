@@ -2,8 +2,8 @@ function [p]=exp_Immuno(subject, phase)
 
 debug   = 0; %debug mode => 1: transparent window enabling viewing the background.
 small_window = 0; % Open a small window only
-NoEyelink = 0; %is Eyelink wanted?
-test_sequences = 1; % Load shorter test sequences
+NoEyelink = 1; %is Eyelink wanted?
+test_sequences = 0; % Load shorter test sequences
 
 
 %replace parallel port function with a dummy function
@@ -172,7 +172,7 @@ cleanup;
             gv_a         = p.sequence.give_reward_rule_a(trial);
             gv_b         = p.sequence.give_reward_rule_b(trial);
             ISI          = p.sequence.isi(trial);
-            
+            jitter       = p.sequence.jitter(trial);
             OnsetTime     = TimeEndStim + ISI;
             keys = [p.keys.answer_a_train p.keys.answer_b_train];
             if pRP >  0.5             
@@ -186,7 +186,7 @@ cleanup;
                 trial, size(p.sequence.stim, 2), stim_id, RP, correct_answer, ISI,  p.block);
             
             %Start with the trial, here is time-wise sensitive must be optimal
-            [TimeEndStim, p, abort, reward, rule] = Trial(p, trial, OnsetTime, stim_id, RP, pRP, gv_a, gv_b, p.block, p.phase, rule);
+            [TimeEndStim, p, abort, reward, rule] = Trial(p, trial, OnsetTime, jitter, stim_id, RP, pRP, gv_a, gv_b, p.block, p.phase, rule, earned_rewards);
             earned_rewards = earned_rewards + reward;
             %fprintf('OffsetTime: %2.2f secs, Difference of %2.2f secs\n', TimeEndStim, TimeEndStim-OnsetTime);
             
@@ -218,6 +218,10 @@ cleanup;
         if mod(p.phase, 2) == 0
             WaitPulse(p, p.keys.pulse, p.mrt.dummy_scan);%
             fprintf('OK!! Stop the Scanner\n');
+        else
+            start = GetSecs();
+            while GetSecs() < start+4
+            end
         end
         %dump the final events
         [keycode, secs] = KbQueueDump;%this contains both the pulses and keypresses.
@@ -248,14 +252,15 @@ cleanup;
         
     end  
 
-    function [TimeFeedbackOffset, p, abort, give_reward, rule]=Trial(p, nTrial, TimeStimOnset, stim_id, RP, pRP, gv_a, gv_b, block, phase, prev_rule)        
+    function [TimeFeedbackOffset, p, abort, give_reward, rule]=Trial(p, nTrial, TimeStimOnset, jitter, stim_id, RP, pRP, gv_a, gv_b, block, phase, prev_rule, earned_rewards)       
         %% Run one trial
         rule = nan;
         abort = false;
         give_reward = nan;
         TimeFeedbackOffset = nan;
-        StartEyelinkRecording(nTrial,stim_id,p.phase, stim_id, RP); %I would be cautious here, the first trial is never recorded in the EDF file, reason yet unknown.
+        StartEyelinkRecording(nTrial,p.phase, RP, stim_id, block, earned_rewards); %I would be cautious here, the first trial is never recorded in the EDF file, reason yet unknown.
         % Save trial info
+        
         TrialStart = GetSecs;
         Eyelink('message', sprintf('ACTIVE_RULE %i', RP));
         Eyelink('message', sprintf('STIM_ID %i', stim_id));
@@ -265,13 +270,22 @@ cleanup;
         MarkCED( p.com.lpt.address, 100+RP);
         MarkCED( p.com.lpt.address, 110+stim_id);
         
+        
         %% Fixation Onset
         fix          = [p.ptb.CrossPosition_x p.ptb.CrossPosition_y];
-        FixCross     = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];        
+        FixCross     = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1]; 
+        FixCross_s   = [fix(1)-1,fix(2)-p.ptb.fc_size/2,fix(1)+1,fix(2)+p.ptb.fc_size/2;fix(1)-p.ptb.fc_size/2,fix(2)-1,fix(1)+p.ptb.fc_size/2,fix(2)+1]; 
+
         Screen('FillRect', p.ptb.w , p.stim.bg, [] ); %always create a gray background
-        Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');%draw the prestimus cross atop
-        Screen('DrawingFinished',p.ptb.w,0);        
-        TimeCrossOn  = Screen('Flip',p.ptb.w);
+        if (TimeStimOnset-TrialStart) > 4 % Give time for blinks.         
+            Screen('FillRect',  p.ptb.w, [0, 55, 200], FixCross');%draw the prestimus cross atop
+            TimeBlinkOn  = Screen('Flip',p.ptb.w, TrialStart+2);      %<----- FLIP
+            Screen('FillRect',  p.ptb.w, [255, 255, 255], FixCross');%draw the prestimus cross atop
+            TimeCrossOn  = Screen('Flip',p.ptb.w, TimeBlinkOn+1);      %<----- FLIP
+        else
+            Screen('FillRect',  p.ptb.w, [255, 255, 255], FixCross');%draw the prestimus cross atop
+            TimeCrossOn  = Screen('Flip',p.ptb.w);      %<----- FLIP
+        end
         p = Log(p,TimeCrossOn, 3, nan, phase, block);
         Eyelink('Message', 'FIXON');
         MarkCED(p.com.lpt.address, 3);
@@ -291,7 +305,7 @@ cleanup;
         Screen('DrawingFinished',p.ptb.w,0);
         
         %% STIMULUS ONSET
-        TimeStimOnset  = Screen('Flip',p.ptb.w,TimeStimOnset,0);%asap and dont clear
+        TimeStimOnset  = Screen('Flip',p.ptb.w, TimeStimOnset,0);  %<----- FLIP
         p = Log(p,TimeStimOnset, 4, nan, phase, block); 
         Eyelink('Message', 'StimOnset');
         Eyelink('Message', 'SYNCTIME');
@@ -309,7 +323,7 @@ cleanup;
         KbQueueFlush(p.ptb.device);
         %% Stimulus Offset        
         Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');                
-        TimeStimOffset  = Screen('Flip', p.ptb.w, TimeStimOnset+0.5, 0); %asap and dont clear
+        TimeStimOffset  = Screen('Flip', p.ptb.w, TimeStimOnset+0.5, 0);  %<----- FLIP
         
         p = Log(p,TimeStimOffset, 5, nan, phase, block); 
         Eyelink('Message', 'StimOff');
@@ -351,7 +365,7 @@ cleanup;
         p = Log(p,RT, 7, RT-start, phase, block);
         
         %% Show feedback
-        TimeFeedbackOnset = RT + 0.1;
+        TimeFeedbackOnset = RT + jitter;
         % Was the answer correct?
         % If rule A then seq.reward_probability(trial) == 0 and:
         %   Rule rewards ANSWER_A and STIM_A and ANSWER_B and STIM_B      
@@ -367,7 +381,7 @@ cleanup;
         if ~isnan(prev_rule) && rule ~= prev_rule
             % Implements the changeover delay
             cod = 1;
-            give_reward = 0;
+            give_reward = give_reward/3;
         end
         if pRP > 0.5 && rule == 0
             correct = 1;
@@ -375,28 +389,32 @@ cleanup;
             correct = 1;
         end
         
-        fprintf(' RESPONSE: %i, RP: %i, %2.2f, GR: %i, C:%f, COD=%i\n', response, RP, pRP, give_reward, correct, cod)        
+        fprintf(' RESPONSE: %i, RP: %i, %2.2f, GR: %1.2f, C:%f, COD=%i\n', response, RP, pRP, give_reward, correct, cod)        
         p = Log(p,RT, 8, correct, phase, block); 
         Eyelink('message', sprintf('CORRECT %i', correct));
         MarkCED( p.com.lpt.address, 120+correct);
         
         Screen('FillRect', p.ptb.w , p.stim.bg, []); 
-        if give_reward
-            Screen('FillRect',  p.ptb.w, [0,200,0], FixCross');        
+        if give_reward > 0      
+            if cod
+                Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');
+                Screen('FillRect',  p.ptb.w, [0,200,0], FixCross_s');
+            else
+                Screen('FillRect',  p.ptb.w, [0,200,0], FixCross');        
+            end                
         else
            Screen('FillRect',  p.ptb.w, [200,0,0], FixCross');        
         end
         
-        TimeFeedback  = Screen('Flip',p.ptb.w,TimeFeedbackOnset,0);        
+        TimeFeedback  = Screen('Flip',p.ptb.w,TimeFeedbackOnset,0);      %<----- FLIP   
         
         Eyelink('message', sprintf('FEEDBACK %i', give_reward));
         p = Log(p,TimeFeedback, 9, give_reward, phase, block);      
         MarkCED( p.com.lpt.address, 130+give_reward);
         
-        %% STIM OFF immediately
         Screen('FillRect', p.ptb.w , p.stim.bg, []); %always create a gray background
         Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');%draw the prestimus cross atop
-        TimeFeedbackOffset = Screen('Flip',p.ptb.w,TimeFeedback+0.4, 0);    
+        TimeFeedbackOffset = Screen('Flip',p.ptb.w,TimeFeedback+0.4, 0);     %<----- FLIP
         
         Eyelink('message', 'FEEDBACKOFF');        
         p = Log(p,TimeFeedbackOffset, 10, 0, phase, block); 
@@ -689,11 +707,11 @@ cleanup;
 
     end
 
-    function [t]=StartEyelinkRecording(nTrial, phase, rp, stim, block_id)
+    function [t]=StartEyelinkRecording(nTrial, phase, rp, stim, block_id, sumrw)
         if ~NoEyelink
             t = [];            
             Eyelink('Message', 'TRIALID: %04d, PHASE: %04d, RP: %04d, STIM: %04d, BLOCK %04d', nTrial, phase, rp, stim, block_id);                        
-            Eyelink('Command', 'record_status_message "Stim: %02d, rp: %d"', stim, rp);             
+            Eyelink('Command', 'record_status_message "Trial: %i, REW: %i"', nTrial, sumrw);             
             t = GetSecs;
         else
             t = GetSecs;
