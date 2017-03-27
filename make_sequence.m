@@ -114,7 +114,7 @@ end
         
         seq.reward_probability = seq.reward_probability(1:trials);
         seq.isi = duration(1) + (duration(2)-duration(1)).*rand(1, trials);
-        seq.jitter = 0.3 + 0.7*rand(1, trials);
+        seq.jitter = 0.7 + 0.2*rand(1, trials);
         seq.isi = seq.isi-seq.jitter;
         gv_rule_a = [];
         gv_rule_b = [];
