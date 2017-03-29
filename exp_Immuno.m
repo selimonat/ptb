@@ -1,7 +1,7 @@
 function [p]=exp_Immuno(subject, phase)
 
 debug   = 0; %debug mode => 1: transparent window enabling viewing the background.
-small_window = 1; % Open a small window only
+small_window = 0; % Open a small window only
 NoEyelink = 1; %is Eyelink wanted?
 test_sequences = 0; % Load shorter test sequences
 
@@ -160,21 +160,22 @@ cleanup;
             ISI          = p.sequence.isi(trial);
             jitter       = p.sequence.jitter(trial);
             sample       = p.sequence.sample(trial);
-            OnsetTime     = TimeEndStim + ISI;
+            OnsetTime    = TimeEndStim + ISI;
+            type         = p.sequence.trial_type(trial);
             keys = [p.keys.answer_a_train p.keys.answer_b_train];
             if sample >  0
                 correct_answer = keys(stim_id+1);            
             else
                 correct_answer = keys((~stim_id)+1);
             end
-            fprintf('%d of %d, STIM: %i,  SAMPLE: %i, CRCTANSW: %s,  ISI: %2.2f, Block: %i ',...
+            fprintf('%d of %d, STIM: %i,  SAMPLE: %i, CRCTANSW: %s,  ISI: %2.2f, Block: %i \n',...
                 trial, size(p.sequence.stim, 2), stim_id, round(sample), correct_answer, ISI,  p.block);
             
             %Start with the trial, here is time-wise sensitive must be optimal
             %[TimeEndStim, p, abort, reward, rule] = Trial(p, trial, OnsetTime, jitter, stim_id, RP, pRP, gv_a, gv_b, p.block, p.phase, rule, earned_rewards);
 
             StartEyelinkRecording(trial, p.phase, 0, stim_id, 0, 0); %
-            [TimeEndStim, p, abort, reward, rule] = PInferenceTrial(trial, p.phase, p.block, 1, p, OnsetTime, stim_id, sample, jitter);
+            [TimeEndStim, p, abort, reward, rule] = PInferenceTrial(trial, p.phase, p.block, type, p, OnsetTime, stim_id, sample, jitter);
             earned_rewards = earned_rewards + reward;
             %fprintf('OffsetTime: %2.2f secs, Difference of %2.2f secs\n', TimeEndStim, TimeEndStim-OnsetTime);
             
@@ -262,25 +263,32 @@ cleanup;
         else
             TimeCrossOn = start_trial(p, -1);
         end
-        type=1;
-        if type == 0
+        if type == 2
             [RT, response, rule] = choice_trial(p, TimeStimOnset, stim_id);
-            show_sample(p, RT+jitter, sample, rule, nan)
+            [TimeFeedbackOffset] = show_sample(p, RT+jitter, sample, rule, nan);
         elseif type == 1
             [prediction_time, prediction, error] = predict_sample(p, TimeStimOnset, stim_id, sample);
-            show_sample(p, prediction_time+jitter, sample, rule, error)        
+            [TimeFeedbackOffset] = show_sample(p, prediction_time+jitter, sample, rule, prediction); 
+        elseif type==3
+            draw_stimulus(p, stim_id)
+            TimeStimOffset  = Screen('Flip', p.ptb.w, TimeStimOnset, 0);  %<----- FLIP           
+            draw_background(p)
+            TimeStimOffset  = Screen('Flip', p.ptb.w, TimeStimOnset+0.5, 0);  %<----- FLIP
+            [TimeFeedbackOffset] = show_sample(p, TimeStimOffset+jitter, sample, nan, nan);
         end
     end
 
 
     function TimeCrossOn=start_trial(p, allow_blink)
         %% Start a trial, also allows time for blinks.        
-        draw_background(p)
         Screen('FillRect', p.ptb.w , p.stim.bg, [] ); %always create a gray background
+        draw_background(p)
+
         if allow_blink>0 % Give time for blinks.
             Screen('FillRect',  p.ptb.w, [0, 55, 200], p.FixCross');%draw the prestimus cross atop
             TimeBlinkOn  = Screen('Flip',p.ptb.w, allow_blink+2);      %<----- FLIP
             Screen('FillRect',  p.ptb.w, [255, 255, 255], p.FixCross');%draw the prestimus cross atop
+            draw_background(p)
             TimeCrossOn  = Screen('Flip',p.ptb.w, TimeBlinkOn+1);      %<----- FLIP
         else
             Screen('FillRect',  p.ptb.w, [255, 255, 255], p.FixCross');%draw the prestimus cross atop
@@ -295,18 +303,11 @@ cleanup;
     function [RT, response, rule] = choice_trial(p, TimeStimOnset, stim_id)
         %% Carry out a choice trial before the next sample is shown.
         %% Draw the stimulus to the buffer        
-        angle = 90*stim_id;
-        df = p.ptb.rect(3) -  p.ptb.rect(4);
-        rect = [df/2., 0, p.ptb.rect(4)+df/2, p.ptb.rect(4)];
-        draw_background(p)
-        Screen('DrawTexture', p.ptb.w, p.ptb.gabortex, [], rect, ...
-            angle, [], [], [], [], [], [0, p.stim.sf, 150, 100, 1, 0, 0, 0]);
-        oc = [p.ptb.midpoint(1)-25, p.ptb.midpoint(2)-25, p.ptb.midpoint(1)+25, p.ptb.midpoint(2)+25];
-        Screen('FillOval', p.ptb.w, p.stim.bg, oc);
-        %draw also the fixation cross
-        Screen('FillRect',  p.ptb.w, [255,255,255], p.FixCross');
-        Screen('DrawingFinished',p.ptb.w,0);
+        rule = nan;
+        response = nan;
+        RT = nan;
         
+        draw_stimulus(p, stim_id)
         %% STIMULUS ONSET
         TimeStimOnset  = Screen('Flip',p.ptb.w, TimeStimOnset,0);  %<----- FLIP
         draw_background(p)
@@ -326,7 +327,7 @@ cleanup;
         end
         KbQueueFlush(p.ptb.device);
         %% Stimulus Offset
-        Screen('FillRect',  p.ptb.w, [255,255,255], p.FixCross');
+        Screen('FillRect',  p.ptb.w, [255,55,255], p.FixCross');
         TimeStimOffset  = Screen('Flip', p.ptb.w, TimeStimOnset+0.5, 0);  %<----- FLIP
         
         p = Log(p,TimeStimOffset, 5, nan, phase, block);
@@ -375,30 +376,23 @@ cleanup;
     end
 
 
-    function show_sample(p, TimeFeedbackOnset, sample, rule, error)
+    function [TimeFeedbackOffset] = show_sample(p, TimeFeedbackOnset, sample, rule, prediction)
         %% Show feedback                
         % Define rule correctness here. If sample < 0 then obs have to 
         % respond with Rule 0, if sample > 0 have to respond with rule 1
         correct = nan;
-        if ~error             
+        if isnan(prediction)             
             if (sample > 0) == rule
                 correct = 1;
             elseif ~isnan(rule)
-                correct = 0
+                correct = 0;
             end
         end
         
+        draw_prediction(p, prediction, 0);
+        draw_sample(p, sample, correct, prediction)
         draw_background(p)
-        draw_sample(p, sample, correct)
-        if ~isnan(error)
-            x = p.ptb.midpoint(1);
-            y = p.ptb.midpoint(2);
-            w=10/2;
-            h=30/2;
-            sample_rect = [sample-w+x, -25+y, sample+w+x, -25+y+2*h];  
-            Screen('FillRect', p.ptb.w, [20, 200, 20], sample_rect);
-        end
-        
+
         p = Log(p, GetSecs, 8, correct, phase, block);
         Eyelink('message', sprintf('CORRECT %i', correct));
         MarkCED( p.com.lpt.address, 120+correct);                       
@@ -418,18 +412,7 @@ cleanup;
 
     function [TimeFeedbackOffset, prediction, error] = predict_sample(p, TimeStimOnset, stim_id, sample)
        % Predict sample trial: Show rule cue then prediction.              
-        angle = 90*stim_id;
-        df = p.ptb.rect(3) -  p.ptb.rect(4);
-        rect = [df/2., 0, p.ptb.rect(4)+df/2, p.ptb.rect(4)];
-        draw_background(p)
-        Screen('DrawTexture', p.ptb.w, p.ptb.gabortex, [], rect, ...
-            angle, [], [], [], [], [], [0, p.stim.sf, 150, 100, 1, 0, 0, 0]);
-        oc = [p.ptb.midpoint(1)-25, p.ptb.midpoint(2)-25, p.ptb.midpoint(1)+25, p.ptb.midpoint(2)+25];
-        Screen('FillOval', p.ptb.w, p.stim.bg, oc);
-        %draw also the fixation cross
-        Screen('FillRect',  p.ptb.w, [255,255,255], p.FixCross');
-        Screen('DrawingFinished',p.ptb.w,0);
-        
+        draw_stimulus(p, stim_id)
         %% STIMULUS ONSET
         TimeStimOnset  = Screen('Flip',p.ptb.w, TimeStimOnset, 0);  %<----- FLIP
         draw_background(p)
@@ -449,7 +432,7 @@ cleanup;
         end
         KbQueueFlush(p.ptb.device);
         % Stimulus Offset
-        Screen('FillRect',  p.ptb.w, [255,255,255], p.FixCross');
+        Screen('FillRect',  p.ptb.w, [20,20,255], p.FixCross');
         TimeStimOffset  = Screen('Flip', p.ptb.w, TimeStimOnset+0.5, 0);  %<----- FLIP
         
         p = Log(p,TimeStimOffset, 5, nan, phase, block);
@@ -491,25 +474,26 @@ cleanup;
             end    
                 
                 if (ka == 1) && (stim_id==0)
-                    prediction = prediction + 5;
+                    prediction = prediction - 5;
                 elseif (ka == 1) && (stim_id==1)
-                    prediction = prediction - 5;
-                elseif (kb == 1) && (stim_id==0)
-                    prediction = prediction - 5;
-                elseif (kb == 1) && (stim_id==1)
                     prediction = prediction + 5;
+                elseif (kb == 1) && (stim_id==0)
+                    prediction = prediction + 5;
+                elseif (kb == 1) && (stim_id==1)
+                    prediction = prediction - 5;
                 end
             
             current = GetSecs();
-            if (current-next_flip) < (p.ptb.slack/2)
-                draw_background(p)
+            if (current-next_flip) < (p.ptb.slack/2)                
                 draw_prediction(p, prediction, 0)
+                draw_background(p)
                 update  = Screen('Flip',p.ptb.w);
                 next_flip = update+p.ptb.slack*2;
             end
         end
-        draw_background(p)
         draw_prediction(p, prediction, 1);
+        draw_background(p)
+
         lastflip  = Screen('Flip',p.ptb.w);
         % Now show prediction error
         error = sample-prediction;
@@ -521,12 +505,24 @@ cleanup;
     end
 
 
-    function draw_sample(p, sample, correct)
-        x = p.ptb.midpoint(1);
-        y = p.ptb.midpoint(2);
-        w=10/2;
-        h=30/2;
-        sample_rect = [sample-w+x, -50+y, sample+w+x, -50+y+2*h];
+    function draw_stimulus(p, stim_id)
+        angle = 90*stim_id;
+        df = p.ptb.rect(3) -  p.ptb.rect(4);
+        rect = [df/2., 0, p.ptb.rect(4)+df/2, p.ptb.rect(4)];
+        draw_background(p)
+        Screen('DrawTexture', p.ptb.w, p.ptb.gabortex, [], rect, ...
+            angle, [], [], [], [], [], [0, p.stim.sf, 150, 100, 1, 0, 0, 0]);
+        oc = [p.ptb.midpoint(1)-25, p.ptb.midpoint(2)-25, p.ptb.midpoint(1)+25, p.ptb.midpoint(2)+25];
+        Screen('FillOval', p.ptb.w, p.stim.bg, oc);
+        %draw also the fixation cross
+        Screen('FillRect',  p.ptb.w, [255,255,255], p.FixCross');
+        Screen('DrawingFinished',p.ptb.w,0);
+    end
+
+
+    function draw_sample(p, sample, correct, prediction)
+
+        sr = sample_rect(p, sample, -1);
         orange = [255, 180, 0];
         green = [0, 220, 50];        
         sample_color = [20, 20, 20];
@@ -534,24 +530,24 @@ cleanup;
         if ~isnan(correct)
             sample_color = sample_colors(correct+1, :);
         end                
-        Screen('FillRect', p.ptb.w, sample_color, sample_rect);
+        Screen('FillRect', p.ptb.w, sample_color, sr);
+        if ~isnan(prediction)                   
+                sr = sample_rect(p, (sample+prediction)/2, 0, abs(prediction-sample));            
+                Screen('FillRect', p.ptb.w, [20, 200, 20], sr);
+        end
         
     end
 
 
     function draw_prediction(p, sample, last)
-        x = p.ptb.midpoint(1);
-        y = p.ptb.midpoint(2);
-        w=10/2;
-        h=30/2;
-        sample_rect = [sample-w+x, 50-2*h+y, sample+w+x, 50+y];
+        sr = sample_rect(p, sample, 1);
         blue = [0, 50, 200];                
         if last == 0
             color=blue;
         else
             color=[20, 20, 20];
         end
-        Screen('FillRect', p.ptb.w, blue, sample_rect);               
+        Screen('FillRect', p.ptb.w, blue, sr);               
     end
 
 
@@ -560,18 +556,35 @@ cleanup;
         x = p.ptb.midpoint(1);
         y = p.ptb.midpoint(2);
         w=10/2;
-        h=30/2;       
-        xy = [[-150+x, 50+y]; [150+x, 50+y];...
-            [-150+x, -50+y]; [+150+x, -50+y];...
-            [0+x, -55+y]; [0+x, -45+y];...
-            [0+x, 55+y]; [0+x, 45+y]];
+        h=30/2;
+        bar_width = p.stim.bar_width/2;
+        bh = p.stim.bar_separation;
+        xy = [[-bar_width+x,  bh+y]; [bar_width+x, bh+y];...
+              [-bar_width+x, -bh+y]; [bar_width+x, -bh+y];...
+              [0+x, -bh-5+y]; [0+x, -bh+5+y];...
+              [0+x, bh+5+y]; [0+x, bh-5+y]];
         white = [255, 255, 255];        
         colors =[white; white; white; white;...
             white; white; white; white];
         width = [2, 2, 2, 2];                                
-        Screen('FillRect', p.ptb.w , p.stim.bg, []);
+        %Screen('FillRect', p.ptb.w , p.stim.bg, []);
         Screen('DrawLines', p.ptb.w, xy', width, colors')        
         Screen('FillRect',  p.ptb.w, [255, 255, 255], p.FixCross');
+    end
+
+
+    function sr = sample_rect(p, cx, cy, width)
+        % cy should be in [-1, 0, 1]
+        cx = cx+p.ptb.midpoint(1);
+        cyy = cy*p.stim.bar_separation + p.ptb.midpoint(2);
+        if nargin==3
+            bw = 10;
+        else
+            bw = width/2;
+        end
+        bh = p.stim.bar_separation/3;
+        % Left, Top, Right, Bottom
+        sr = [cx-bw, cyy-bh-(cy*bh), cx+bw, cyy+bh-(cy*bh)];
     end
 
 
@@ -605,7 +618,8 @@ cleanup;
         end
         p.display.ppd = ppd(mean(p.display.distance), p.display.resolution(1),...
             p.display.dimension(1));
-        
+        p.stim.bar_width = 400;
+        p.stim.bar_separation = 75;
         %create the base folder if not yet there.
         if exist(p.path.baselocation) == 0
             mkdir(p.path.baselocation);
