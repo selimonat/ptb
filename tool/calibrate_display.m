@@ -2,10 +2,9 @@ function [ gammaTables1, displayBaselines, displayRanges, displayGammas, maxLeve
 % Adapt psychtoolbox's CalibrateMonitorPhotometer to show two stimuli at
 % different locations and to read measurements from a color hug.
 Screen('Preference', 'SkipSyncTests', 1);
-xpos = default_arguments(varargin, 'xpos', [0]);
-ypos = default_arguments(varargin, 'ypos', [0]);
+xpos = 0;
+ypos = 0;
 devices =1;
-path = default_arguments(varargin, 'path', '/home/meg/Documents/Argyll_V1.7.0/bin');
 
 screenid = min(Screen('Screens'));
 
@@ -66,9 +65,12 @@ try
         end
         Screen('Flip',win);
         WaitSecs(0.1);
-        data = read_rgb;
+        cMatrix = ColorCal2('ReadColorMatrix');
+        s = ColorCal2('MeasureXYZ');
+        correctedValues = cMatrix(1:3,:) * [s.x s.y s.z]';
+
         %data = read_xyz();g
-        measurements = [measurements; data]; %#ok<AGROW>
+        measurements = [measurements; correctedValues(2)]; %#ok<AGROW>
         
     end
     
@@ -90,7 +92,7 @@ displayRanges = [];
 displayGammas = [];
 
 
-for n = 1:3
+for n = 1:1
     %Normalize values
     
     vals = measurements;

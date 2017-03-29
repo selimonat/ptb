@@ -5,15 +5,16 @@ p = struct();
 SetParams;%set parameters of the experiment
 SetPTB;%set visualization parameters.
 lums = [];
-ks = 10;
+ks = 50;
 Screen('LoadNormalizedGammaTable', p.ptb.w, gTmp);
 for k = 1:10
     vbl = Screen('Flip', p.ptb.w);  %<----- FLIP
 end
-contrast = linspace(0, 1, ks);
+contrast = [0, 150, 0, 150, 0, 150, 0, 150, 0, 150];
 Screen('FillRect',p.ptb.w, 128);
 vbl = Screen('Flip', p.ptb.w);  %<----- FLIP
 
+lums = [];
 fprintf('Waiting')
 waitforbuttonpress
 
@@ -27,6 +28,7 @@ for k = 1:length(contrast)
     lums = [lums, luminance()];
     lums;
 end
+%contrast = [-0.1, contrast];
 sca
 
     function draw_stimulus(p, contrast)
@@ -35,7 +37,7 @@ sca
         df = p.ptb.rect(3) -  p.ptb.rect(4);
         rect = [df/2., 0, p.ptb.rect(4)+df/2, p.ptb.rect(4)];
         Screen('DrawTexture', p.ptb.w, p.ptb.gabortex, [], rect, ...
-            angle, [], [], [], [], [], [0, p.stim.sf, contrast, 100]);
+            angle, [], [], [], [], [], [0, p.stim.sf, contrast, 100, 1, 0, 0, 0]);
         oc = [p.ptb.midpoint(1)-25, p.ptb.midpoint(2)-25, p.ptb.midpoint(1)+25, p.ptb.midpoint(2)+25];
         %Screen('FillOval', p.ptb.w, p.stim.bg, oc);
         %draw also the fixation cross
