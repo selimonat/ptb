@@ -43,7 +43,8 @@ SetPTB;%set visualization parameters.
 
 %Time Storage
 p.var.event_count         = 0;
-
+p.possible_reward = 0;
+p.earned_reward  = 0;
 %% Load stimulus sequence
 if ~test_sequences
     sequences = load('stimulus_sequences.mat');
@@ -125,15 +126,15 @@ cleanup;
         %wait for the dummy scans
         p = InitEyeLink(p);
         CalibrateEL;
-        
+        img=imread('instruction_A.png', 'BackgroundColor', [.5, .5, .5]);
+        instructions = Screen('MakeTexture', p.ptb.w, img);
+        Screen('DrawTexture', p.ptb.w, instructions)
+        Screen('Flip', p.ptb.w)
+        KbStrokeWait(p.ptb.device);
+        Screen('FillRect',p.ptb.w,p.var.current_bg);
+        t = Screen('Flip',p.ptb.w);
         ismrt = mod(p.phase, 2)==0;
-        if strcmp(p.sequence.type, 'EXP')
-            ShowInstruction(2, 1, ~ismrt)
-        elseif strcmp(p.sequence.type, 'QA')
-            ShowInstruction(3, 1, ~ismrt)
-        else
-            ShowInstruction(4, 1, ~ismrt)
-        end
+
         KbQueueCreate(p.ptb.device);%, p.ptb.keysOfInterest);%default device.
         KbQueueStart(p.ptb.device)
         KbQueueFlush(p.ptb.device)
@@ -151,8 +152,6 @@ cleanup;
         TimeEndStim     = secs(end)- p.ptb.slack;%take the first valid pulse as the end of the last stimulus.
         
         % Reward stuff
-        earned_rewards = 0;
-        rule = nan;
         draw_background(p);
         for trial  = 1:size(p.sequence.stim, 2);
             %Get the variables that Trial function needs.
@@ -175,8 +174,7 @@ cleanup;
             %[TimeEndStim, p, abort, reward, rule] = Trial(p, trial, OnsetTime, jitter, stim_id, RP, pRP, gv_a, gv_b, p.block, p.phase, rule, earned_rewards);
 
             StartEyelinkRecording(trial, p.phase, 0, stim_id, 0, 0); %
-            [TimeEndStim, p, abort, reward, rule] = PInferenceTrial(trial, p.phase, p.block, type, p, OnsetTime, stim_id, sample, jitter);
-            earned_rewards = earned_rewards + reward;
+            [TimeEndStim, p, abort] = PInferenceTrial(trial, p.phase, p.block, type, p, OnsetTime, stim_id, sample, jitter);
             %fprintf('OffsetTime: %2.2f secs, Difference of %2.2f secs\n', TimeEndStim, TimeEndStim-OnsetTime);
             
             [keycode, secs] = KbQueueDump;%this contains both the pulses and keypresses.
@@ -223,11 +221,11 @@ cleanup;
             p = Log(p,secs(pulses), 0,keycode(pulses), p.phase, p.block);
         end
         
-        money_earned = earned_rewards*all_rewards.eur_per_reward;
+        money_earned = p.earned_rewards*all_rewards.eur_per_reward;
         all_rewards.money = all_rewards.money+money_earned;
-        all_rewards.total_rewards = all_rewards.total_rewards + earned_rewards;
+        all_rewards.total_rewards = all_rewards.total_rewards + p.earned_reward;
         
-        text = RewardText(earned_rewards, earned_rewards/trial, money_earned, all_rewards.money);
+        text = RewardText(p.earned_reward, p.earned_reward/trial, money_earned, all_rewards.money);
         Screen('FillRect',p.ptb.w,p.var.current_bg);
         DrawFormattedText(p.ptb.w, text, 'center', 'center', p.stim.white,[],[],[],2,[]);
         Screen('Flip',p.ptb.w);
@@ -242,11 +240,11 @@ cleanup;
     end
 
 
-    function [TimeFeedbackOffset, p, abort, give_reward, rule] = PInferenceTrial(nTrial, phase, block, type, p, TimeStimOnset, stim_id, sample, jitter)
+    function [TimeFeedbackOffset, p, abort] = PInferenceTrial(...
+            nTrial, phase, block, type, p, TimeStimOnset, stim_id, sample, jitter, possible_rewards, earned_rewards)
         %% Run one trial
         rule = nan;
         abort = false;
-        give_reward = nan;
         TimeFeedbackOffset = nan;
         
         TrialStart = GetSecs;
@@ -254,7 +252,7 @@ cleanup;
         Eyelink('message', sprintf('STIM_ID %i', stim_id));
         %p = Log(p,TrialStart, 1, stim_id, phase, block);
         
-        %p = Log(p,TrialStart, 2, RP, phase, block);
+        p = Log(p,TrialStart, 2, sample, phase, block);
         %MarkCED( p.com.lpt.address, 100+RP);
         %MarkCED( p.com.lpt.address, 110+stim_id);
         
@@ -263,18 +261,23 @@ cleanup;
         else
             TimeCrossOn = start_trial(p, -1);
         end
-        if type == 2
-            [RT, response, rule] = choice_trial(p, TimeStimOnset, stim_id);
-            [TimeFeedbackOffset] = show_sample(p, RT+jitter, sample, rule, nan);
-        elseif type == 1
-            [prediction_time, prediction, error] = predict_sample(p, TimeStimOnset, stim_id, sample);
-            [TimeFeedbackOffset] = show_sample(p, prediction_time+jitter, sample, rule, prediction); 
-        elseif type==3
+        if type == 2    % Choice Trial
+            [RT, ~, rule] = choice_trial(p, TimeStimOnset, stim_id);
+            [TimeFeedbackOffset, correct] = show_sample(p, RT+jitter, sample, rule, nan);
+            p.possible_reward = p.possible_reward + correct;
+        elseif type == 1 % Prediction Trial
+            [prediction_time, prediction, error] = predict_sample(p, TimeStimOnset, stim_id, sample);            
+            [TimeFeedbackOffset, ~] = show_sample(p, prediction_time+jitter, sample, rule, prediction); 
+            payout = p.possible_reward *  min((15) ./ (abs(error)), 1);
+            p.earned_reward = p.earned_reward + payout;
+            fprintf('Payout is %2.2f', payout)
+            p.possible_reward = 0;
+        elseif type==3  % Show sample only trial
             draw_stimulus(p, stim_id)
             TimeStimOffset  = Screen('Flip', p.ptb.w, TimeStimOnset, 0);  %<----- FLIP           
             draw_background(p)
             TimeStimOffset  = Screen('Flip', p.ptb.w, TimeStimOnset+0.5, 0);  %<----- FLIP
-            [TimeFeedbackOffset] = show_sample(p, TimeStimOffset+jitter, sample, nan, nan);
+            [TimeFeedbackOffset, correct] = show_sample(p, TimeStimOffset+jitter, sample, nan, nan);
         end
     end
 
@@ -376,7 +379,7 @@ cleanup;
     end
 
 
-    function [TimeFeedbackOffset] = show_sample(p, TimeFeedbackOnset, sample, rule, prediction)
+    function [TimeFeedbackOffset, correct] = show_sample(p, TimeFeedbackOnset, sample, rule, prediction)
         %% Show feedback                
         % Define rule correctness here. If sample < 0 then obs have to 
         % respond with Rule 0, if sample > 0 have to respond with rule 1
@@ -570,6 +573,8 @@ cleanup;
         %Screen('FillRect', p.ptb.w , p.stim.bg, []);
         Screen('DrawLines', p.ptb.w, xy', width, colors')        
         Screen('FillRect',  p.ptb.w, [255, 255, 255], p.FixCross');
+        DrawFormattedText(p.ptb.w, sprintf('%02i', p.possible_reward), 'center', y-bh-50, p.stim.white);
+        DrawFormattedText(p.ptb.w, sprintf('%02.2f', p.earned_reward), 'center', y+bh+50, p.stim.white);
     end
 
 
@@ -675,11 +680,13 @@ cleanup;
         %save(p.path.path_param,'p');
     end
 
+
     function text = RewardText(reward, reward_rate, earned_money, total_money)
         text = [sprintf('Im letzten Block haben Sie %d Belohnungen erhalten (%0.2f)\n', reward, reward_rate)...
             sprintf('Das entspricht %1.2f EUR!\n', earned_money)...
             sprintf('Insgesamt haben sich damit %1.2f EUR Bonus angesammelt!', total_money)];
     end
+
 
     function ShowInstruction(nInstruct,waitforkeypress, train, text)
         %ShowInstruction(nInstruct,waitforkeypress)
@@ -711,6 +718,7 @@ cleanup;
             
         end
     end
+
 
     function [text]=GetText(nInstruct, train)
         if nInstruct == 1 %Retinotopy.
@@ -748,6 +756,7 @@ cleanup;
             text = strrep(text, 'ANSWERB', 'm');
         end
     end
+
 
     function SetPTB
         %Sets the parameters related to the PTB toolbox. Including
@@ -886,6 +895,7 @@ cleanup;
         
     end
 
+
     function [t]=StartEyelinkRecording(nTrial, phase, rp, stim, block_id, sumrw)
         if ~NoEyelink
             t = [];
@@ -896,6 +906,7 @@ cleanup;
             t = GetSecs;
         end
     end
+
 
     function p=InitEyeLink(p)
         %
@@ -967,6 +978,7 @@ cleanup;
         
     end
 
+
     function StopEyelink(filename, path_edf)
         if ~NoEyelink
             try
@@ -985,6 +997,7 @@ cleanup;
         end
     end
 
+
     function cleanup
         % Close window:
         sca;
@@ -1000,6 +1013,7 @@ cleanup;
         KbQueueRelease(p.ptb.device);
     end
 
+
     function CalibrateEL
         fprintf('=================\n=================\nEntering Eyelink Calibration\n')
         p.var.ExpPhase  = 0;
@@ -1011,6 +1025,7 @@ cleanup;
         fprintf('=================\n=================\nNow we are done with the calibration\n')
         
     end
+
 
     function p = Log(p, ptb_time, event_type, event_info, phase, block)
         %Phases:
@@ -1048,6 +1063,7 @@ cleanup;
         end
         
     end
+ 
 
     function [secs, p]=WaitPulse(p, keycode,n)
         %[secs]=WaitPulse(keycode,n)
@@ -1079,6 +1095,7 @@ cleanup;
         end
     end
 
+
     function [keycode, secs] = KbQueueDump
         %[keycode, secs] = KbQueueDump
         %   Will dump all the events accumulated in the queue.
@@ -1098,6 +1115,7 @@ cleanup;
         
     end
 
+
     function [keyIsDown firstPress] = check_kbqueues(devices)
         firstPress = boolean(zeros(1, 256));
         keyIsDown = false;
@@ -1107,6 +1125,7 @@ cleanup;
             firstPress = firstPress | boolean(fP);
         end
     end
+
 
     function p = save_data(p)
         path = fullfile(p.path.baselocation, sprintf('SUB_%i', p.subject), sprintf('PH_%d', p.phase, p.block)); %subject folder, first we save it to the temp folder.
@@ -1129,10 +1148,12 @@ cleanup;
         p.out.log      = zeros(1000000, 5).*NaN;%Experimental LOG.
     end
 
+
     function ppd = ppd(distance, x_px, width)
         o = tan(0.5*pi/180) * distance;
         ppd = 2 * o*x_px/width;
     end
+
 
     function MarkCED(socket,port)
         %send pulse to SCR#
