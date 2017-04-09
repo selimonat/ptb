@@ -1,9 +1,10 @@
-function [p]=exp_Connectivity(subject, phase)
+function [p]=exp_Connectivity(subject, phase, target_block)
 
 debug   = 0; %debug mode => 1: transparent window enabling viewing the background.
-small_window = 0; % Open a small window only
+small_window = 1; % Open a small window only
 NoEyelink = 1; %is Eyelink wanted?
 test_sequences = 0; % Load shorter test sequences
+
 
 
 %replace parallel port function with a dummy function
@@ -16,7 +17,7 @@ commandwindow; %focus on the command window, so that output is not written on th
 clear mex global functions;%clear all before we start.
 if IsWindows	%clear cogent if we are in Windows and rely on Cogent for outp.
     cgshut;
-    global cogent;
+    global cogent; %#ok<TLEV>
 end
 GetSecs; %%%%%%%%%%%load the GETSECS mex files so call them at least once
 WaitSecs(0.001);
@@ -29,10 +30,11 @@ SetParams;%set parameters of the experiment
 SetPTB;%set visualization parameters.
 
 
+
 %Time Storage
 p.var.event_count         = 0;
 p.possible_reward = 0;
-p.earned_reward  = 0;
+p.earned_rewards  = 0;
 %% Load stimulus sequence
 if ~test_sequences
     sequences = load('connectivity_sequences.mat');
@@ -43,9 +45,9 @@ sequences = sequences.sequences;
 sequence = sequences{subject}{phase};
 
 % Load reward file
-reward_file = fullfile('reward/', sprintf('SUB_%i.mat'));
+reward_file = fullfile('reward/', sprintf('SUB_%i.mat', subject));
 mkdir('reward');
-if exist(reward_file)
+if exist(reward_file) %#ok<EXIST>
     all_rewards = load(reward_file);
     all_rewards = all_rewards.all_rewards;
 else
@@ -61,7 +63,6 @@ p.subject = subject;
 
 
 
-
 %% Training
 % Vormessung
 p.phase = phase;
@@ -74,22 +75,25 @@ while ~(k == KbName(p.keys.el_calib));
 end
 fprintf('Continuing...\n');
 %%
-for b = 1:length(sequence)
-    p.block = b;
-    p.sequence = sequence{b};
-    p = ExperimentBlock(p);
+
+b = target_block;
+p.block = b;
+p.sequence = sequence{b};
+[p, abort] = ExperimentBlock(p);
+if abort
+    cleanup
+    return
 end
+
 WaitSecs(2.5);
-
-
-
 cleanup;
 
 
-    function p = ExperimentBlock(p)
+    function [p, abort] = ExperimentBlock(p)
         
         KbQueueStop(p.ptb.device);
         KbQueueRelease(p.ptb.device);
+        
         
         %Enter the presentation loop and wait for the first pulse to
         %arrive.
@@ -97,19 +101,21 @@ cleanup;
         p = InitEyeLink(p);
         CalibrateEL;
         Screen('FillRect',p.ptb.w,p.var.current_bg);
-        t = Screen('Flip',p.ptb.w);
-        ismrt = mod(p.phase, 2)==0;
-
-        KbQueueCreate(p.ptb.device);%, p.ptb.keysOfInterest);%default device.
-        KbQueueStart(p.ptb.device)
-        KbQueueFlush(p.ptb.device)
+        Screen('Flip',p.ptb.w);        
+        KbQueueStop(p.ptb.device);
+        KbQueueRelease(p.ptb.device);
         
         fprintf('Waiting for %i pulses to occur before experiment starts', p.mrt.dummy_scan)      
         [secs, p] = WaitPulse(p, p.keys.pulse,p.mrt.dummy_scan);%will log it        
+                
+        KbQueueCreate(p.ptb.device);%, p.ptb.keysOfInterest);%default device.
+        KbQueueStart(p.ptb.device)
+        KbQueueFlush(p.ptb.device)        
         
         Eyelink('StartRecording');
         WaitSecs(0.01);
         Eyelink('Message', sprintf('SUBJECT %d', p.subject));
+        p = Log(p, GetSecs, 10000, p.subject, p.phase, p.block);
         Eyelink('Message', sprintf('PHASE %d', p.phase));
         Eyelink('Message', sprintf('BLOCK %d', p.block));
         
@@ -134,33 +140,14 @@ cleanup;
             
             fprintf('%d of %d, STIM: %i,  VALIDITY: %0.2f,  ISI: %2.2f, Block: %i REWARDED_RULE: %i, ',...
                 trial, size(p.sequence.stim, 2), stim_id, validity, ISI,  p.block, rewarded_rule);
+                      
+            StartEyelinkRecording(trial, p.phase, validity, stim_id, p.block, rewarded_rule);
+            [p, TimeEndStim, abort] = CueTrial(phase, p.block, p, OnsetTime, stim_id, jitter, rewarded_rule);
             
-          
-            StartEyelinkRecording(trial, p.phase, 0, stim_id, 0, 0); %
-            [TimeEndStim, p, abort] = CueTrial(phase, p.block, p, OnsetTime, stim_id, jitter, rewarded_rule);
-            
-            [keycode, secs] = KbQueueDump;%this contains both the pulses and keypresses.
-            if numel(keycode)
-                %log everything but "pulse keys" as pulses, not as keypresses.
-                pulses = (keycode == KbName(p.keys.pulse));
-                
-                if any(~pulses);%log keys presses if only there is one
-                    p = Log(p,secs(~pulses), 1000,keycode(~pulses), p.phase, p.block);
-                end
-                if any(pulses);%log pulses if only there is one
-                    p = Log(p,secs(pulses), 0, keycode(pulses), p.phase, p.block);
-                end
-            end
+            p = dump_keys(p);
             
             if abort
-                %% Save Data
-                p = save_data(p);
-                %stop the queue
-                KbQueueStop(p.ptb.device);
-                KbQueueRelease(p.ptb.device);
-                sca
-                throw(MException('EXP:QUIT', ...
-                    'User wants to quit'));
+               break
             end
         end
         %wait 6 seconds for the BOLD signal to come back to the baseline...
@@ -172,28 +159,20 @@ cleanup;
             while GetSecs() < start+4
             end
         end
-        %dump the final events
-        [keycode, secs] = KbQueueDump;%this contains both the pulses and keypresses.
-        %log everything but "pulse keys" as pulses, not as keypresses.
-        pulses          = (keycode == KbName(p.keys.pulse));
-        if any(~pulses);%log keys presses if only there is one
-            p = Log(p,secs(~pulses), 1000,keycode(~pulses), p.phase, p.block);
-        end
-        if any(pulses);%log pulses if only there is one
-            p = Log(p,secs(pulses), 0,keycode(pulses), p.phase, p.block);
-        end
+        
+        p = dump_keys(p);
         
         money_earned = p.earned_rewards*all_rewards.eur_per_reward;
         all_rewards.money = all_rewards.money+money_earned;
-        all_rewards.total_rewards = all_rewards.total_rewards + p.earned_reward;
+        all_rewards.total_rewards = all_rewards.total_rewards + p.earned_rewards;
         
-        text = RewardText(p.earned_reward, p.earned_reward/trial, money_earned, all_rewards.money);
+        text = RewardText(p.earned_rewards, p.earned_rewards/trial, money_earned, all_rewards.money);
         Screen('FillRect',p.ptb.w,p.var.current_bg);
         DrawFormattedText(p.ptb.w, text, 'center', 'center', p.stim.white,[],[],[],2,[]);
         Screen('Flip',p.ptb.w);
         start = GetSecs();
         p = save_data(p);
-        while GetSecs() < start+10
+        while GetSecs() < start+5
         end
         %stop the queue
         KbQueueStop(p.ptb.device);
@@ -202,35 +181,33 @@ cleanup;
     end
 
 
-    function [TimeFeedbackOffset, p, abort] = CueTrial(...
+    function [p, TimeFeedbackOffset, abort] = CueTrial(...
             phase, block, p, TimeStimOnset, stim_id, jitter, rewarded_rule)
         %% Run one trial
-        rule = nan;
-        abort = false;
-        TimeFeedbackOffset = nan;
+        rule = nan; %#ok<NASGU>
+        abort = false; %#ok<NASGU>
+        TimeFeedbackOffset = nan; %#ok<NASGU>
         
-        TrialStart = GetSecs;
-        %Eyelink('message', sprintf('ACTIVE_RULE %i', RP));
-        Eyelink('message', sprintf('STIM_ID %i', stim_id));
-        %p = Log(p,TrialStart, 1, stim_id, phase, block);
-        
+        TrialStart = GetSecs;                
+        p = Log(p,TrialStart, 1, stim_id, phase, block);        
         p = Log(p,TrialStart, 2, rewarded_rule, phase, block);
-        %MarkCED( p.com.lpt.address, 100+RP);
-        %MarkCED( p.com.lpt.address, 110+stim_id);
+        
+        
+        p = dump_keys(p);
         
         if (TimeStimOnset-TrialStart) > 4
-            TimeCrossOn = start_trial(p, TrialStart);
+            [p, TimeCrossOn] = start_trial(p, TrialStart, phase, block); %#ok<NASGU>
         else
-            TimeCrossOn = start_trial(p, -1);
+            [p, TimeCrossOn] = start_trial(p, -1, phase, block); %#ok<NASGU>
         end
-        [RT, ~, rule, abort] = choice_trial(p, TimeStimOnset, stim_id);
-        [TimeFeedbackOffset, reward] = show_sample(p, RT+jitter, rule, rewarded_rule);
+        [p, RT, ~, rule, abort] = choice_trial(p, TimeStimOnset, stim_id, phase, block);
+        [p, TimeFeedbackOffset, reward] = show_sample(p, RT+jitter, rule, rewarded_rule, phase, block);
         p.possible_reward = p.possible_reward + reward;
         
     end
 
 
-    function TimeCrossOn=start_trial(p, allow_blink)
+    function [p, TimeCrossOn] = start_trial(p, allow_blink, phase, block)
         %% Start a trial, also allows time for blinks.        
         Screen('FillRect', p.ptb.w , p.stim.bg, [] ); %always create a gray background
         draw_fix(p)
@@ -245,46 +222,39 @@ cleanup;
             Screen('FillRect',  p.ptb.w, [255, 255, 255], p.FixCross');%draw the prestimus cross atop
             TimeCrossOn  = Screen('Flip',p.ptb.w);      %<----- FLIP
         end
-        %p = Log(p,TimeCrossOn, 3, nan, phase, block);
+        p = Log(p,TimeCrossOn, 3, nan, phase, block);
         Eyelink('Message', 'FIXON');
-        MarkCED(p.com.lpt.address, 3);
+        MarkCED( p.com.lpt.address, p.com.lpt.trialOnset);
     end
 
 
-    function [RT, response, rule, abort] = choice_trial(p, TimeStimOnset, stim_id)
+    function [p, RT, response, rule, abort] = choice_trial(p, TimeStimOnset, stim_id, phase, block)
         %% Carry out a choice trial before the next sample is shown.
         %% Draw the stimulus to the buffer        
         rule = nan;
-        response = nan;
-        RT = nan;
+        response = nan; %#ok<NASGU>
+        RT = nan; %#ok<NASGU>
         abort = false;
         
         draw_stimulus(p, stim_id)
         %% STIMULUS ONSET
         TimeStimOnset  = Screen('Flip',p.ptb.w, TimeStimOnset,0);  %<----- FLIP
-        p = Log(p,TimeStimOnset, 4, nan, phase, p.block);
+        p = Log(p,TimeStimOnset, 4, nan, phase, block);
         Eyelink('Message', 'StimOnset');
         Eyelink('Message', 'SYNCTIME');
-        MarkCED( p.com.lpt.address, 4);
+        MarkCED( p.com.lpt.address, p.com.lpt.StimOnset);
         
         %% Check for key events
-        [keycode, secs] = KbQueueDump;%this contains both the pulses and keypresses.
-        if numel(keycode)
-            %log pulses
-            pulses = (keycode == KbName(p.keys.pulse));
-            if any(pulses);%log pulses if only there is one
-                p = Log(p,secs(pulses), 0, keycode(pulses), p.phase, p.block);
-            end
-        end
-        KbQueueFlush(p.ptb.device);
+        p = dump_keys(p);
+        %KbQueueFlush(p.ptb.device);
+        
         %% Stimulus Offset
         draw_fix(p)
-
         Screen('FillRect',  p.ptb.w, [255,255,255], p.FixCross');
         TimeStimOffset  = Screen('Flip', p.ptb.w, TimeStimOnset+0.5, 0);  %<----- FLIP        
         p = Log(p,TimeStimOffset, 5, nan, phase, p.block);
         Eyelink('Message', 'StimOff');
-        MarkCED( p.com.lpt.address, 5);
+        
         
         %% Now wait for response!
         start = GetSecs;
@@ -296,20 +266,22 @@ cleanup;
                 for iii = 1:length(keycodes)
                     RT = secs(iii);
                     keys = KbName(keycodes(iii));
+                    
                     switch keys
                         case  p.keys.quit
                             abort = true;
                             return
-                        case {p.keys.answer_a, p.keys.answer_a_train}
+                        case cat(2, p.keys.answer_a, p.keys.answer_a_train) %{p.keys.answer_a, p.keys.answer_a_train}
                             % Answer a = Left
                             response = 0;
                             break
-                        case {p.keys.answer_b, p.keys.answer_b_train}
+                        case cat(2, p.keys.answer_b, p.keys.answer_b_train) %{p.keys.answer_b, p.keys.answer_b_train}
                             % Answer b = Right
                             response = 1;
                             break
                         case p.keys.pulse
-                            p = Log(p,RT, 0, NaN, phase, p.block);
+                            fprintf('Logging pulse\n')
+                            p = Log(p,RT, 0, KbName(p.keys.pulse), phase, p.block);
                     end
                 end
                 if ~isnan(response)
@@ -317,11 +289,12 @@ cleanup;
                 end
             end
         end
+        
         fprintf('RESPONSE: %i, ', response);
-        MarkCED(p.com.lpt.address, 70+response);
+        MarkCED(p.com.lpt.address, p.com.lpt.event);
         Eyelink('message', sprintf('ANSWER %i', response));
-        p = Log(p,RT, 6, response, phase, p.block);
-        p = Log(p,RT, 7, RT-start, phase, p.block);
+        p = Log(p,RT, 6, response, phase, block);
+        p = Log(p,RT, 7, RT-start, phase, block);
         
         if response == stim_id % Stim_id 0: ||, stim_id 1: = 
             % Rule A: || <> Left, = <> Right
@@ -333,7 +306,7 @@ cleanup;
     end
 
 
-    function [TimeFeedbackOffset, reward] = show_sample(p, TimeFeedbackOnset, rule, rewarded_rule)
+    function [p, TimeFeedbackOffset, reward] = show_sample(p, TimeFeedbackOnset, rule, rewarded_rule, phase, block)
         %% Show feedback                
         % Define rule correctness here. If sample < 0 then obs have to 
         % respond with Rule 0, if sample > 0 have to respond with rule 1
@@ -348,22 +321,38 @@ cleanup;
             draw_fix(p, [200, 20, 20])
         end 
         fprintf('RULE: %i, GET_REWARD? %i \n', rule, reward);
-        p = Log(p, GetSecs, 8, rule, phase, p.block);
+        p = Log(p, GetSecs, 8, rule, phase, block);
         Eyelink('message', sprintf('RULE %i', rule));
-        MarkCED( p.com.lpt.address, 120+rule);                       
+        
         TimeFeedback  = Screen('Flip',p.ptb.w, TimeFeedbackOnset, 0);      %<----- FLIP        
         Eyelink('message', sprintf('FEEDBACK %f', reward));
-        p = Log(p,TimeFeedback, 9, reward, phase, p.block);
-        MarkCED( p.com.lpt.address, 130+rewarded_rule);
+        p = Log(p,TimeFeedback, 9, reward, phase, block);
+        MarkCED( p.com.lpt.address, p.com.lpt.event);
+        
         draw_fix(p)
         TimeFeedbackOffset = Screen('Flip',p.ptb.w,TimeFeedback+0.4, 0);     %<----- FLIP
         
         Eyelink('message', 'FEEDBACKOFF');
-        p = Log(p,TimeFeedbackOffset, 10, 0, phase, p.block);
-        MarkCED( p.com.lpt.address, 140);
+        p = Log(p,TimeFeedbackOffset, 10, 0, phase, block);
+        
     end
 
 
+    function p = dump_keys(p)
+        %dump the final events
+        [keycode, secs] = KbQueueDump;%this contains both the pulses and keypresses.
+        %log everything but "pulse keys" as pulses, not as keypresses.
+        pulses          = (keycode == KbName(p.keys.pulse));
+        fprintf('Dumping keys...\n')
+        display(keycode)
+        sum(pulses)
+        if any(~pulses);%log keys presses if only there is one
+            p = Log(p,secs(~pulses), 1000,keycode(~pulses), p.phase, p.block);
+        end
+        if any(pulses);%log pulses if only there is one
+            p = Log(p,secs(pulses), 0,keycode(pulses), p.phase, p.block);
+        end
+    end
     function draw_stimulus(p, stim_id)
         angle = 90*stim_id;
         df = p.ptb.rect(3) -  p.ptb.rect(4);
@@ -400,16 +389,17 @@ cleanup;
                 img=imread('instruction_B100.png', 'BackgroundColor', [.5, .5, .5]);
         end
         instructions = Screen('MakeTexture', p.ptb.w, img);
-        Screen('DrawTexture', p.ptb.w, instructions)
+        Screen('DrawTexture', p.ptb.w, instructions, [], p.ptb.rect)
         vbl = Screen('Flip', p.ptb.w);
         draw_fix(p)
         vbl = Screen('Flip', p.ptb.w, vbl+duration);
     end
 
+
     function SetParams
         %mrt business
-        p.mrt.dummy_scan              = 0; %this will wait until the 6th image is acquired.
-        p.mrt.LastScans               = 0; %number of scans after the offset of the last stimulus
+        p.mrt.dummy_scan              = 5; %this will wait until the 6th image is acquired.
+        p.mrt.LastScans               = 5; %number of scans after the offset of the last stimulus
         p.mrt.tr                      = 2; %in seconds.
         
         %will count the number of events to be logged
@@ -439,7 +429,7 @@ cleanup;
         p.stim.bar_width = 400;
         p.stim.bar_separation = 50;
         %create the base folder if not yet there.
-        if exist(p.path.baselocation) == 0
+        if exist(p.path.baselocation) == 0 %#ok<EXIST>
             mkdir(p.path.baselocation);
         end
         
@@ -466,9 +456,9 @@ cleanup;
         
         KbName('UnifyKeyNames');
         p.keys.confirm                 = '4$';%
-        p.keys.answer_a                = '1!';
+        p.keys.answer_a                = {'1!', '2@', '3#', '4$'};        
         p.keys.answer_a_train          = 'x';
-        p.keys.answer_b                = '2@';
+        p.keys.answer_b                = {'6^', '7&', '8*', '9('};
         p.keys.answer_b_train          = 'm';
         p.keys.pulse                   = '5%';
         p.keys.el_calib                = 'v';
@@ -476,14 +466,22 @@ cleanup;
         p.keys.escape                  = 'ESCAPE';
         p.keys.enter                   = 'return';
         p.keys.quit                    = 'q';
-        p.keylist = {p.keys.confirm, p.keys.answer_a, p.keys.answer_b,  p.keys.answer_a_train,...
+        p.keylist = {p.keys.confirm,...
+            p.keys.answer_a{1}, p.keys.answer_a{2},p.keys.answer_a{3},p.keys.answer_a{4},...
+            p.keys.answer_b{1}, p.keys.answer_b{2},p.keys.answer_b{3},p.keys.answer_b{4},...
+            p.keys.answer_a_train,...
             p.keys.answer_b_train, p.keys.pulse,...
             p.keys.el_calib, p.keys.el_valid, p.keys.enter};
         %% %%%%%%%%%%%%%%%%%%%%%%%%%
         %Communication business
         %parallel port
         p.com.lpt.address = 888;%parallel port of the computer.
-        
+        %codes for different events that are sent for logging in the
+        %physiological computer.        
+        p.com.lpt.mBlock     = 128;
+        p.com.lpt.StimOnset  = 64;
+        p.com.lpt.trialOnset = 32;
+        p.com.lpt.event      = 16;        
         %Record which Phase are we going to run in this run.
         p.stim.phase                   = phase;
         p.out.log                     = zeros(1000000, 5).*NaN;%Experimental LOG.
@@ -501,7 +499,7 @@ cleanup;
     end
 
 
-    function ShowInstruction(nInstruct,waitforkeypress, train, text)
+    function ShowInstruction(nInstruct,waitforkeypress, train, text) %#ok<DEFNU>
         %ShowInstruction(nInstruct,waitforkeypress)
         %if waitforkeypress is 1, ==> subject presses a button to proceed
         %if waitforkeypress is <0, ==> text is shown for -waitforkeypress seconds.
@@ -517,12 +515,12 @@ cleanup;
             WaitSecs(-waitforkeypress);
         end
         Screen('FillRect',p.ptb.w,p.var.current_bg);
-        t = Screen('Flip',p.ptb.w);
+        Screen('Flip',p.ptb.w);
         
         function ShowText(text)
             Screen('FillRect',p.ptb.w,p.var.current_bg);
             DrawFormattedText(p.ptb.w, text, 'center', 'center', p.stim.white,[],[],[],2,[]);
-            t=Screen('Flip',p.ptb.w);
+            Screen('Flip',p.ptb.w);
             %show the messages at the experimenter screen
             fprintf('=========================================================\n');
             fprintf('Text shown to the subject:\n');
@@ -571,7 +569,7 @@ cleanup;
     end
 
 
-    function SetPTB
+    function SetPTB        
         %Sets the parameters related to the PTB toolbox. Including
         %fontsizes, font names.
         %Default parameters
@@ -586,7 +584,7 @@ cleanup;
         screens                     =  Screen('Screens');
         if strcmp(p.hostname, 'larry.local')
             p.ptb.screenNumber          =  min(screens);%the maximum is the second monitor
-            [idx, names, dev] = GetKeyboardIndices;
+            [idx, names, ~] = GetKeyboardIndices;
             p.ptb.device = nan;
             for iii = 1:length(names)
                 if strcmp(names{iii}, '')
@@ -605,6 +603,7 @@ cleanup;
         end
         p.ptb.screenNumber
         %Make everything transparent for debugging purposes.
+        
         if debug
             commandwindow;
             PsychDebugWindowConfiguration;
@@ -617,9 +616,9 @@ cleanup;
         
         %Open a graphics window using PTB
         if ~small_window
-            [p.ptb.w p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, [128, 128, 128]);
+            [p.ptb.w, p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, [128, 128, 128]);
         else
-            [p.ptb.w p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, [128, 128, 128], [0, 0, 1000, 500]);
+            [p.ptb.w, p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, [128, 128, 128], [0, 0, 1000, 500]);
         end
         
         %Screen('BlendFunction', p.ptb.w, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -632,7 +631,7 @@ cleanup;
         x = p.ptb.rect(1) + (p.ptb.rect(3)/2);
         y = p.ptb.rect(2) + (p.ptb.rect(4)/2);
         
-        p.ptb.midpoint              = [x, y] % p.ptb.width./2 p.ptb.height./2];
+        p.ptb.midpoint              = [x, y]; % p.ptb.width./2 p.ptb.height./2];
         %NOTE about RECT:
         %RectLeft=1, RectTop=2, RectRight=3, RectBottom=4.
         p.ptb.CrossPosition_x       = p.ptb.midpoint(1);
@@ -709,11 +708,10 @@ cleanup;
     end
 
 
-    function [t]=StartEyelinkRecording(nTrial, phase, rp, stim, block_id, sumrw)
-        if ~NoEyelink
-            t = [];
-            Eyelink('Message', 'TRIALID: %04d, PHASE: %04d, RP: %04d, STIM: %04d, BLOCK %04d', nTrial, phase, rp, stim, block_id);
-            Eyelink('Command', 'record_status_message "Trial: %i, REW: %i"', nTrial, sumrw);
+    function [t]=StartEyelinkRecording(nTrial, phase, validity, stim, block_id, rewarded_rule)
+        if ~NoEyelink            
+            Eyelink('Message', 'TRIALID: %04d, PHASE: %04d, VALIDITY: %04d, STIM: %04d, BLOCK %04d', nTrial, phase, validity, stim, block_id, rewarded_rule);
+            Eyelink('Command', 'record_status_message "Trial: %i"', nTrial);
             t = GetSecs;
         else
             t = GetSecs;
@@ -760,7 +758,7 @@ cleanup;
         
         % open file.
         p.edffile = sprintf('%d%d%d.edf', p.subject, p.phase, p.block);
-        res = Eyelink('Openfile', p.edffile);
+        res = Eyelink('Openfile', p.edffile); %#ok<NASGU>
         
         %Eyelink('command', 'add_file_preamble_text ''Recorded by EyelinkToolbox FearAmy Experiment (Selim Onat)''');
         Eyelink('command', 'screen_pixel_coords = %ld %ld %ld %ld', 0, 0, p.ptb.width-1, p.ptb.height-1);
@@ -879,6 +877,7 @@ cleanup;
  
 
     function [secs, p]=WaitPulse(p, keycode,n)
+        
         %[secs]=WaitPulse(keycode,n)
         %
         %   This function waits for the Nth upcoming pulse. If N=1, it will wait for
@@ -891,15 +890,20 @@ cleanup;
         %   nice discussion on the topic can be found here:
         %   http://ftp.tuebingen.mpg.de/pub/pub_dahl/stmdev10_D/Matlab6/Toolboxes/Psychtoolbox/PsychDocumentation/KbQueue.html
         
-        %KbQueueFlush;KbQueueStop;KbQueueRelease;WaitSecs(1);
+        %KbQueueFlush(p.ptb.device); 
+        %KbQueueStop(p.ptb.device);
+        %KbQueueRelease(p.ptb.device);
+        
+        
         fprintf('Will wait for %i dummy pulses...\n',n);
-        if n ~= 0
+        if n ~= 0            
             secs  = nan(1,n);
             pulse = 0;
-            dummy = [];
-            while pulse < n
-                dummy         = KbTriggerWait(keycode,p.ptb.device);
+            %dummy = [];            
+            while pulse < n                
+                dummy         = KbTriggerWait(KbName(keycode), p.ptb.device);                
                 pulse         = pulse + 1;
+                fprintf('Got pulse %i\n', pulse)
                 secs(pulse+1) = dummy;
                 p = Log(p, dummy,0,NaN,0,0);
             end
@@ -918,9 +922,9 @@ cleanup;
         while KbEventAvail(p.ptb.device)
             [evt, n]   = KbEventGet(p.ptb.device);
             n          = n + 1;
-            keycode(n) = evt.Keycode;
-            pressed(n) = evt.Pressed;
-            secs(n)    = evt.Time;
+            keycode(n) = evt.Keycode; %#ok<AGROW>
+            pressed(n) = evt.Pressed; %#ok<AGROW>
+            secs(n)    = evt.Time; %#ok<AGROW>
         end
         i           = pressed == 1;
         keycode(~i) = [];
@@ -929,7 +933,7 @@ cleanup;
     end
 
 
-    function [keyIsDown firstPress] = check_kbqueues(devices)
+    function [keyIsDown, firstPress] = check_kbqueues(devices) %#ok<DEFNU>
         firstPress = boolean(zeros(1, 256));
         keyIsDown = false;
         for device = devices
@@ -942,7 +946,7 @@ cleanup;
 
     function p = save_data(p)
         path = fullfile(p.path.baselocation, sprintf('SUB_%i', p.subject), sprintf('PH_%d', p.phase, p.block)); %subject folder, first we save it to the temp folder.
-        if ~exist(path)
+        if ~exist(path) %#ok<EXIST>
             mkdir(path)
         end
         
@@ -953,12 +957,13 @@ cleanup;
         StopEyelink(p.edffile, path_edf);
         %trim the log file and save
         p.out.log = p.out.log(1:p.var.event_count,:);
+        
         %shift the time so that the first timestamp is equal to zero
         p.out.log(:,1) = p.out.log(:,1) - p.out.log(1);
         p.out.log      = p.out.log;%copy it to the output variable.
         save(path_data, 'p');
-        % Reset Log
-        p.out.log      = zeros(1000000, 5).*NaN;%Experimental LOG.
+        
+        
     end
 
 

@@ -13,19 +13,16 @@ stimuli = {};
 for s = 1:ns
     stimuli{s} = {};
     for p = 1:6 % This iterates over days.
-        if mod(p, 2) == 1   % Training session
-            block_types = {'E', 'E', 'E', 'E', 'E', 'E', 'E'};
-        else
-            block_types = {'E', 'QA', 'E', 'QB', 'E', 'QA', 'E', 'QB', 'E'};
-        end
+        block_types = {'F', 'F', 'F', 'E', 'E', 'E'};
         blocks = {};
         for block = 1:length(block_types)
             type = block_types(block);
-            if strcmp(type, 'E')
-               [seq, es] = make_exp_sequence(trials);
+            if strcmp(type, 'F')
+                validities = [0, 1];
             else
-                %seq = make_Q_sequence(trials, type);
+                validities = [0, 0.25, 0.75, 1];
             end
+            [seq, es] = make_exp_sequence(trials, validities);
             blocks{block} = seq; %#ok<AGROW>
             
         end
@@ -33,9 +30,9 @@ for s = 1:ns
     end
 end
 
-    function [seq, es] = make_exp_sequence(trials)
+    function [seq, es] = make_exp_sequence(trials, validities)
         %% Makes a sequence of rules that change with a specific hazard rate.
-        validities = [0, 0.25, 0.75, 1];
+        %validities = [0, 0.25, 0.75, 1];
         block_length = 5;
         seq.type = 'CV';
         seq.stim = randi(2, 1, trials)-1;
@@ -44,7 +41,12 @@ end
         seq.onset = [1, zeros(1, block_length-1)];
         seq.rewarded_rule = binornd(1, seq.validity(end), 1, block_length);
         while length(seq.validity)<trials
-            vs = randsample(setdiff(validities, seq.validity(end)), 1);
+            newset = setdiff(validities, seq.validity(end));
+            if length(newset)>1
+                vs = randsample(newset, 1);
+            else
+                vs = newset;
+            end
             seq.validity = [seq.validity, repmat(vs, 1, block_length)];
             seq.onset = [seq.onset, 1, zeros(1, block_length-1)];
             rewarded_rule = binornd(1, vs, 1, block_length);

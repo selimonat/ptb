@@ -631,7 +631,7 @@ cleanup;
             p.display.distance = [62, 59];
             p.path.baselocation           = '/home/donnerlab/experiments/immuno/data';
         else
-            p.path.baselocation           = 'C:\Users\...\Documents\Experiments\immuno/data';
+            p.path.baselocation           = 'data';
         end
         p.display.ppd = ppd(mean(p.display.distance), p.display.resolution(1),...
             p.display.dimension(1));
