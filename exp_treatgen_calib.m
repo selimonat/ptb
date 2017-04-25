@@ -50,6 +50,18 @@ Screen('TextSize', p.ptb.w, p.text.fontsize);
 %Instructions
 if run == 2
     ShowInstruction(0,0,3)
+    ShowInstruction(3,1);
+    BuzzDemo;
+    ShowInstruction(1,1);
+    LimitsProcedure;
+    ShowInstruction(10,1);
+elseif run == 3
+    ShowInstruction(0,0,3)
+    ShowInstruction(1,1);
+    LimitsProcedure;
+    ShowInstruction(10,1);
+elseif run == 4
+    ShowInstruction(0,0,3)
     ShowInstruction(1,1);
     LimitsProcedure;
     ShowInstruction(10,1);
@@ -69,15 +81,15 @@ elseif run == 1
     ExperimenterInput(2)
     PresentStimuli;
     GetTemps;
-elseif run == 3
-     ShowInstruction(10,0,3);
-    ExperimenterInput(1);
-    ShowInstruction(2,1); %calibration with long instruction
-    ShowInstruction(22,1);
-    ConfirmIntensity;
-    ExperimenterInput(2)
-    PresentStimuli;
-    GetTemps;
+    % elseif run == 3
+    %      ShowInstruction(10,0,3);
+    %     ExperimenterInput(1);
+    %     ShowInstruction(2,1); %calibration with long instruction
+    %     ShowInstruction(22,1);
+    %     ConfirmIntensity;
+    %     ExperimenterInput(2)
+    %     PresentStimuli;
+    %     GetTemps;
 end
 
 
@@ -188,7 +200,7 @@ cleanup;
         Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
         Screen('FillRect', p.ptb.w,  p.ptb.fc_color, p.ptb.FixCross');%draw the prestimus cross atop
         Screen('DrawingFinished',p.ptb.w,0);
-        Screen('Flip',p.ptb.w);        
+        Screen('Flip',p.ptb.w);
         fprintf('STIMULATE.\n');
         Buzzduino(p.duration.tens);
         WaitSecs(p.duration.tens);
@@ -201,11 +213,13 @@ cleanup;
         elseif response == 1
             fprintf('Response: NO. :( Must repeat, too weak.\n');
             BuzzDemo;
-        end        
+        end
         fprintf('DONE, turn the digitimer OFF and press v to continue.\n')
+        WaitSecs(.5);
         k = 0;
         while ~(k == p.keys.v);
             pause(0.1);
+            k
             [~, k] = KbStrokeWait(p.ptb.device);
             k = find(k);
         end
@@ -236,7 +250,7 @@ cleanup;
             Ramp1Onset   = FixColor + p.duration.anticip + rand(1)*.7; % actual ramp to trial's temp
             PlateauOnset = Ramp1Onset + rampdur;                % reached plateau, then wait
             Ramp2Onset   = PlateauOnset + p.duration.painstim;      % ramp back to baseline
-            RateOnset    = Ramp2Onset + rampdur + p.duration.poststim;  %                      
+            RateOnset    = Ramp2Onset + rampdur + p.duration.poststim;  %
             RateOffset   = RateOnset + p.duration.rate;
             
             fprintf('Starting Trial %02d of %02d, Destination Temp is %5.2f C, White fix on for %3.2f s. \n',nTrial,p.presentation.tTrial,tempC,prestimdur);
@@ -318,7 +332,7 @@ cleanup;
     function ExperimenterInput(num)
         if num == 1
             mantemps =  input('Please enter the limits temps: \n');
-            p.presentation.limits.threshold_m   = mantemps;
+            p.presentation.limits.threshold_m   = mantemps; %m means manually
             p.presentation.limits.threshold_ave = round(10*mean(mantemps))/10;
             p.presentation.basetemp     = p.presentation.limits.threshold_ave-3;
             p.presentation.stimlist     = p.presentation.basetemp + p.presentation.steps;
@@ -387,8 +401,8 @@ cleanup;
         mkdir([p.path.subject 'diary']);
         p.path.diary  = [p.path.subject '\diary\diary.txt'];
         p.path.path_param             = sprintf([regexprep(p.path.subject,'\\','\\\') 'stimulation\\param_phase_%02d'],run);
-%         p.path.diary                  = sprintf([regexprep(p.path.subject,'\\','\\\') 'diary']);
-%         diary(p.path.diary)
+        %         p.path.diary                  = sprintf([regexprep(p.path.subject,'\\','\\\') 'diary']);
+        %         diary(p.path.diary)
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
         %get stim files to anticipate bg color
         [p.stim.files p.stim.label]   = FileMatrix([p.path.stim '*.bmp']);
@@ -420,7 +434,7 @@ cleanup;
             p.keys.esc                     = KbName('esc');
             p.keys.null                    = KbName('0)');
             p.keys.one                     = KbName('1!');
-            p.keys.v                       = KbName('v');            
+            p.keys.v                       = KbName('v');
             p.keys.c                       = KbName('c');
         end
         
@@ -481,7 +495,7 @@ cleanup;
         p.presentation.limits.threshold = zeros(p.presentation.limits.ntrials,1);
         
         %this will deal all the presentation sequence related information
-%         p.presentation.Tmax            = threshold + 3;
+        %         p.presentation.Tmax            = threshold + 3;
         p.presentation.stimlist        = p.presentation.basetemp + p.presentation.steps;%basetemp + 3 is maximum temperature
         p.presentation.tTrial          = length(p.presentation.stimlist);
         %
@@ -552,7 +566,7 @@ cleanup;
         activeColor = p.ptb.fc_color;
         if isempty(defaultRating); defaultRating = round(nRatingSteps/2); end
         if isempty(backgroundColor); backgroundColor = 0; end
-
+        
         % if length(ratingLabels) ~= nRatingSteps
         %     error('Rating steps and label numbers do not match')
         % end
@@ -613,7 +627,7 @@ cleanup;
                 Screen('FillRect',window,scaleColor,lowLabelRect);
                 Screen('FillRect',window,scaleColor,highLabelRect);
             end
-            if strcmp(type,'pain') 
+            if strcmp(type,'pain')
                 DrawFormattedText(window, 'Bitte bewerten Sie den zuvor erhaltenen Reiz.', 'center',yCenter-100, scaleColor);
                 Screen('DrawText',window,'kein',axesRect(1)-textWidths(1)/2,yCenter+25,scaleColor);
                 Screen('DrawText',window,'Schmerz',axesRect(1)-textWidths(2)/2,yCenter+45,scaleColor);
@@ -931,7 +945,7 @@ cleanup;
             fprintf(':(, subject complained, press Stop!\n');
             p.presentation.basetemp = p.presentation.basetemp - .5;
             ConfirmIntensity;
-        end        
+        end
     end
     function [countedDown]=CountDown(secs, countedDown, countString)
         if secs>countedDown
@@ -1059,7 +1073,7 @@ cleanup;
         plot(x,y,'bo','MarkerFaceColor','b');hold on;
         %%
         % set params
-        target_vas = [60 40 20];
+        target_vas = [70 50 30];
         
         % estimate linear function
         ind = ~isnan(p.log.ratings(:,3));
@@ -1067,7 +1081,7 @@ cleanup;
         est_lin(1) = linreverse(blin,target_vas(1));
         est_lin(2) = linreverse(blin,target_vas(2));
         est_lin(3) = linreverse(blin,target_vas(3));
-
+        
         
         % estimate sigmoid function
         a = mean(x); b = 1; % l/u bounds to be fitted
@@ -1077,13 +1091,13 @@ cleanup;
         est_sig(1) = sigreverse(bsig,target_vas(1));
         est_sig(2) = sigreverse(bsig,target_vas(2));
         est_sig(3) = sigreverse(bsig,target_vas(3));
-
+        
         % plot
         xplot = linspace(min(x),max(x),100);
         plot(xplot,localsigfun(bsig,xplot),'r',...
             est_sig,localsigfun(bsig,est_sig),'ro',est_lin,target_vas,'bd',...
             xplot,blin(1)+xplot.*blin(2),'b--');
-        xlim([min(xplot)-.5 max(xplot)+.5]); 
+        xlim([min(xplot)-.5 max(xplot)+.5]);
         ylim([0 100]);
         
         % display

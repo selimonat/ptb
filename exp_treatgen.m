@@ -13,6 +13,7 @@ arduino = 1;
 if ismac
     %   outp = @(x,y) fprintf('[%i %i]\n',x,y);
 end
+%
 if nargin ~= 6
     fprintf('Wrong number of inputs\n');
     keyboard;
@@ -152,6 +153,8 @@ cleanup;
         Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.imrect );
         Screen('Flip',p.ptb.w);
         p.out.selectedface = p.stim.circle_order(positions(1));
+        p.out.selectedfaceID = find([0 45 90 135 180 -135 -90 -45] == p.out.selectedface);
+        
     end
     function DrawCircle
         for npos = 1:p.stim.tFace
@@ -189,7 +192,7 @@ cleanup;
         Eyelink('Message', 'Stim Onset');
         Eyelink('Message', 'SYNCTIME');
         %%
-        WaitSecs(30);
+        WaitSecs(40);
         Screen('Flip',p.ptb.w);
         Eyelink('Message', 'Stim Offset');
         Eyelink('Message', 'BLANK_SCREEN');
@@ -332,11 +335,16 @@ cleanup;
             ShowInstruction(9,0,rampdur+1) % Temp rising...
             Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
             Screen('FillRect',  p.ptb.w, p.stim.white, p.ptb.centralFixCross');%draw the prestimus cross atop
-            DrawFormattedText(p.ptb.w,'Rating folgt in einigen Sekunden.', 'center', p.ptb.midpoint(2)./1.2,p.stim.white);
             Screen('DrawingFinished',p.ptb.w,0);
             TimeCrossOn  = Screen('Flip',p.ptb.w,0);
             Log(TimeCrossOn,2,p.ptb.centralFixCross);%cross onset.
-            WaitSecs(10);
+            Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
+            Screen('FillRect',  p.ptb.w, p.stim.white, p.ptb.centralFixCross');%draw the prestimus cross atop
+            DrawFormattedText(p.ptb.w,'Rating folgt.', 'center', p.ptb.midpoint(2)./1.2,p.stim.white);
+            WaitSecs(18);
+            TimeCrossOn  = Screen('Flip',p.ptb.w,0);
+            Log(TimeCrossOn,22,p.ptb.centralFixCross);%cross onset.
+            WaitSecs(3);
             rating = RatePain(0,p.presentation.pain.tonic(1));
             Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
             Screen('FillRect',  p.ptb.w, p.stim.white, p.ptb.centralFixCross');%draw the prestimus cross atop        TimeCrossOn  = Screen('Flip',p.ptb.w,Fix1On,0);
@@ -807,18 +815,18 @@ cleanup;
         %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %stimulus sequence
         if run == 0
-            seq.cond_id       = nan(10,1);
-            seq.tTrial        = 10;
-            seq.tonicpain     = Shuffle([5 6 7 6 5 6 7 6 6 5]);
+            seq.cond_id       = [0 Shuffle(repmat(1:8,1,3))'];
+            seq.tTrial        = length(seq.cond_id);
+            seq.tonicpain     = [6 Shuffle(repmat([5 6 7 6 5 6 7 5 6 7 6 6],1,2))'];
             seq.ratepain      = [1 zeros(1,seq.tTrial-1)];
-            seq.stim_id       = [0 Shuffle(1:8)' csp];
-            seq.ucs           = [zeros(1,9) 1];
+            seq.stim_id       = seq.cond_id;
+            seq.ucs           = [zeros(1,length(seq.cond_id))];
             seq.dist          = MinimumAngle((seq.stim_id-1)*45,(csp-1)*45); %actually, there is no csp yet. so it could also be nans.
             seq.dist(1)       = 3000; %nulltrial
             p.presentation    = seq;
-            p.presentation.tTrial = 10;
+            p.presentation.tTrial = length(seq.cond_id);
         elseif run == 1
-            load([p.path.stim 'stimlist/cond_rr50.mat']);
+            load([p.path.stim 'stimlist/seq_cond1010_rr100.mat']);
             seqid             = subject+((run-1)*50);
             p.presentation    = seq(seqid,csp);
             p.presentation.seqid = seqid;
@@ -836,7 +844,7 @@ cleanup;
             seq.dist(seq.cond_id == 3)          = 500; %ucs
             p.presentation    = seq;
         else
-            load([p.path.stim 'stimlist\seq06x8_rr50.mat']);
+            load([p.path.stim 'stimlist\seq06x8pr3add.mat']);
             seqid             = subject+((run-2)*50);
             p.presentation    = seq(seqid,csp);
             p.presentation.seqid = seqid;

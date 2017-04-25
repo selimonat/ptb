@@ -95,7 +95,7 @@ while ~STOP
         Screen('Textsize', p.ptb.w,p.text.fontsize);
         % put Rating there
         message1 = 'Waren die Gesichter unterschiedlich oder gleich?\n';
-        message2 = 'Bewegen Sie den "Zeiger" mit der rechten und linken Pfeiltaste\n und bestätigen Sie Ihre Einschätzung mit der oberen Pfeiltaste.';
+        message2 = 'Bewegen Sie den "Zeiger" mit der rechten und linken Pfeiltaste\n und bestätigen Sie Ihre Einschätzung mit der Leertaste.';
        
         rect        = [p.ptb.width*0.2  p.ptb.midpoint(2) p.ptb.width*0.6 100];
         [response_subj]      = RatingSlider(rect,2,Shuffle(1:2,1),p.keys.increase,p.keys.decrease,p.keys.confirm,{ 'unterschiedlich' 'gleich'},message1,message2,0);
