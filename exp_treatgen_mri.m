@@ -5,10 +5,10 @@ function [p]=exp_treatgen(subject,run,csp,tonic,middletemp,lowtemp)
 %it by adding scanner pulse communications.
 %
 %
-mrt     = 0;
+mrt     = 1;
 debug   = 0;%debug mode
 laptop  = 0;
-arduino = 1;
+arduino = 0;
 %replace parallel port function with a dummy function
 if ismac
     %   outp = @(x,y) fprintf('[%i %i]\n',x,y);
@@ -299,7 +299,7 @@ cleanup;
         end
         while GetSecs < RateOn;end
         rateinit = randi(p.rating.initrange);
-        MarkCED( p.com.lpt2.address, p.com.lpt2.Rate);
+        MarkCED( p.com.lpt1.address, p.com.lpt1.RatePain);
         [currentRating.finalRating,currentRating.RT,currentRating.response] = vasScale(p.ptb.w,p.ptb.rect,time2rate,rateinit,...
             p.stim.bg,p.ptb.startY,p.keys,'pain');
         RateOff = Screen('Flip',p.ptb.w);
@@ -440,7 +440,7 @@ cleanup;
         TimeFaceOnset  = Screen('Flip',p.ptb.w,FaceOn,0);%asap and dont clear
         %send eyelink and ced a marker asap
         Log(TimeFaceOnset,13,stim_id)
-        MarkCED(p.com.lpt1.address, p.com.lpt1.FaceOnset );
+        MarkCED(p.com.lpt2.address, p.com.lpt2.Face);
         fprintf('Face No %g is on.\n',stim_id)
         %% Face Stim Off, Pain Cross on
         Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
@@ -456,9 +456,10 @@ cleanup;
             serialcom(s,'START');
         end
         Log(Ramp1On, 4, p.presentation.pain.ror); % ramp down
-        MarkCED(p.com.lpt1.address, p.com.lpt1.RampD);
         if ucs
-            MarkCED(p.com.lpt2.address, p.com.lpt2.ucs);
+            MarkCED(p.com.lpt1.address, p.com.lpt1.ucs);
+        else
+            MarkCED(p.com.lpt1.address, p.com.lpt1.RampD);
         end
         fprintf('Ramping to %5.2f C in %.02f s.\n',tempC,rampdur)
         if arduino
@@ -478,7 +479,7 @@ cleanup;
         %% Flip to Rating
         Log(RateTOn,11,NaN);%VAS Treatment onset.
         rateinit = randi(p.rating.initrange);
-        MarkCED(p.com.lpt2.address,p.com.lpt2.Rate)
+        MarkCED(p.com.lpt1.address,p.com.lpt1.RateRelief)
         [currentRating.finalRating,currentRating.RT,currentRating.response] = vasScale(p.ptb.w,p.ptb.rect,p.duration.rate,rateinit,...
             p.stim.bg,p.ptb.startY,p.keys,'relief');
         RateOff = Screen('Flip',p.ptb.w);
@@ -697,12 +698,12 @@ cleanup;
         [~, hostname]                 = system('hostname');
         p.hostname                    = deblank(hostname);
         if strcmp(p.hostname,'triostim1')
-            p.path.baselocation       = 'C:\USER\onat\Experiments\fearamy';
+            p.path.baselocation       = 'C:\USER\kampermann\';
         elseif strcmp(p.hostname,'isn3464a9d59588') % Lea's HP
             p.path.baselocation       = 'C:\Users\Lea\Documents\Experiments\';
         end
         
-        p.path.experiment             = [p.path.baselocation 'Treatgen\'];
+        p.path.experiment             = [p.path.baselocation 'treatgen\'];
         p.path.stim              = [p.path.experiment 'Stimuli\'];
         p.path.stim24            = [p.path.stim '24bit' filesep];
         p.path.stim_cut          = [p.path.stim 'cut' filesep];
@@ -790,22 +791,21 @@ cleanup;
         %Communication business
         %parallel port
         p.com.lpt1.address = 888;
+        p.com.lpt2.address  = hex2dec('B030');
         %codes for different events
         p.com.lpt1.startphase = 16 + 32 + 64 + 128;
-        p.com.lpt1.FixFace  = 16;
-        p.com.lpt1.FaceOnset = 32;
-        p.com.lpt1.RampD     = 64;
-        p.com.lpt1.RampU     = 128;
+        p.com.lpt2.Fix       = 8;
+        p.com.lpt2.Face      = 4;
+        p.com.lpt2.FixFace   = 12;
         
-        p.com.lpt2.address  = NaN;
-        p.com.lpt2.Rate     = 4;
-        p.com.lpt2.Fix  = 8;
+        p.com.lpt1.RampD     = 128;
+        p.com.lpt1.RampU     = 64;
         
+        p.com.lpt1.ucs       = 128 + 16; %chose RampD and PainRating bec PR least interesting per se.
         
+        p.com.lpt1.RatePain     = 16;
+        p.com.lpt1.RateRelief   = 32;
         
-        
-%         p.com.lpt2.ucs       = 64;
-%         p.com.lpt.FixJump   = 128;
         
         
         %
@@ -1004,10 +1004,10 @@ cleanup;
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
         %test whether CED receives the triggers correctly...
         k = 0;
-        while ~(k == 25 | k == 86 );
+        while ~(k == 86 );
             pause(0.1);
-            outp(p.com.lpt1.address,239);%256 means all channels.
-            outp(p.com.lpt2.address,239); % lea
+            MarkCED(p.com.lpt1.address,247);%256 means all channels.
+            MarkCED(p.com.lpt2.address,12); % 4 and 8
             %             outp(p.com.lpt1.address,256);%256 means all channels.
             fprintf('Is everything set?\n\n')
             fprintf('Digitimer still off?\n\n')
