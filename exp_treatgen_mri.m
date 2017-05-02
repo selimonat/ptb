@@ -256,10 +256,8 @@ cleanup;
         KbQueueStop(p.ptb.device);
         KbQueueRelease(p.ptb.device);
         if mrt ==1
-            if p.var.ExpPhase > 0
                 WaitPulse(p.keys.pulse,p.mrt.dummy_scan);%
                 fprintf('OK!! Stop the Scanner\n');
-            end
         end
         %dump the final events
         [keycode, secs] = KbQueueDump;%this contains both the pulses and keypresses.
@@ -417,9 +415,10 @@ cleanup;
         Ramp2On     = OnsetTime + ISI + p.duration.fix + jitterF + p.duration.face + jitterR + p.duration.treatment; % not needed actually, because this just automatically happens after rating.
         TimeEndStim = OnsetTime + ISI + p.duration.fix + jitterF + p.duration.face + jitterR + p.duration.treatment + p.duration.rate + p.duration.poststim - jitterF - jitterR;
         %% Baseline, tonic pain, inkl. white fixcross in the middle
+        Log(OnsetTime,30,NaN)
         if nTrial ==1
             Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
-            Screen('FillRect',  p.ptb.w, p.stim.white, p.ptb.centralFixCross');%draw the prestimus cross atop        TimeCrossOn  = Screen('Flip',p.ptb.w,Fix1On,0);
+            Screen('FillRect',  p.ptb.w, p.stim.white, p.ptb.centralFixCross');%draw the prestimus cross atop
             Screen('DrawingFinished',p.ptb.w,0);
             TimeCrossOn  = Screen('Flip',p.ptb.w,Fix1On,0);
             MarkCED( p.com.lpt2.address, p.com.lpt2.Fix);
@@ -430,7 +429,7 @@ cleanup;
         Screen('FillRect', p.ptb.w, p.stim.white, FixCross');%draw the prestimus cross atop
         Screen('DrawingFinished',p.ptb.w,0);
         TimeCrossOn  = Screen('Flip',p.ptb.w,Fix2On,0);
-        MarkCED( p.com.lpt2.address, p.com.lpt2.FixFace);
+        MarkCED(p.com.lpt2.address, p.com.lpt2.FixFace);
         Log(TimeCrossOn,15,FixCross')
         %% Draw the stimulus to the buffer
         if stim_id ~=0
@@ -439,7 +438,7 @@ cleanup;
         %% Face Stimulus Onset
         TimeFaceOnset  = Screen('Flip',p.ptb.w,FaceOn,0);%asap and dont clear
         %send eyelink and ced a marker asap
-        Log(TimeFaceOnset,13,stim_id)
+        Log(TimeFaceOnset,13,dist)
         MarkCED(p.com.lpt2.address, p.com.lpt2.Face);
         fprintf('Face No %g is on.\n',stim_id)
         %% Face Stim Off, Pain Cross on
@@ -448,7 +447,7 @@ cleanup;
         Screen('DrawingFinished',p.ptb.w,0);
         TimeFaceOffset  = Screen('Flip',p.ptb.w,FaceOff,0);%asap and dont clear
         MarkCED(p.com.lpt2.address, p.com.lpt2.Fix );
-        Log(TimeFaceOffset,14,stim_id);%log the stimulus offset
+        Log(TimeFaceOffset,14,dist);%log the stimulus offset
         Log(GetSecs,3,stim_id);
         %% ramp to treatment temp
         while GetSecs < Ramp1On;end
@@ -477,7 +476,7 @@ cleanup;
             [countedDown]=CountDown(GetSecs-Plateau,countedDown,'.');
         end
         %% Flip to Rating
-        Log(RateTOn,11,NaN);%VAS Treatment onset.
+        Log(RateTOn,11,nTrial);%VAS Treatment onset.
         rateinit = randi(p.rating.initrange);
         MarkCED(p.com.lpt1.address,p.com.lpt1.RateRelief)
         [currentRating.finalRating,currentRating.RT,currentRating.response] = vasScale(p.ptb.w,p.ptb.rect,p.duration.rate,rateinit,...
@@ -501,6 +500,7 @@ cleanup;
         Log(TimeCrossOn,2,p.ptb.centralFixCross');%cross onset.
         while GetSecs < TimeEndStim %otherwise the trial just ends
         end
+        Log(TimeEndStim,31,NaN)
         if nTrial == p.presentation.tTrial
             RatePain(nTrial,tonic);
         end
@@ -1601,7 +1601,7 @@ cleanup;
         %         %Ramp down Onset      :     4    info: ror
         %         %Treatment Plateau    :     5    info: temp
         %         %Ramp back onset      :     6    info: ror;
-        %         %Key Presses          :     7    info: NaN;
+        %         %Key Presses          :     7    info: keycode;
         %         %Tracker Offset       :     8    info: NaN;
         %         %Rate pain Onset		:     9    info: NaN;
         %         %Rate pain Offset     :     10   info: NaN;
@@ -1611,6 +1611,8 @@ cleanup;
         %         %Face Offset          :     14   info: stim_id;
         %         %FaceStim Fixcross    :     15   info: position
         %         %dummy fixflip        :     22   info: NaN;
+        %         planned trialstart    :     30   info: NaN
+        %         planned trialend      :     31   info: NaN
         %Text on the screen   :     -1    info: Which Text?
         %VAS Onset            :     -2    info: NaN;
         for iii = 1:length(ptb_time)
