@@ -112,17 +112,17 @@ catch
     movefile(p.path.subject,p.path.finalsubject);
 end
 %close everything down
-% try
-%     addpath('/USER/onat/Code/globalfunctions/ssh2_v2_m1_r6/ssh2_v2_m1_r6/')
-%     p.path.tarname = [p.path.finalsubject(1:end-1) '.tar'];
-%     tar(p.path.tarname,p.path.finalsubject);
-%     [a b c] = fileparts( p.path.tarname);
-%     cd(a)
-%     scp_simple_put('sanportal','onat','',[b c]);
-%     fprintf('Copying to neuronass succesfull...\n');
-% catch
-%     fprintf('Copying to neuronass failed...\n');
-% end
+try
+    addpath('/USER/kampermann/Code/globalfunctions/ssh2_v2_m1_r6/ssh2_v2_m1_r6/')
+    p.path.tarname = [p.path.finalsubject(1:end-1) '.tar'];
+    tar(p.path.tarname,p.path.finalsubject);
+    [a b c] = fileparts( p.path.tarname);
+    cd(a)
+    scp_simple_put('sanportal','kampermann','',[b c]);
+    fprintf('Copying to neuronass succesfull...\n');
+catch
+    fprintf('Copying to neuronass failed...\n');
+end
 cleanup;
 
     function AskDetectionSelectable
@@ -298,9 +298,11 @@ cleanup;
         while GetSecs < RateOn;end
         rateinit = randi(p.rating.initrange);
         MarkCED( p.com.lpt1.address, p.com.lpt1.RatePain);
+        Log(RateOn,9,nTrial)
         [currentRating.finalRating,currentRating.RT,currentRating.response] = vasScale(p.ptb.w,p.ptb.rect,time2rate,rateinit,...
             p.stim.bg,p.ptb.startY,p.keys,'pain');
         RateOff = Screen('Flip',p.ptb.w);
+        Log(RateOff,10,nTrial);
         Log(RateOff,2,p.ptb.centralFixCross);
         MarkCED(p.com.lpt2.address, p.com.lpt2.Fix);
         PutRatingLog(nTrial,currentRating,tonictemp,rateinit,'pain')
@@ -413,9 +415,10 @@ cleanup;
         RateTOn     = OnsetTime + ISI + p.duration.fix + jitterF + p.duration.face + jitterR + rampdur + p.duration.treatment - 2*rampdur; %dur.treatment - 2*rampdur is total plateau duration
         RateTOff    = OnsetTime + ISI + p.duration.fix + jitterF + p.duration.face + jitterR + rampdur + p.duration.treatment - 2*rampdur + p.duration.rate;
         Ramp2On     = OnsetTime + ISI + p.duration.fix + jitterF + p.duration.face + jitterR + p.duration.treatment; % not needed actually, because this just automatically happens after rating.
+        Ramp2done   = OnsetTime + ISI + p.duration.fix + jitterF + p.duration.face + jitterR + p.duration.treatment;
         TimeEndStim = OnsetTime + ISI + p.duration.fix + jitterF + p.duration.face + jitterR + p.duration.treatment + p.duration.rate + p.duration.poststim - jitterF - jitterR;
         %% Baseline, tonic pain, inkl. white fixcross in the middle
-        Log(OnsetTime,30,NaN)
+        Log(OnsetTime,30,nTrial)
         if nTrial ==1
             Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
             Screen('FillRect',  p.ptb.w, p.stim.white, p.ptb.centralFixCross');%draw the prestimus cross atop
@@ -482,13 +485,15 @@ cleanup;
         [currentRating.finalRating,currentRating.RT,currentRating.response] = vasScale(p.ptb.w,p.ptb.rect,p.duration.rate,rateinit,...
             p.stim.bg,p.ptb.startY,p.keys,'relief');
         RateOff = Screen('Flip',p.ptb.w);
-        Log(RateOff,12,NaN);%VAS Treatment offset.
+        Log(RateOff,12,nTrial);%VAS Treatment offset. % this is also RampUpStart (asap, see below)
         fprintf('Ramping back to baseline %5.2f C in %.02f s.',tonic,rampdur)
         if arduino
             serialcom(s,'SET',p.presentation.pain.tonic(nTrial));
         end
         MarkCED(p.com.lpt1.address, p.com.lpt1.RampU)
-        Log(GetSecs, 6, p.presentation.pain.ror) % ramp back to baseline
+        Ramping = GetSecs;
+        Log(Ramping, 6, p.presentation.pain.ror) %ramp back to baseline
+        Log(Ramping + rampdur,16,nTrial)
         fprintf('Took subject %5.2f seconds to respond. \n',currentRating.RT);
         PutRatingLog(nTrial,currentRating,tempC,rateinit,'relief');
         %% back to white cross (whenever ready)
@@ -500,7 +505,7 @@ cleanup;
         Log(TimeCrossOn,2,p.ptb.centralFixCross');%cross onset.
         while GetSecs < TimeEndStim %otherwise the trial just ends
         end
-        Log(TimeEndStim,31,NaN)
+        Log(TimeEndStim,31,nTrial)
         if nTrial == p.presentation.tTrial
             RatePain(nTrial,tonic);
         end
@@ -703,7 +708,7 @@ cleanup;
             p.path.baselocation       = 'C:\Users\Lea\Documents\Experiments\';
         end
         
-        p.path.experiment             = [p.path.baselocation 'treatgen\'];
+        p.path.experiment             = [p.path.baselocation 'Treatgen\'];
         p.path.stim              = [p.path.experiment 'Stimuli\'];
         p.path.stim24            = [p.path.stim '24bit' filesep];
         p.path.stim_cut          = [p.path.stim 'cut' filesep];
@@ -824,18 +829,12 @@ cleanup;
         %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %stimulus sequence
         if run == 0
-            seq.cond_id       = [0 Shuffle(repmat(1:8,1,3))'];
-            seq.tTrial        = length(seq.cond_id);
-            seq.tonicpain     = [6 Shuffle(repmat([5 6 7 6 5 6 7 5 6 7 6 6],1,2))'];
-            seq.ratepain      = [1 zeros(1,seq.tTrial-1)];
-            seq.stim_id       = seq.cond_id;
-            seq.ucs           = [zeros(1,length(seq.cond_id))];
-            seq.dist          = MinimumAngle((seq.stim_id-1)*45,(csp-1)*45); %actually, there is no csp yet. so it could also be nans.
-            seq.dist(1)       = 3000; %nulltrial
-            p.presentation    = seq;
-            p.presentation.tTrial = length(seq.cond_id);
+            load([p.path.stim 'stimlist/baseline_scanner.mat']);
+            seqid             = subject+((run-1)*50);
+            p.presentation    = seq(seqid,csp);
+            p.presentation.seqid = seqid;
         elseif run == 1
-            load([p.path.stim 'stimlist/seq_cond1010_rr100.mat']);
+            load([p.path.stim 'stimlist/cond_scanner.mat']);
             seqid             = subject+((run-1)*50);
             p.presentation    = seq(seqid,csp);
             p.presentation.seqid = seqid;
@@ -853,7 +852,7 @@ cleanup;
             seq.dist(seq.cond_id == 3)          = 500; %ucs
             p.presentation    = seq;
         else
-            load([p.path.stim 'stimlist\seq06x8pr3add.mat']);
+            load([p.path.stim 'stimlist\seq06x08pr3add_scanner.mat']);
             seqid             = subject+((run-2)*50);
             p.presentation    = seq(seqid,csp);
             p.presentation.seqid = seqid;
@@ -1247,7 +1246,7 @@ cleanup;
                 'Nach der Kalibrierung dürfen Sie Ihren Kopf nicht mehr bewegen.\n'...
                 'Sollten Sie Ihre Position noch verändern müssen, tun Sie dies jetzt.\n'...
                 'Die beste Position ist meist die bequemste.\n\n'...
-                'Bitte drücken Sie jetzt die Leertaste, \n' ...
+                'Bitte drücken Sie jetzt die obere Taste, \n' ...
                 'um mit der Kalibrierung weiterzumachen.\n' ...
                 ];
         elseif nInstruct == 1%first Instr. of the training phase.
@@ -1258,20 +1257,20 @@ cleanup;
                 'Sie stellen gleich eine für Sie individuell angepasste konstante Temperatur ein, \n'...
                 'um einen durchgängigen, aushaltbaren Schmerz zu erzeugen.\n'...
                 '\n'...
-                'Drücken Sie die Leertaste um fortzufahren.\n' ...
+                'Drücken Sie die obere Taste um fortzufahren.\n' ...
                 ];
         elseif nInstruct == 11
             text = ['Sie erhalten nun die für Sie kalibrierte Temperatur.\n' ...
                 'Nach einigen Sekunden werden Sie gebeten, diese auf einer Schmerzskala zu bewerten.\n' ...
                 'Sie haben dazu 5 Sekunden Zeit.\n' ...
                 '\n' ...
-                'Drücken Sie die Leertaste um zu starten.\n' ...
+                'Drücken Sie die obere Taste um zu starten.\n' ...
                 ];
         elseif nInstruct == 12
             text = ['Wir wiederholen den Vorgang noch einmal.\n' ...
                 'Bitte geben Sie auf der Skala an, wie schmerzhaft Sie die gleich applizierte Temperatur empfinden.\n' ...
                 '\n' ...
-                'Drücken Sie die Leertaste um zu starten.\n' ...
+                'Drücken Sie die obere Taste um zu starten.\n' ...
                 ];
         elseif nInstruct == 2%second Instr. of the training phase.
             text = ['Sie erhalten nun vier TENS Behandlungsdurchgänge, um Ihnen die Wirksamkeit zu demonstrieren.\n' ...
@@ -1281,7 +1280,7 @@ cleanup;
                 'Sie haben dazu wie immer 5 Sekunden Zeit, um zu antworten.\n' ...
                 'Es ist sehr wichtig, dass Sie Ihr Rating innerhalb dieser Zeit abgeben und bestätigen.\n' ...
                 '\n'...
-                'Drücken Sie die Leertaste um die Demonstration zu starten.\n' ...
+                'Drücken Sie die obere Taste um die Demonstration zu starten.\n' ...
                 ];
         elseif nInstruct == 3
             text = ['Als nächstes werden wir Ihnen demonstrieren,\n' ...
@@ -1299,7 +1298,7 @@ cleanup;
                 '\n' ...
                 'Beim ersten Durchgang erscheint kein Gesicht, dies ist beabsichtigt, wundern Sie sich also nicht.'...
                 '\n' ...
-                'Drücken Sie die Leertaste um die Demonstration zu starten.\n' ...
+                'Drücken Sie die obere Taste um die Demonstration zu starten.\n' ...
                 ];
         elseif nInstruct == 299%short instruction before localizer
             text = ['Die Kalibrierung war erfolgreich.\n'...
@@ -1320,19 +1319,19 @@ cleanup;
                 '\n'...
                 'Beim ersten Durchgang jeden Blocks erscheint kein Gesicht, dies ist beabsichtigt, wundern Sie sich also nicht.'...
                 '\n'...
-                'Drücken Sie die Leertaste um fortzufahren.\n' ...
+                'Drücken Sie die obere Taste um fortzufahren.\n' ...
                 ];
         elseif nInstruct == 400%
             text = ['Wir sind jetzt kurz vor Beginn des Experiments.\n'...
                 'Wenn Sie noch Fragen haben, wenden Sie sich jetzt an die Versuchleiterin. \n'...
                 'Ansonsten möchten wir Sie nun noch an die wichtigsten Punkte erinnern.\n\n'...
-                'Drücken Sie jeweils die Leertaste um fortzufahren.\n' ...
+                'Drücken Sie jeweils die obere Taste um fortzufahren.\n' ...
                 ];
         elseif nInstruct == 44%short Instr. for following phases
             text = ['Es folgt nun der nächste Durchgang.\n'...
                 'Wenn Sie noch Fragen haben, wenden Sie sich jetzt an die Versuchleiterin. \n'...
                 '\n\n'...
-                'Drücken Sie die Leertaste um zu starten.\n' ...
+                'Drücken Sie die obere Taste um zu starten.\n' ...
                 ];
         elseif nInstruct == 401%third Instr. of the training phase.
             text = ['1. Blicken Sie immer auf die Fixationskreuze.\n'...
@@ -1350,7 +1349,7 @@ cleanup;
             text = ['5. Es ist allein Ihre Wahrnehmung gefragt, es gibt kein richtig oder falsch.\n'...
                 ];
         elseif nInstruct == 406%third Instr. of the training phase.
-            text = ['Drücken Sie jetzt die Leertaste, das Experiment startet dann in wenigen Sekunden.\n' ...
+            text = ['Drücken Sie jetzt die obere Taste, das Experiment startet dann in wenigen Sekunden.\n' ...
                 ];
         elseif nInstruct == 20
             text = ['Demo beendet. Vielen Dank! \n'];
@@ -1362,13 +1361,13 @@ cleanup;
             text = ['Sie sehen nun noch einmal eine Übersicht der verschiedenen Gesichter.\n'...
                 'Bitte geben Sie an, welches der Gesichter Ihrer Meinung nach\n mit der optimalen TENS Behandlung gepaart wurde.\n\n'...
                 'Nutzen Sie die linke und rechte Taste, um die Markierung\n zum richtigen Gesicht zu navigieren,\n'...
-                'und drücken Sie die Leertaste zum Bestätigen.\n\n'...
-                'Bitte zum Starten die Leertaste drücken.\n'...
+                'und drücken Sie die obere Taste zum Bestätigen.\n\n'...
+                'Bitte zum Starten die obere Taste drücken.\n'...
                 ];
         elseif nInstruct == 801;%AskDetectionSelectable
             text = ['Sie sehen nun eine Übersicht der verschiedenen Gesichter.\n'...
                 'Bitte schauen Sie sich die Gesichter aufmerksam an.\n'...
-                'Bitte drücken Sie zum Start die Leertaste und\n' ...
+                'Bitte drücken Sie zum Start die obere Taste und\n' ...
                 'fixieren Sie das anschließend erscheinende Fixationskreuz.\n'...
                 ];
         elseif nInstruct == 9; % Rising Temp
@@ -1603,13 +1602,14 @@ cleanup;
         %         %Ramp back onset      :     6    info: ror;
         %         %Key Presses          :     7    info: keycode;
         %         %Tracker Offset       :     8    info: NaN;
-        %         %Rate pain Onset		:     9    info: NaN;
-        %         %Rate pain Offset     :     10   info: NaN;
-        %         %Rate treat Onset     :     11   info: NaN;
-        %         %Rate treat Offset    :     12   info: NaN;
-        %         %Face Onset           :     13   info: stim_id;
-        %         %Face Offset          :     14   info: stim_id;
-        %         %FaceStim Fixcross    :     15   info: position
+        %         %Rate pain Onset		:     9    info: nTrial;
+        %         %Rate pain Offset     :     10   info: nTrial;
+        %         %Rate treat Onset     :     11   info: nTrial;
+        %         %Rate treat Offset    :     12   info: nTrial;
+        %         %Face Onset           :     13   info: dist;
+        %         %Face Offset          :     14   info: dist;
+        %         %FaceStim Fixcross    :     15   info: position(1)
+        %         %Tonic Pain reached   :     16   info: nTrial
         %         %dummy fixflip        :     22   info: NaN;
         %         planned trialstart    :     30   info: NaN
         %         planned trialend      :     31   info: NaN
