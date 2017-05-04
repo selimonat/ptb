@@ -158,7 +158,7 @@ cleanup;
     end
     function DrawCircle
         for npos = 1:p.stim.tFace
-            Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(p.stim.circle_file_id(npos)),[],p.stim.circle_rect(npos,:));
+            Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites_cut(p.stim.circle_file_id(npos)),[],p.stim.circle_rect(npos,:));
             %Screen('DrawText', p.ptb.w, sprintf('%i_%i_%i',p.stim.circle_order(npos),p.stim.circle_file_id(npos),npos),mean(p.stim.circle_rect(npos,[1 3])) ,mean(p.stim.circle_rect(npos,[2 4])));
         end
     end
@@ -755,7 +755,7 @@ cleanup;
         p.stim.white                   = [255 255 255];
         %% font size and background gray level
         p.text.fontname                = 'Arial';
-        p.text.fontsize                = 18;%30;
+        p.text.fontsize                = 30;%30;
         p.text.fixsize                 = 60;
         %rating business
         p.rating.division              = 101;%number of divisions for the rating slider
@@ -776,8 +776,8 @@ cleanup;
             p.keys.increase                = KbName('1!');
             p.keys.decrease                = KbName('3#');
             p.keys.pulse                   = KbName('5%');
-            p.keys.el_calib                = KbName('v');
-            p.keys.el_valid                = KbName('c');
+            p.keys.v                       = KbName('v');
+            p.keys.c                       = KbName('c');
             p.keys.esc                     = KbName('esc');
             p.keys.enter                   = KbName('return');
         elseif strcmp(p.hostname,'isn3464a9d59588') % Lea's HP
@@ -829,10 +829,16 @@ cleanup;
         %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %stimulus sequence
         if run == 0
-            load([p.path.stim 'stimlist/baseline_scanner.mat']);
-            seqid             = subject+((run-1)*50);
-            p.presentation    = seq(seqid,csp);
-            p.presentation.seqid = seqid;
+            seq.cond_id       = [0 Shuffle(repmat(1:8,1,3))'];
+            seq.tTrial        = length(seq.cond_id);
+            seq.tonicpain     = [6 Shuffle(repmat([5 6 7 6 5 6 7 5 6 7 6 6],1,2))'];
+            seq.ratepain      = [1 zeros(1,seq.tTrial-1)];
+            seq.stim_id       = seq.cond_id;
+            seq.ucs           = [zeros(1,length(seq.cond_id))];
+            seq.dist          = MinimumAngle((seq.stim_id-1)*45,(csp-1)*45); %actually, there is no csp yet. so it could also be nans.
+            seq.dist(1)       = 3000; %nulltrial
+            p.presentation    = seq;
+            p.presentation.tTrial = length(seq.cond_id);
         elseif run == 1
             load([p.path.stim 'stimlist/cond_scanner.mat']);
             seqid             = subject+((run-1)*50);
@@ -1044,7 +1050,7 @@ cleanup;
         function [out]=CreateStimSprites(files)
             %loads all the stims to video memory
             for nStim = 1:p.stim.tFile
-                filename       = files(nStim,:);
+                   filename       = files(nStim,:);
                 [im , ~, ~]    = imread(filename);
                 out(nStim)     = Screen('MakeTexture', p.ptb.w, im );
             end
