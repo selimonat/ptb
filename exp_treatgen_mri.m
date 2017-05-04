@@ -1,11 +1,11 @@
-function [p]=exp_treatgen(subject,run,csp,tonic,middletemp,lowtemp)
+function [p]=exp_treatgen_mri(subject,run,csp,tonic,middletemp,lowtemp)
 %[p]=FearGen_eyelab(subject,phase,csp,PainThreshold)
 %
 %Used for fearamy project, based on the FearGen_eyelab code. It increments
 %it by adding scanner pulse communications.
 %
 %
-mrt     = 1;
+mrt     = 0;
 debug   = 0;%debug mode
 laptop  = 0;
 arduino = 0;
@@ -72,21 +72,21 @@ elseif run == 5
     ShowInstruction(21,0,2);
 else
     %
-    if el
-        CalibrateEL;
-    end
+%     if el
+%         CalibrateEL;
+%     end
     p.var.ExpPhase  = run;%set this after the calibration;
-    if run ==1
-        
-        ShowInstruction(4,1);
-        ApplyAndRate;
-        for ninstr = 400:406
-            ShowInstruction(ninstr,1);
-        end
-    else
-        ShowInstruction(44,1);
-        ApplyAndRate;
-    end
+%     if run ==1
+%         
+%         ShowInstruction(4,1);
+%         ApplyAndRate;
+%         for ninstr = 400:406
+%             ShowInstruction(ninstr,1);
+%         end
+%     else
+%         ShowInstruction(44,1);
+%         ApplyAndRate;
+%     end
     PresentStimuli;
     Summary;
     WaitSecs(2);
@@ -301,9 +301,13 @@ cleanup;
         Log(RateOn,9,nTrial)
         [currentRating.finalRating,currentRating.RT,currentRating.response] = vasScale(p.ptb.w,p.ptb.rect,time2rate,rateinit,...
             p.stim.bg,p.ptb.startY,p.keys,'pain');
-        RateOff = Screen('Flip',p.ptb.w);
+        Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
+        Screen('FillRect',  p.ptb.w, p.stim.white, p.ptb.centralFixCross');%draw the prestimus cross atop        TimeCrossOn  = Screen('Flip',p.ptb.w,Fix1On,0);
+        Screen('DrawingFinished',p.ptb.w,0);
+        RateOff  = Screen('Flip',p.ptb.w,0);
+        MarkCED( p.com.lpt2.address, p.com.lpt2.Fix);
         Log(RateOff,10,nTrial);
-        Log(RateOff,2,p.ptb.centralFixCross);
+        Log(RateOff,2,p.ptb.centralFixCross);%cross onset.
         MarkCED(p.com.lpt2.address, p.com.lpt2.Fix);
         PutRatingLog(nTrial,currentRating,tonictemp,rateinit,'pain')
         while GetSecs < EndTrial;end
@@ -910,7 +914,7 @@ cleanup;
         end
     end
     function SetArduino
-        s = serial('COM5','BaudRate',19200);
+        s = serial('COM8','BaudRate',19200);
         fopen(s);
         WaitSecs(1);
         serialcom(s,'T',p.presentation.pain.tonic(1));
@@ -1119,7 +1123,7 @@ cleanup;
             textWidths(i)=textBox(3)-textBox(1);
         end
         % keyboard
-        inactivecol    = [130 130 130];
+        inactivecol    = [110 110 110];
         
         Screen('TextSize',window,textSize);
         Screen('TextColor',window,[255 255 255]);
@@ -1192,9 +1196,16 @@ cleanup;
                         disp(['VAS Rating: ' num2str(finalRating)]);
                         response = 1;
                         reactionTime = secs - secs0;
-                        break;
+                        if strcmp(type,'relief') %only for relief let it stay there inactively
+                            scaleColor = inactivecol;
+                            activeColor = inactivecol;
+                        elseif strcmp(type,'pain')
+                            break;
+                        end
                     end
                 end
+            elseif (strcmp(type,'relief') && (response == 1))
+                Screen('Flip',window);
             end
             
             numberOfSecondsElapsed   = (GetSecs - startTime);
@@ -1212,7 +1223,9 @@ cleanup;
             disp(['VAS Rating: ' num2str(finalRating)]);
             warning(sprintf('\n***********No Response! Please check participant!***********\n'));
         end
-        % toc
+        if strcmp(type,'relief') %only for relief let it stay there inactively
+            while numberOfSecondsRemaining > 0;end
+        end
     end
     function ShowInstruction(nInstruct,waitforkeypress,varargin)
         %ShowInstruction(nInstruct,waitforkeypress)
@@ -1682,4 +1695,78 @@ cleanup;
         secs(~i)    = [];
         %fprintf('there are %03d events found...\n',length(keycode));
     end
+    function [out] = serialcom(s,cmd,varargin)
+        % SERIALCOM allows talking to an Arduino via an established serial
+        % connection. Possible inputs for CMD are 'HELP','DIAG','START', without
+        % optional input, and 'T','RoR','SET' and 'MOVE' with corresponding
+        % temperature ('T','RoR','SET', in format [xx.xx]) or time ('MOVE', [ms]).
+        
+        % Examples for usage:
+        % serialcom(s,'HELP')
+        % serialcom(s,'DIAG')
+        % serialcom(s,'START')
+        % serialcom(s,'T',35.00)
+        % serialcom(s,'RoR',10.00)
+        % serialcom(s,'SET',38.50)
+        % serialcom(s,'MOVE',1000) to move up for 1000 ms
+        %
+        % While the first varargin is thus expected (if applicable) to be the
+        % input for setting temperatures and raise durations, a second input can be
+        % 'verbose', when response from Arduino is wanted as output e.g.:
+        % out = serialcom(s,'T',35,'verbose')
+        % out = serialcom(s,'HELP',[],'verbose')
+        out  = [];
+        buffer_warn  = 0;
+        suppress_out = 0; %suppress output even for DIAG and HELP
+        % mspb = 11/s.BaudRate; %muS per byte (comes from baudrate) (1/BaudRate * 11 bits per byte)
+        
+        
+        % clear buffer by reading out potential leftovers
+        while s.BytesAvailable ~= 0
+            fread(s,s.BytesAvailable);
+            if buffer_warn
+                warning('Detected and cleaned buffer leftovers...')
+            end
+        end
+        
+        % differentiate between command types, e.g. 'DIAG' vs 'T;32', what to send
+        % via the serial port.
+        if any(strcmp(cmd,{'HELP','DIAG','START'}))
+            fprintf(s,cmd);
+            if ~suppress_out
+                fprintf('Sending command %s. \n',cmd)
+            end
+        elseif any(strcmp(cmd,{'T','ROR','SET','MOVE'}))
+            cmdstr = [cmd ';' num2str(varargin{1})];
+            fprintf(s,cmdstr);
+            if ~suppress_out
+                fprintf('Sending command %s. \n',cmdstr)
+            end
+        end
+        
+        if any(strcmp(cmd,{'HELP','DIAG',}))
+            fprintf('Asked for %s, waiting %g seconds for Arduino response.\n',cmd,.5)
+            pause(.5)
+            if ~suppress_out
+                fprintf('%s \n',char(fread(s,s.BytesAvailable))')
+            end
+        end
+        % ensure to wait long enough to get back the Arduino's response (if wanted)
+        if length(varargin) == 2
+            ws = .2;
+            fprintf('Verbose wanted, waiting %g seconds for Arduino response.\n',ws)
+            pause(ws)
+            %read out Arduino's response from buffer
+            try
+                out = char(fread(s,s.BytesAvailable))'; %reads as many bytes as stored in buffer
+                if ~suppress_out
+                    fprintf('%s \n',out)
+                end
+            catch
+                % e.g. if buffer is empty
+                warning('Problem with s.BytesAvailable, reading buffer was not successful... \n')
+            end
+        end
+    end
+
 end
