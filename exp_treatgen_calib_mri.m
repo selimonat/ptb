@@ -1,4 +1,4 @@
-function [p]=exp_treatgen_calib(subject,run)
+function [p]=exp_treatgen_calib_mri(subject,run)
 %[p]=exp_treatgen_calib(subject,run)
 %
 %Used for fearamy project, based on the FearGen_eyelab code. It increments
@@ -202,8 +202,10 @@ cleanup;
         Screen('DrawingFinished',p.ptb.w,0);
         Screen('Flip',p.ptb.w);
         fprintf('STIMULATE.\n');
-        Buzzduino(p.duration.tens);
-        WaitSecs(p.duration.tens);
+        t = GetSecs + p.duration.tens;
+        while GetSecs < t;
+            Buzz;
+        end
         timeout = 180;
         response = vasScale(p.ptb.w,p.ptb.rect,timeout,1,p.stim.bg,p.ptb.startY,p.keys,'confirm',102); %180 means three minutes to answer
         Screen('Flip',p.ptb.w,0);
@@ -461,7 +463,7 @@ cleanup;
         p.com.lpt.RampDown          = 16;
         p.com.lpt.RateOn            = 32;
         p.com.lpt.RateOff           = 64;
-        %p.com.lpt.CS_neg               = 128;
+        p.com.lpt.digitimer         = 8;
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %timing business
@@ -474,6 +476,9 @@ cleanup;
         p.duration.poststim                  = 1;
         p.duration.ISI                       = 1;
         p.duration.rate                      = 5;
+        
+        p.duration.shockpulse                = 5; ms
+        p.duration.intershockpulse           = 100; ms
         
         p.duration.tens                      = .7; %this is only for TensDEMO
         
@@ -527,6 +532,12 @@ cleanup;
         WaitSecs(.5);
         serialcom(s,'DIAG');
         WaitSecs(1);
+    end
+    function Buzz
+        outp(p.com.lpt.address, p.com.lpt.digitimer );
+        Wait(p.duration.shockpulse);
+        outp(p.com.lpt.address, 0);
+        Wait(p.duration.intershockpulse);
     end
     function Buzzduino(duration)
         arg = ['SHOCK;' num2str(duration)];
@@ -1123,5 +1134,88 @@ cleanup;
             a1 = blin1(1); b1 = blin1(2);
             xlinpred = (ytarget - a1) / b1;
         end
+    end
+    function [out] = serialcom(s,cmd,varargin)
+        % SERIALCOM allows talking to an Arduino via an established serial
+        % connection. Possible inputs for CMD are 'HELP','DIAG','START', without
+        % optional input, and 'T','RoR','SET' and 'MOVE' with corresponding
+        % temperature ('T','RoR','SET', in format [xx.xx]) or time ('MOVE', [ms]).
+        
+        % Examples for usage:
+        % serialcom(s,'HELP')
+        % serialcom(s,'DIAG')
+        % serialcom(s,'START')
+        % serialcom(s,'T',35.00)
+        % serialcom(s,'RoR',10.00)
+        % serialcom(s,'SET',38.50)
+        % serialcom(s,'MOVE',1000) to move up for 1000 ms
+        %
+        % While the first varargin is thus expected (if applicable) to be the
+        % input for setting temperatures and raise durations, a second input can be
+        % 'verbose', when response from Arduino is wanted as output e.g.:
+        % out = serialcom(s,'T',35,'verbose')
+        % out = serialcom(s,'HELP',[],'verbose')
+        out  = [];
+        buffer_warn  = 0;
+        suppress_out = 0; %suppress output even for DIAG and HELP
+        % mspb = 11/s.BaudRate; %muS per byte (comes from baudrate) (1/BaudRate * 11 bits per byte)
+        
+        
+        % clear buffer by reading out potential leftovers
+        while s.BytesAvailable ~= 0
+            fread(s,s.BytesAvailable);
+            if buffer_warn
+                warning('Detected and cleaned buffer leftovers...')
+            end
+        end
+        
+        % differentiate between command types, e.g. 'DIAG' vs 'T;32', what to send
+        % via the serial port.
+        if any(strcmp(cmd,{'HELP','DIAG','START'}))
+            fprintf(s,cmd);
+            if ~suppress_out
+                fprintf('Sending command %s. \n',cmd)
+            end
+        elseif any(strcmp(cmd,{'T','ROR','SET','MOVE'}))
+            cmdstr = [cmd ';' num2str(varargin{1})];
+            fprintf(s,cmdstr);
+            if ~suppress_out
+                fprintf('Sending command %s. \n',cmdstr)
+            end
+        end
+        
+        if any(strcmp(cmd,{'HELP','DIAG',}))
+            fprintf('Asked for %s, waiting %g seconds for Arduino response.\n',cmd,.5)
+            pause(.5)
+            if ~suppress_out
+                fprintf('%s \n',char(fread(s,s.BytesAvailable))')
+            end
+        end
+        % ensure to wait long enough to get back the Arduino's response (if wanted)
+        if length(varargin) == 2
+            ws = .2;
+            fprintf('Verbose wanted, waiting %g seconds for Arduino response.\n',ws)
+            pause(ws)
+            %read out Arduino's response from buffer
+            try
+                out = char(fread(s,s.BytesAvailable))'; %reads as many bytes as stored in buffer
+                if ~suppress_out
+                    fprintf('%s \n',out)
+                end
+            catch
+                % e.g. if buffer is empty
+                warning('Problem with s.BytesAvailable, reading buffer was not successful... \n')
+            end
+        end
+    end
+    function yhat = localsigfun(b0,x)
+        
+        a = b0(1);
+        b = b0(2);
+        L = b0(3);
+        U = b0(4);
+        v = 0.5;
+        
+        yhat = (L + ((U-L) ./ (1+v.*exp(-b.*(x-a))).^(1/v)));
     end
 end
