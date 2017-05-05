@@ -5,10 +5,10 @@ function [p]=exp_treatgen_mri(subject,run,csp,tonic,middletemp,lowtemp)
 %it by adding scanner pulse communications.
 %
 %
-mrt     = 0;
+mrt     = 1;
 debug   = 0;%debug mode
 laptop  = 0;
-arduino = 0;
+arduino = 1;
 %replace parallel port function with a dummy function
 if ismac
     %   outp = @(x,y) fprintf('[%i %i]\n',x,y);
@@ -71,22 +71,21 @@ elseif run == 5
     AskDetectionSelectable;
     ShowInstruction(21,0,2);
 else
-    %
-%     if el
-%         CalibrateEL;
-%     end
+    
+    if el
+        CalibrateEL;
+    end
     p.var.ExpPhase  = run;%set this after the calibration;
-%     if run ==1
-%         
-%         ShowInstruction(4,1);
-%         ApplyAndRate;
-%         for ninstr = 400:406
-%             ShowInstruction(ninstr,1);
-%         end
-%     else
-%         ShowInstruction(44,1);
-%         ApplyAndRate;
-%     end
+    if run ==1
+        ShowInstruction(4,1);
+        ApplyAndRate;
+        for ninstr = 400:406
+            ShowInstruction(ninstr,1);
+        end
+    else
+        ShowInstruction(44,1);
+        ApplyAndRate;
+    end
     PresentStimuli;
     Summary;
     WaitSecs(2);
@@ -171,33 +170,6 @@ cleanup;
         bottom          = top+p.stim.height/factor;
         myrect          = [left top right bottom];
     end
-    function AskDetection
-        %
-        p.var.ExpPhase = 3;
-        ShowInstruction(801,1);
-        %% show a fixation cross
-        fix          = [p.ptb.CrossPosition_x p.ptb.CrossPosition_y(1)];%show the fixation cross at the lip position to ease the subsequent drift correction.
-        FixCross     = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];
-        Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.imrect ); %always create a gray background
-        Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');%draw the prestimus cross atop
-        
-        Screen('DrawingFinished',p.ptb.w,0);
-        Screen('Flip',p.ptb.w);
-        StartEyelinkRecording(1,0,p.var.ExpPhase,0,0,0,fix,0);
-        WaitSecs(1.5);
-        %%
-        DrawCircle;
-        %Stimulus onset
-        Screen('Flip',p.ptb.w);
-        Eyelink('Message', 'Stim Onset');
-        Eyelink('Message', 'SYNCTIME');
-        %%
-        WaitSecs(40);
-        Screen('Flip',p.ptb.w);
-        Eyelink('Message', 'Stim Offset');
-        Eyelink('Message', 'BLANK_SCREEN');
-        StopEyelinkRecording;
-    end
 
     function PresentStimuli
         if arduino
@@ -206,15 +178,18 @@ cleanup;
         %Enter the presentation loop and wait for the first pulse to
         %arrive.
         %wait for the dummy scans
-        %         [secs] = WaitPulse(p.keys.pulse,p.mrt.dummy_scan);%will log it
-        %         KbQueueStop(p.ptb.device);
-        %         WaitSecs(.05);
-        %         KbQueueCreate(p.ptb.device);
-        %         KbQueueStart(p.ptb.device);%this means that from now on we are going to log pulses.
+        [secs] = WaitPulse(p.keys.pulse,p.mrt.dummy_scan);%will log it
+        KbQueueStop(p.ptb.device);
+        WaitSecs(.05);
+        KbQueueCreate(p.ptb.device);
+        KbQueueStart(p.ptb.device);%this means that from now on we are going to log pulses.
         %If the scanner by mistake had been started prior to this point
         %those pulses would have been not logged.
         %log the pulse timings.
-        %         TimeEndStim     = secs(end)- p.ptb.slack;%take the first valid pulse as the end of the last stimulus.
+        TimeEndStim     = secs(end)- p.ptb.slack;%take the first valid pulse as the end of the last stimulus.
+        Log(secs(end),50,p.mrt.dummy_scan);
+        MarkCED(p.com.lpt1.address,247);%256 means all channels.
+        MarkCED(p.com.lpt2.address,12); % 4 and 8
         for nTrial  = 1:p.presentation.tTrial;
             
             %Get the variables that Trial function needs.
@@ -279,14 +254,14 @@ cleanup;
         %             WaitSecs(10);
         %         end
     end
-    function rating = RatePain(nTrial,tonictemp);
+    function rating = RatePain(nTrial,tonictemp)
         time2rate = p.duration.rate;
         if nTrial == 0;
-            time2rate = p.duration.rate +10;
+            time2rate = p.duration.rate + 5; %bc they are probably startled anyway
         end
-        OnSetTime = GetSecs + .1;
-        RateOn    = GetSecs + min(p.presentation.tonicpain);
-        EndTrial  = OnSetTime + 5 + p.duration.rate;
+        OnSetTime = GetSecs;
+        RateOn    = OnSetTime + min(p.presentation.tonicpain);
+        EndTrial  = OnSetTime + min(p.presentation.tonicpain) + time2rate;
         if nTrial < 2
             Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
             Screen('FillRect',  p.ptb.w, p.stim.white, p.ptb.centralFixCross');%draw the prestimus cross atop        TimeCrossOn  = Screen('Flip',p.ptb.w,Fix1On,0);
@@ -308,7 +283,6 @@ cleanup;
         MarkCED( p.com.lpt2.address, p.com.lpt2.Fix);
         Log(RateOff,10,nTrial);
         Log(RateOff,2,p.ptb.centralFixCross);%cross onset.
-        MarkCED(p.com.lpt2.address, p.com.lpt2.Fix);
         PutRatingLog(nTrial,currentRating,tonictemp,rateinit,'pain')
         while GetSecs < EndTrial;end
         rating = currentRating.finalRating;
@@ -336,6 +310,7 @@ cleanup;
             WaitSecs(.5);
             starttime = GetSecs;
             Log(starttime,7,k);
+            Log(starttime,33,p.log.ARcount)
             ShowInstruction(9,0,rampdur+1) % Temp rising...
             Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
             Screen('FillRect',  p.ptb.w, p.stim.white, p.ptb.centralFixCross');%draw the prestimus cross atop
@@ -347,7 +322,7 @@ cleanup;
             DrawFormattedText(p.ptb.w,'Rating folgt.', 'center', p.ptb.midpoint(2)./1.2,p.stim.white);
             WaitSecs(18);
             TimeCrossOn  = Screen('Flip',p.ptb.w,0);
-            Log(TimeCrossOn,22,p.ptb.centralFixCross);%cross onset.
+            Log(TimeCrossOn,-1,NaN);%cross onset.
             WaitSecs(3);
             rating = RatePain(0,p.presentation.pain.tonic(1));
             Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
@@ -497,7 +472,6 @@ cleanup;
         MarkCED(p.com.lpt1.address, p.com.lpt1.RampU)
         Ramping = GetSecs;
         Log(Ramping, 6, p.presentation.pain.ror) %ramp back to baseline
-        Log(Ramping + rampdur,16,nTrial)
         fprintf('Took subject %5.2f seconds to respond. \n',currentRating.RT);
         PutRatingLog(nTrial,currentRating,tempC,rateinit,'relief');
         %% back to white cross (whenever ready)
@@ -507,6 +481,7 @@ cleanup;
         TimeCrossOn  = Screen('Flip',p.ptb.w);
         MarkCED( p.com.lpt2.address, p.com.lpt2.Fix);
         Log(TimeCrossOn,2,p.ptb.centralFixCross');%cross onset.
+        Log(Ramping + rampdur,16,nTrial) % happens somewhere here
         while GetSecs < TimeEndStim %otherwise the trial just ends
         end
         Log(TimeEndStim,31,nTrial)
@@ -524,7 +499,9 @@ cleanup;
         Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
         Screen('FillRect', p.ptb.w,  p.stim.white, p.ptb.centralFixCross');%draw the prestimus cross atop
         Screen('DrawingFinished',p.ptb.w,0);
-        Screen('Flip',p.ptb.w);
+        fx = Screen('Flip',p.ptb.w);
+        Log(fx,2,p.ptb.centralFixCross);
+        MarkCED( p.com.lpt2.address, p.com.lpt2.Fix);
         for dc = 1:length(demotemps)
             text = textstring{dc};
             StartTrial = GetSecs;
@@ -536,12 +513,13 @@ cleanup;
             rateoff   = rampon + p.duration.treatment + p.duration.rate;
             
             %white cross
-            if dc == 1
+            if dc ~= 1
                 Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
                 Screen('FillRect', p.ptb.w,  p.stim.white, p.ptb.centralFixCross');%draw the prestimus cross atop
                 Screen('DrawingFinished',p.ptb.w,0);
                 FlipTime = Screen('Flip',p.ptb.w,fixon,0);
                 Log(FlipTime,2,p.ptb.centralFixCross);
+                MarkCED( p.com.lpt2.address, p.com.lpt2.Fix);
             end
             Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
             Screen('FillRect', p.ptb.w,  p.stim.white, p.ptb.centralFixCross');%draw the prestimus cross atop
@@ -554,10 +532,12 @@ cleanup;
                 serialcom(s,'START');
                 serialcom(s,'SET',demotemps(dc));
             end
+            MarkCED( p.com.lpt1.address, p.com.lpt1.RampD);
             Log(GetSecs,4,p.presentation.pain.ror);
             Log(plateauon,5,demotemps(dc));
             while GetSecs < rateon; end
             Log(GetSecs,11,NaN);
+            MarkCED( p.com.lpt1.address, p.com.lpt1.RateRelief);
             rateinit = randi(p.rating.initrange);
             [currentRating.finalRating,currentRating.RT,currentRating.response] = vasScale(p.ptb.w,p.ptb.rect,p.duration.rate,rateinit,...
                 p.stim.bg,p.ptb.startY,p.keys,'relief');
@@ -569,11 +549,13 @@ cleanup;
             if arduino
                 serialcom(s,'SET',basetemp);
             end
+            MarkCED( p.com.lpt1.address, p.com.lpt1.RampU);
             Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
             Screen('FillRect', p.ptb.w,  p.stim.white, p.ptb.centralFixCross');%draw the prestimus cross atop
             Screen('DrawingFinished',p.ptb.w,0);
             FlipTime = Screen('Flip',p.ptb.w,fixon,0);
             Log(FlipTime,2,p.ptb.centralFixCross);
+            MarkCED( p.com.lpt2.address, p.com.lpt2.Fix);
             while GetSecs < rateoff;end % if subject rated faster than allowed, we add this to ISI.
         end
         k = 0;
@@ -696,7 +678,7 @@ cleanup;
     end
     function SetParams
         %mrt business
-        p.mrt.dummy_scan              = 7;%this will wait until the 6th image is acquired.
+        p.mrt.dummy_scan              = 7;%this will wait until the Xth image is acquired.
         p.mrt.LastScans               = 5;%number of scans after the offset of the last stimulus
         p.mrt.tr                      = 1;%in seconds.
         %will count the number of events to be logged
@@ -833,16 +815,10 @@ cleanup;
         %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %stimulus sequence
         if run == 0
-            seq.cond_id       = [0 Shuffle(repmat(1:8,1,3))'];
-            seq.tTrial        = length(seq.cond_id);
-            seq.tonicpain     = [6 Shuffle(repmat([5 6 7 6 5 6 7 5 6 7 6 6],1,2))'];
-            seq.ratepain      = [1 zeros(1,seq.tTrial-1)];
-            seq.stim_id       = seq.cond_id;
-            seq.ucs           = [zeros(1,length(seq.cond_id))];
-            seq.dist          = MinimumAngle((seq.stim_id-1)*45,(csp-1)*45); %actually, there is no csp yet. so it could also be nans.
-            seq.dist(1)       = 3000; %nulltrial
-            p.presentation    = seq;
-            p.presentation.tTrial = length(seq.cond_id);
+            load([p.path.stim 'stimlist/baseline_scanner.mat']);
+            seqid             = subject+((run-1)*50);
+            p.presentation    = seq(seqid,csp);
+            p.presentation.seqid = seqid;
         elseif run == 1
             load([p.path.stim 'stimlist/cond_scanner.mat']);
             seqid             = subject+((run-1)*50);
