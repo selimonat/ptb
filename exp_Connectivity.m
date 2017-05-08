@@ -79,7 +79,12 @@ fprintf('Continuing...\n');
 b = target_block;
 p.block = b;
 p.sequence = sequence{b};
-[p, abort] = ExperimentBlock(p);
+p.sequence
+if strcmp('Localizer', p.sequence.block_type)
+    [p, abort] = ExperimentBlock(p);
+elseif strcmp('Glaze', p.sequence.block_type)
+    [p, abort] = GlazeBlock(p);
+end
 if abort
     cleanup
     return
@@ -181,9 +186,117 @@ cleanup;
     end
 
 
+    function [p, abort] = GlazeBlock(p)
+        
+        KbQueueStop(p.ptb.device);
+        KbQueueRelease(p.ptb.device);
+        
+        
+        %Enter the presentation loop and wait for the first pulse to
+        %arrive.
+        %wait for the dummy scans
+        p = InitEyeLink(p);
+        CalibrateEL;
+        Screen('FillRect',p.ptb.w,p.var.current_bg);
+        Screen('Flip',p.ptb.w);        
+        KbQueueStop(p.ptb.device);
+        KbQueueRelease(p.ptb.device);
+        
+        fprintf('Waiting for %i pulses to occur before experiment starts', p.mrt.dummy_scan)      
+        [secs, p] = WaitPulse(p, p.keys.pulse,p.mrt.dummy_scan);%will log it        
+                
+        KbQueueCreate(p.ptb.device);%, p.ptb.keysOfInterest);%default device.
+        KbQueueStart(p.ptb.device)
+        KbQueueFlush(p.ptb.device)        
+        
+        Eyelink('StartRecording');
+        WaitSecs(0.01);
+        Eyelink('Message', sprintf('SUBJECT %d', p.subject));
+        p = Log(p, GetSecs, 10000, p.subject, p.phase, p.block);
+        Eyelink('Message', sprintf('PHASE %d', p.phase));
+        Eyelink('Message', sprintf('BLOCK %d', p.block));
+        
+        TimeEndStim     = secs(end)- p.ptb.slack;%take the first valid pulse as the end of the last stimulus.
+        
+        % Reward stuff
+        draw_fix(p);
+        p.prev_sample=0;
+        ISI = .25;
+        StartGlazeEyelinkRecording(trial, p.phase, validity, stim_id, p.block, rewarded_rule);
+        outcomes = [];
+        for trial  = 1:size(p.sequence.stim, 2);
+            %Get the variables that Trial function needs.
+            stim_id       = p.sequence.stim(trial);            
+            type          = p.sequence.type(trial);   
+            location      = p.sequence.location(trial);
+            gener_side    = p.sequence.generating_side(trial);
+            OnsetTime     = TimeEndStim + ISI;
+            Eyelink('Command', 'record_status_message "Trial: %i/%i"', trial, size(p.sequence.stim, 2));
+            Eyelink('Message', 'stim_id %i', stim_id)
+            Eyelink('Message', 'gener_side %i', gener_side)
+            Eyelink('Message', 'location %i', location)
+            Eyelink('Message', 'ISI %i', ISI)
+            Eyelink('Message', 'type %i', type)
+
+            if type == 0
+                % Show a single sample
+                [TimeEndStim, p] = show_one_sample(p, OnsetTime, location);
+            elseif type == 1
+                % Choice trial.
+                [p, RT, response, rule, abort] = choice_trial(p, OnsetTime, stim_id, phase, block)
+                if rule == gener_side
+                    outcomes = [outcomes 1];
+                else
+                    outcomes = [outcomes 0];
+                end
+            end
+            p = dump_keys(p);
+            
+            if abort
+               break
+            end
+            
+            ISI           = p.sequence.isi(trial);
+
+        end
+        
+        %wait 6 seconds for the BOLD signal to come back to the baseline...
+        if mod(p.phase, 2) == 0
+            WaitPulse(p, p.keys.pulse, p.mrt.dummy_scan);%
+            fprintf('OK!! Stop the Scanner\n');
+        else
+            start = GetSecs();
+            while GetSecs() < start+4
+            end
+        end
+        
+        p = dump_keys(p);
+        
+        % Need to show feedback here!
+        p.earned_rewards = sum(outcomes);
+        %money_earned = p.earned_rewards*all_rewards.eur_per_reward;
+        money_earned = sum(outcomes)*all_rewards.eur_per_reward;
+        all_rewards.money = all_rewards.money+money_earned;
+        all_rewards.total_rewards = all_rewards.total_rewards + p.earned_rewards;
+        
+        text = RewardText(p.earned_rewards, p.earned_rewards/trial, money_earned, all_rewards.money);
+        Screen('FillRect',p.ptb.w,p.var.current_bg);
+        DrawFormattedText(p.ptb.w, text, 'center', 'center', p.stim.white,[],[],[],2,[]);
+        Screen('Flip',p.ptb.w);
+        start = GetSecs();
+        p = save_data(p);
+        while GetSecs() < start+5
+        end
+        %stop the queue
+        KbQueueStop(p.ptb.device);
+        KbQueueRelease(p.ptb.device);
+        
+    end
+
+
     function [p, TimeFeedbackOffset, abort] = CueTrial(...
             phase, block, p, TimeStimOnset, stim_id, jitter, rewarded_rule)
-        %% Run one trial
+        %% Run one trial of the localizer block design task.
         rule = nan; %#ok<NASGU>
         abort = false; %#ok<NASGU>
         TimeFeedbackOffset = nan; %#ok<NASGU>
@@ -207,21 +320,15 @@ cleanup;
     end
 
 
-    function [p, TimeCrossOn] = start_trial(p, allow_blink, phase, block)
+    function [p, TimeCrossOn] = start_trial(p, phase, block)
         %% Start a trial, also allows time for blinks.        
         Screen('FillRect', p.ptb.w , p.stim.bg, [] ); %always create a gray background
         draw_fix(p)
+        
 
-        if allow_blink>0 % Give time for blinks.
-            Screen('FillRect',  p.ptb.w, [0, 55, 200], p.FixCross');%draw the prestimus cross atop
-            TimeBlinkOn  = Screen('Flip',p.ptb.w, allow_blink+2);      %<----- FLIP
-            Screen('FillRect',  p.ptb.w, [255, 255, 255], p.FixCross');%draw the prestimus cross atop
-            draw_fix(p)
-            TimeCrossOn  = Screen('Flip',p.ptb.w, TimeBlinkOn+1);      %<----- FLIP
-        else
-            Screen('FillRect',  p.ptb.w, [255, 255, 255], p.FixCross');%draw the prestimus cross atop
-            TimeCrossOn  = Screen('Flip',p.ptb.w);      %<----- FLIP
-        end
+        Screen('FillRect',  p.ptb.w, [255, 255, 255], p.FixCross');%draw the prestimus cross atop
+        TimeCrossOn  = Screen('Flip',p.ptb.w);      %<----- FLIP
+
         p = Log(p,TimeCrossOn, 3, nan, phase, block);
         Eyelink('Message', 'FIXON');
         MarkCED( p.com.lpt.address, p.com.lpt.trialOnset);
@@ -260,7 +367,7 @@ cleanup;
         start = GetSecs;
         response = nan;
         RT = nan;
-        while (GetSecs-start) < 10
+        while (GetSecs-start) < 2
             [keycodes, secs] = KbQueueDump;
             if numel(keycodes)
                 for iii = 1:length(keycodes)
@@ -291,7 +398,11 @@ cleanup;
         end
         
         fprintf('RESPONSE: %i, ', response);
-        MarkCED(p.com.lpt.address, p.com.lpt.event);
+        if response == 0           
+            MarkCED(p.com.lpt.address, p.com.lpt.resp0);
+        else
+            MarkCED(p.com.lpt.address, p.com.lpt.resp1);
+        end
         Eyelink('message', sprintf('ANSWER %i', response));
         p = Log(p,RT, 6, response, phase, block);
         p = Log(p,RT, 7, RT-start, phase, block);
@@ -337,6 +448,26 @@ cleanup;
         
     end
 
+    
+    function p = show_one_sample(p, SampleOnset, location)
+        % Show one sample, such that black and white parts cancel.
+        x_outer = r_inner*(2^.5 -1);
+        r_outer = r_inner + x_outer;
+        % left, top, right, bottom
+        rin = [location-r_inner, 0, location+r_inner, 0];
+        rout = [location-r_outer, 0, location+r_outer, 0];
+        Screen('FillOval', p.ptb.w, [128-o, 128-o, 128-o], rout);
+        Screen('FillOval', p.ptb.w, [128+o, 128+o, 128+o], rin);
+        draw_fix(p)
+        Screen('FillRect',  p.ptb.w, color, p.FixCross');
+        SampleOnset  = Screen('Flip',p.ptb.w, SampleOnset, 0);      %<----- FLIP        
+        Eyelink('message', sprintf('sample %f', location));
+        p = Log(p,TimeFeedback, 9, sample, phase, block);
+        %MarkCED( p.com.lpt.address, p.com.lpt.event);        
+        draw_fix(p)
+        TimeFeedbackOffset = Screen('Flip',p.ptb.w,SampleOnset+p.sample_duration, 0);     %<----- FLIP
+    end
+
 
     function p = dump_keys(p)
         %dump the final events
@@ -353,6 +484,8 @@ cleanup;
             p = Log(p,secs(pulses), 0,keycode(pulses), p.phase, p.block);
         end
     end
+
+
     function draw_stimulus(p, stim_id)
         angle = 90*stim_id;
         df = p.ptb.rect(3) -  p.ptb.rect(4);
@@ -712,6 +845,16 @@ cleanup;
         if ~NoEyelink            
             Eyelink('Message', 'TRIALID: %04d, PHASE: %04d, VALIDITY: %04d, STIM: %04d, BLOCK %04d', nTrial, phase, validity, stim, block_id, rewarded_rule);
             Eyelink('Command', 'record_status_message "Trial: %i"', nTrial);
+            t = GetSecs;
+        else
+            t = GetSecs;
+        end
+    end
+
+
+    function [t]=StartGlazeEyelinkRecording(nTrial)
+        if ~NoEyelink            
+            Eyelink('Message', 'GLAZEBLOCK: %04d', nTrial);
             t = GetSecs;
         else
             t = GetSecs;
