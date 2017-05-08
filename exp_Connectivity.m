@@ -945,13 +945,16 @@ cleanup;
 
 
     function p = save_data(p)
+        p.save_time = datestr(now, 'dd-mmm-yyyy HH:MM:SS');
+        rst = randstr(5);
+        p.random_stirng = rst; 
         path = fullfile(p.path.baselocation, sprintf('SUB_%i', p.subject), sprintf('PH_%d', p.phase, p.block)); %subject folder, first we save it to the temp folder.
         if ~exist(path) %#ok<EXIST>
             mkdir(path)
         end
         
-        path_edf = fullfile(path, sprintf('S%d_P%d_B%d.edf', p.subject, p.phase, p.block));
-        path_data = fullfile(path, sprintf('S%d_P%d_B%d_data.mat', p.subject, p.phase, p.block));
+        path_edf = fullfile(path, sprintf('S%d_P%d_B%d_%s.edf', p.subject, p.phase, p.block, rst));
+        path_data = fullfile(path, sprintf('S%d_P%d_B%d_%s_data.mat', p.subject, p.phase, p.block, rst));
         
         %get the eyelink file back to this computer
         StopEyelink(p.edffile, path_edf);
@@ -965,7 +968,13 @@ cleanup;
         
         
     end
-
+    
+    function r = randstr(n)
+         symbols = ['a':'z' 'A':'Z' '0':'9'];
+         stLength = randi(n);
+         nums = randi(numel(symbols),[1 stLength]);
+         r = symbols (nums);
+    end
 
     function ppd = ppd(distance, x_px, width)
         o = tan(0.5*pi/180) * distance;
