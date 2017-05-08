@@ -187,7 +187,7 @@ cleanup;
 
 
     function [p, abort] = GlazeBlock(p)
-        
+        abort=false;
         KbQueueStop(p.ptb.device);
         KbQueueRelease(p.ptb.device);
         
@@ -222,28 +222,36 @@ cleanup;
         draw_fix(p);
         p.prev_sample=0;
         ISI = .25;
-        StartGlazeEyelinkRecording(trial, p.phase, validity, stim_id, p.block, rewarded_rule);
+        StartGlazeEyelinkRecording(p.block, p.phase);
         outcomes = [];
         for trial  = 1:size(p.sequence.stim, 2);
+            fprintf('Trial: %i\n',trial);
             %Get the variables that Trial function needs.
-            stim_id       = p.sequence.stim(trial);            
+            stim_id       = p.sequence.stim(trial);       
+            
             type          = p.sequence.type(trial);   
-            location      = p.sequence.location(trial);
+            location      = p.sequence.sample(trial);
             gener_side    = p.sequence.generating_side(trial);
             OnsetTime     = TimeEndStim + ISI;
             Eyelink('Command', 'record_status_message "Trial: %i/%i"', trial, size(p.sequence.stim, 2));
-            Eyelink('Message', 'stim_id %i', stim_id)
-            Eyelink('Message', 'gener_side %i', gener_side)
-            Eyelink('Message', 'location %i', location)
-            Eyelink('Message', 'ISI %i', ISI)
-            Eyelink('Message', 'type %i', type)
+            Eyelink('Message', 'trial_id %i', trial);
+            if ~isnan(stim_id)
+                Eyelink('Message', 'stim_id %i', stim_id);
+            end
+            if ~isnan(gener_side)
+                Eyelink('Message', 'gener_side %i', gener_side);
+            end
+            if ~isnan(location)
+                Eyelink('Message', 'location %i', location);
+            end            
+            Eyelink('Message', 'type %i', type);
 
             if type == 0
                 % Show a single sample
                 [TimeEndStim, p] = show_one_sample(p, OnsetTime, location);
             elseif type == 1
                 % Choice trial.
-                [p, RT, response, rule, abort] = choice_trial(p, OnsetTime, stim_id, phase, block)
+                [p, RT, response, rule, abort] = choice_trial(p, OnsetTime, stim_id, p.phase, p.block);
                 if rule == gener_side
                     outcomes = [outcomes 1];
                 else
@@ -331,7 +339,7 @@ cleanup;
 
         p = Log(p,TimeCrossOn, 3, nan, phase, block);
         Eyelink('Message', 'FIXON');
-        MarkCED( p.com.lpt.address, p.com.lpt.trialOnset);
+        %MarkCED( p.com.lpt.address, p.com.lpt.trialOnset);
     end
 
 
@@ -349,7 +357,7 @@ cleanup;
         p = Log(p,TimeStimOnset, 4, nan, phase, block);
         Eyelink('Message', 'StimOnset');
         Eyelink('Message', 'SYNCTIME');
-        MarkCED( p.com.lpt.address, p.com.lpt.StimOnset);
+        MarkCED( p.com.lpt.address, p.com.lpt.stim);
         
         %% Check for key events
         p = dump_keys(p);
@@ -438,7 +446,7 @@ cleanup;
         TimeFeedback  = Screen('Flip',p.ptb.w, TimeFeedbackOnset, 0);      %<----- FLIP        
         Eyelink('message', sprintf('FEEDBACK %f', reward));
         p = Log(p,TimeFeedback, 9, reward, phase, block);
-        MarkCED( p.com.lpt.address, p.com.lpt.event);
+        MarkCED( p.com.lpt.address, p.com.lpt.sample);
         
         draw_fix(p)
         TimeFeedbackOffset = Screen('Flip',p.ptb.w,TimeFeedback+0.4, 0);     %<----- FLIP
@@ -449,23 +457,33 @@ cleanup;
     end
 
     
-    function p = show_one_sample(p, SampleOnset, location)
+    function [TimeSampleOffset, p] = show_one_sample(p, SampleOnset, location)
         % Show one sample, such that black and white parts cancel.
+        r_inner = 0.1;
+        o = 50;
+        p.sample_duration=.1;
         x_outer = r_inner*(2^.5 -1);
-        r_outer = r_inner + x_outer;
+        r_outer = (r_inner + x_outer)*p.display.ppd;
+        r_inner = r_inner*p.display.ppd;
+        cx = p.ptb.CrossPosition_x;
+        cy = p.ptb.CrossPosition_y;
+        
         % left, top, right, bottom
-        rin = [location-r_inner, 0, location+r_inner, 0];
-        rout = [location-r_outer, 0, location+r_outer, 0];
+        location = location*p.display.ppd;
+        rin = [location-r_inner+cx, cy-r_inner, location+r_inner+cx, r_inner+cy];
+        rout = [location-r_outer+cx, cy-r_outer, location+r_outer+cx, r_outer+cy];
         Screen('FillOval', p.ptb.w, [128-o, 128-o, 128-o], rout);
         Screen('FillOval', p.ptb.w, [128+o, 128+o, 128+o], rin);
         draw_fix(p)
-        Screen('FillRect',  p.ptb.w, color, p.FixCross');
+        
         SampleOnset  = Screen('Flip',p.ptb.w, SampleOnset, 0);      %<----- FLIP        
         Eyelink('message', sprintf('sample %f', location));
-        p = Log(p,TimeFeedback, 9, sample, phase, block);
+        p = Log(p,SampleOnset, 9, location, p.phase, p.block);
         %MarkCED( p.com.lpt.address, p.com.lpt.event);        
         draw_fix(p)
-        TimeFeedbackOffset = Screen('Flip',p.ptb.w,SampleOnset+p.sample_duration, 0);     %<----- FLIP
+        TimeSampleOffset = Screen('Flip',p.ptb.w,SampleOnset+p.sample_duration, 0);     %<----- FLIP
+        draw_fix(p)
+        TimeSampleOffset = Screen('Flip',p.ptb.w,TimeSampleOffset+(.25-p.sample_duration), 0);
     end
 
 
@@ -474,9 +492,6 @@ cleanup;
         [keycode, secs] = KbQueueDump;%this contains both the pulses and keypresses.
         %log everything but "pulse keys" as pulses, not as keypresses.
         pulses          = (keycode == KbName(p.keys.pulse));
-        fprintf('Dumping keys...\n')
-        display(keycode)
-        sum(pulses)
         if any(~pulses);%log keys presses if only there is one
             p = Log(p,secs(~pulses), 1000,keycode(~pulses), p.phase, p.block);
         end
@@ -611,10 +626,10 @@ cleanup;
         p.com.lpt.address = 888;%parallel port of the computer.
         %codes for different events that are sent for logging in the
         %physiological computer.        
-        p.com.lpt.mBlock     = 128;
-        p.com.lpt.StimOnset  = 64;
-        p.com.lpt.trialOnset = 32;
-        p.com.lpt.event      = 16;        
+        p.com.lpt.resp0     = 128;
+        p.com.lpt.resp1     = 64;
+        p.com.lpt.stim      = 32;
+        p.com.lpt.sample    = 16;        
         %Record which Phase are we going to run in this run.
         p.stim.phase                   = phase;
         p.out.log                     = zeros(1000000, 5).*NaN;%Experimental LOG.
@@ -800,7 +815,6 @@ cleanup;
         
         %% Build a procedural gabor texture for a gabor with a support of tw x th
         % pixels, and a RGB color offset of 0.5 -- a 50% gray.
-        p.display.ppd
         p.stim.radius = p.ptb.rect(4)/2;
         p.stim.radius_deg = (p.ptb.rect(4)/2)/p.display.ppd;
         p.stim.sf = 2/p.display.ppd;
@@ -852,9 +866,9 @@ cleanup;
     end
 
 
-    function [t]=StartGlazeEyelinkRecording(nTrial)
+    function [t]=StartGlazeEyelinkRecording(nTrial, phase)
         if ~NoEyelink            
-            Eyelink('Message', 'GLAZEBLOCK: %04d', nTrial);
+            Eyelink('Message', 'GLAZEBLOCK: %04d, phase:%04d', nTrial, phase);
             t = GetSecs;
         else
             t = GetSecs;
