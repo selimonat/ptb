@@ -257,7 +257,7 @@ cleanup;
     function rating = RatePain(nTrial,tonictemp)
         time2rate = p.duration.rate;
         if nTrial == 0;
-            time2rate = p.duration.rate + 5; %bc they are probably startled anyway
+            time2rate = p.duration.rate + 5; %for the Apply and Rate procedure, they have more time to think. Scanner is not running anyway
         end
         OnSetTime = GetSecs;
         RateOn    = OnSetTime + min(p.presentation.tonicpain);
@@ -276,12 +276,12 @@ cleanup;
         Log(RateOn,9,nTrial)
         [currentRating.finalRating,currentRating.RT,currentRating.response] = vasScale(p.ptb.w,p.ptb.rect,time2rate,rateinit,...
             p.stim.bg,p.ptb.startY,p.keys,'pain');
+        Log(GetSecs,10,nTrial);
         Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
         Screen('FillRect',  p.ptb.w, p.stim.white, p.ptb.centralFixCross');%draw the prestimus cross atop        TimeCrossOn  = Screen('Flip',p.ptb.w,Fix1On,0);
         Screen('DrawingFinished',p.ptb.w,0);
         RateOff  = Screen('Flip',p.ptb.w,0);
         MarkCED( p.com.lpt2.address, p.com.lpt2.Fix);
-        Log(RateOff,10,nTrial);
         Log(RateOff,2,p.ptb.centralFixCross);%cross onset.
         PutRatingLog(nTrial,currentRating,tonictemp,rateinit,'pain')
         while GetSecs < EndTrial;end
@@ -398,14 +398,14 @@ cleanup;
         TimeEndStim = OnsetTime + ISI + p.duration.fix + jitterF + p.duration.face + jitterR + p.duration.treatment + p.duration.rate + p.duration.poststim - jitterF - jitterR;
         %% Baseline, tonic pain, inkl. white fixcross in the middle
         Log(OnsetTime,30,nTrial)
-        if nTrial ==1
-            Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
-            Screen('FillRect',  p.ptb.w, p.stim.white, p.ptb.centralFixCross');%draw the prestimus cross atop
-            Screen('DrawingFinished',p.ptb.w,0);
-            TimeCrossOn  = Screen('Flip',p.ptb.w,Fix1On,0);
-            MarkCED( p.com.lpt2.address, p.com.lpt2.Fix);
-            Log(TimeCrossOn,2,p.ptb.centralFixCross);%cross onset.
-        end
+%         if nTrial ==1
+%             Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
+%             Screen('FillRect',  p.ptb.w, p.stim.white, p.ptb.centralFixCross');%draw the prestimus cross atop
+%             Screen('DrawingFinished',p.ptb.w,0);
+%             TimeCrossOn  = Screen('Flip',p.ptb.w,Fix1On,0);
+%             MarkCED( p.com.lpt2.address, p.com.lpt2.Fix);
+%             Log(TimeCrossOn,2,p.ptb.centralFixCross);%cross onset.
+%         end
         %% Show 2nd Fixcross, before Face
         Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
         Screen('FillRect', p.ptb.w, p.stim.white, FixCross');%draw the prestimus cross atop
@@ -816,9 +816,9 @@ cleanup;
         %stimulus sequence
         if run == 0
             load([p.path.stim 'stimlist/baseline_scanner.mat']);
-            seqid             = subject+((run-1)*50);
-            p.presentation    = seq(seqid,csp);
-            p.presentation.seqid = seqid;
+%             seqid             = subject+((run-1)*50);
+            p.presentation    = seq(subject,csp);
+            p.presentation.seqid = subject;
         elseif run == 1
             load([p.path.stim 'stimlist/cond_scanner.mat']);
             seqid             = subject+((run-1)*50);
