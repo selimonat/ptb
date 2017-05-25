@@ -20,6 +20,8 @@ if nargin ~= 6
 end
 
 csn   = mod( csp + 8/2-1, 8)+1;
+
+ListenChar(2);%disable unwanted keypresses
 commandwindow;
 %clear everything
 clear mex global functions
