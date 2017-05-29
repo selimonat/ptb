@@ -8,6 +8,7 @@ function [p]=exp_treatgen_calib_mri(subject,run)
 
 debug = 0;%debug mode;
 arduino = 1;
+
 commandwindow;
 %clear everything
 clear mex global functions
@@ -80,7 +81,7 @@ elseif run == 1
     ConfirmIntensity;
     ExperimenterInput(2)
     PresentStimuli;
-%     GetTemps;
+    GetTemps;
     % elseif run == 3
     %      ShowInstruction(10,0,3);
     %     ExperimenterInput(1);
@@ -1083,8 +1084,11 @@ cleanup;
         
         trialnum = length(y);
         fprintf('Identified %g valid trials. \n',trialnum)
-        
-        plot(x,y,'bo','MarkerFaceColor','b');hold on;
+        cols = [ones(trialnum,2) sort(linspace(0,1,trialnum)','descend')];  
+        for tr = 1:trialnum
+            plot(x(tr),y(tr),'o','MarkerFaceColor',cols(tr,:));hold on;
+        end
+%         plot(x,y,'bo','MarkerFaceColor','b');hold on;
         %%
         % set params
         target_vas = [70 50 30];
@@ -1125,6 +1129,10 @@ cleanup;
         
         p.presentation.calib_est = [est_sig; est_lin];
         p.presentation.calib_target_vas = target_vas;
+        
+        fh = gcf;
+        saveas(fh,[p.path.subject 'calib','png'])
+        
         function xsigpred = sigreverse(bsig1,ytarget)
             v=.5; a1 = bsig1(1); b1 = bsig1(2); L1 = bsig1(3); U1 = bsig1(4);
             xsigpred = a1 + 1/-b1 * log((((U1-L1)/(ytarget-L1))^v-1)./v);
@@ -1134,6 +1142,7 @@ cleanup;
             a1 = blin1(1); b1 = blin1(2);
             xlinpred = (ytarget - a1) / b1;
         end
+        
     end
     function [out] = serialcom(s,cmd,varargin)
         % SERIALCOM allows talking to an Arduino via an established serial
