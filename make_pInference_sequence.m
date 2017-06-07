@@ -1,5 +1,20 @@
 
 function stimuli = make_pInference_sequence(ns, mean_inter_change_length, trials, sigma, duration, ps)
+%%
+% One tral is:
+%   Prediction -> [wait] -> sample -> [wait] -> next trial
+% Nassar has:
+%   [unknown]  -> [0]    -> [2s]   -> [0]    ->
+% ns                        : number subjects
+% mean_inter_change_length  : 1/(hazard rate)
+% trials                    : number of trials
+% sigma                     : width of samples in degree
+% pred_to_sample            : [low, high] time between prediction and
+%                             sample
+% sample_to_pred            : [low, high] time between sample and
+%                             prediciton.
+% ps                        : [p prediction, p choice, p sample_only]
+
 stimuli = {};
 
 % Course of experiment:
@@ -40,26 +55,21 @@ end
 
     function [seq, es] = make_exp_sequence(mean_inter_change_length, trials, ps)
         %% Makes a sequence of rules that change with a specific hazard rate.
-        seq.type = 'EXP';
+        seq.block_type = 'NR';
         seq.sigma = sigma;
         seq.sample = [];
         seq.mu = [];
         seq.stim = randi(2, 1, trials)-1;
         es = [];
-        start = [0,1,2];
-        nexts = [[1,2]; [0, 2]; [0,1]];
+        %start = [0,1,2];
+        %nexts = [[1,2]; [0, 2]; [0,1]];
         
         while length(seq.sample)<trials
             e = round(exprnd(mean_inter_change_length));
             if e <= 5 || e > (mean_inter_change_length*2)
                 continue
             end
-            mu = (rand()*300 - 150);
-            if numel(seq.sample)>0
-                if sign(seq.sample(end)) == sign(mu)
-                    mu = -1*mu;
-                end
-            end
+            mu = (rand()*300);            
             seq.sample = round([seq.sample, randn(1,e)*sigma + mu]);
             seq.mu = [seq.mu, repmat(mu, 1, e)];
             es = [es e]; %#ok<AGROW>
