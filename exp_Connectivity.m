@@ -1654,12 +1654,18 @@ cleanup;
                 end
             end
             fprintf('Device name is: %s\n', names{iii})
+            gamma = load('dell241i_calibration.mat');
+            p.ptb.gamma = gamma.gTmp;
         elseif strcmp(p.hostname, 'donnerlab-Precision-T1700')
             p.ptb.screenNumber          =  1;
             p.ptb.device        = 9;
+            gamma = load('vpixx_gamma_table.mat');
+            p.ptb.gamma = gamma.table;
         else
             p.ptb.screenNumber          =  max(screens);%the maximum is the second monitor
             p.ptb.device        = -1;
+            gamma = load('nne_uke_scanner.mat');
+            p.ptb.gamma = gamma.gammaTable;
         end
         p.ptb.screenNumber
         %Make everything transparent for debugging purposes.
@@ -1681,7 +1687,14 @@ cleanup;
             [p.ptb.w, p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, [128, 128, 128], [0, 0, 1000, 500]);
         end
         
-        %Screen('BlendFunction', p.ptb.w, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        if numel(p.ptb.gamma, 2) > 0
+            [old_table] = Screen('LoadNormalizedGammaTable', p.ptb.w, p.ptb.gamma);
+            p.ptb.gamma_loaded = true;
+            p.ptb.old_gamma = old_table;
+            p.ptb.gamma_loaded = false;
+        else
+            p.ptb.gamma_loaded=false
+        end
         Screen('Flip',p.ptb.w);%make the bg
         
         p.ptb.slack                 = Screen('GetFlipInterval',p.ptb.w)./2;
@@ -1893,6 +1906,10 @@ cleanup;
 
     function cleanup
         % Close window:
+        if p.ptb.gamma_loaded            
+            Screen('LoadNormalizedGammaTable', p.ptb.w, p.ptb.old_gamma);
+            Screen('flip', p.ptb.w)
+        end
         sca;
         %set back the old resolution
         if strcmp(p.hostname,'triostim1')
@@ -2134,8 +2151,9 @@ cleanup;
                 img_incl_alpha = cat(3, a, b);
                 stimuli{ii} = img_incl_alpha; %#ok<AGROW>
             end
-            save(cachefile, 'stimuli');
-        end        
+            
+            save(cachefile, 'stimuli', '-v7.3');
+        end    
         %noise = (noise>mean(noise(:)));
         textures = [];
         for ii = 1:300
