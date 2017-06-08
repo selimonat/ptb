@@ -1,5 +1,5 @@
 
-function stimuli = make_pInference_sequence(ns, mean_inter_change_length, trials, sigma, duration, ps)
+function stimuli = make_pInference_sequence(ns, mean_inter_change_length, trials, sigma, duration)
 %%
 % One tral is:
 %   Prediction -> [wait] -> sample -> [wait] -> next trial
@@ -9,10 +9,7 @@ function stimuli = make_pInference_sequence(ns, mean_inter_change_length, trials
 % mean_inter_change_length  : 1/(hazard rate)
 % trials                    : number of trials
 % sigma                     : width of samples in degree
-% pred_to_sample            : [low, high] time between prediction and
-%                             sample
-% sample_to_pred            : [low, high] time between sample and
-%                             prediciton.
+% duration                  : How long a sample is shown
 % ps                        : [p prediction, p choice, p sample_only]
 
 stimuli = {};
@@ -40,7 +37,7 @@ for s = 1:ns
                 es = 0;
                 while abs(mean(es)-mean_inter_change_length) > 1
                   
-                   [seq, es] = make_exp_sequence(mean_inter_change_length, trials, ps);
+                   [seq, es] = make_exp_sequence(mean_inter_change_length, trials);
 
                 end
             else
@@ -53,7 +50,7 @@ for s = 1:ns
     end
 end
 
-    function [seq, es] = make_exp_sequence(mean_inter_change_length, trials, ps)
+    function [seq, es] = make_exp_sequence(mean_inter_change_length, trials)
         %% Makes a sequence of rules that change with a specific hazard rate.
         seq.block_type = 'NR';
         seq.sigma = sigma;
@@ -69,20 +66,16 @@ end
             if e <= 5 || e > (mean_inter_change_length*2)
                 continue
             end
-            mu = (rand()*300);            
+            mu = 10+(rand()*280);            
             seq.sample = round([seq.sample, randn(1,e)*sigma + mu]);
             seq.mu = [seq.mu, repmat(mu, 1, e)];
             es = [es e]; %#ok<AGROW>
         end
         
-        tt = mnrnd(1, ps, trials);
-        seq.trial_type(tt(:, 1)==1) = 1;
-        seq.trial_type(tt(:, 2)==1) = 2;
-        seq.trial_type(tt(:, 3)==1) = 3;
         seq.sample = seq.sample(1:trials);
-        seq.isi = duration(1) + (duration(2)-duration(1)).*rand(1, trials);
+        seq.duration = seq.sample*0+duration;
         seq.jitter = 0.3 + 0.7*rand(1, trials);
-        seq.isi = seq.isi-seq.jitter;
+        
     end
 
     function [seq, es] = make_Q_sequence(trials, type)
