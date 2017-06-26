@@ -6,7 +6,7 @@ end
 
 fmri = true; % if false skip waiting for pulses.
 debug   = 0; %debug mode => 1: transparent window enabling viewing the background.
-small_window = 1; % Open a small window only
+small_window = 0; % Open a small window only
 NoEyelink = 1; %is Eyelink wanted?
 test_sequences = 0; % Load shorter test sequences
 
@@ -51,7 +51,7 @@ if strcmp(experiment, 'connectivity')
         sequences = load('short_stimulus_sequences.mat');
     end
 elseif strcmp(experiment, 'immuno')
-    sequences = load('stimulus_sequences.mat');
+    sequences = load('immuno_sequences.mat');
 end
 sequences = sequences.sequences;
 sequence = sequences{subject}{phase};
@@ -62,15 +62,23 @@ if ~exist(path_reward) %#ok<EXIST>
     mkdir(path_reward)
 end
 reward_file = fullfile(path_reward,'rewards_latest.mat');
-eur_per_reward = 0.05;
+
+if strcmp(experiment, 'connectivity')    
+    eur_per_reward = 0.07;
+elseif strcmp(experiment, 'immuno')
+    eur_per_reward = 0.017;
+end
+
 if exist(reward_file) %#ok<EXIST>
     all_rewards = load(reward_file);
     all_rewards = all_rewards.all_rewards;
     all_rewards.eur_per_reward = eur_per_reward;
+    all_rewards.weight = 1;
 else
     all_rewards.money = 0;
     all_rewards.total_rewards = 0;
     all_rewards.eur_per_reward = eur_per_reward;
+    all_rewards.weight = 1;
     save(reward_file, 'all_rewards');
 end
 
@@ -93,7 +101,7 @@ ii = 0;
 fprintf('Continuing...\n');
 %%
 
-if target_block == -1
+if (numel(target_block) == 0) || (target_block == -1) 
     target_block = 1:length(sequence);
 end
 
@@ -105,103 +113,110 @@ calibrated = false;
 
 p = make_sample_textures(p);
 
+Screen('TextSize', p.ptb.w,  20);
+Screen('TextFont', p.ptb.w, 'Courier');
+Screen('TextStyle', p.ptb.w, 1);
+
+try
+    for block = target_block
+        fprintf('Running SUB=%i, PHASE=%i, BLOCK=%i\n', subject, phase, block);
+        p.block = block;    
+        p.sequence = sequence{block};
 
 
-for block = target_block
-    fprintf('Running SUB=%i, PHASE=%i, BLOCK=%i\n', subject, phase, block);
-    p.block = block;    
-    p.sequence = sequence{block};
-    
-    
-    if strcmp('IR', p.sequence.block_type)
-        if blocks_completed > 0
-            p = TakeABreak(p);
-        end
-        if ir_blocks_completed == 0
-            explain_instructed_rule(p);
-        end
-        KbQueueStop(p.ptb.device);
-        KbQueueRelease(p.ptb.device);
-        p = InitEyeLink(p);
-        CalibrateEL;
-        [p, abort] = InstructedRuleBlock(p);
-        ir_blocks_completed = ir_blocks_completed+1;
-        
-        
-    elseif strcmp('GL', p.sequence.block_type)
-        if blocks_completed > 0
-            p = TakeABreak(p);
-        end
-        if gl_blocks_completed == 0
-            explain_glaze_rule(p);
-        end
-        KbQueueStop(p.ptb.device);
-        KbQueueRelease(p.ptb.device);
-        p = InitEyeLink(p);
-        CalibrateEL;
-        [p, abort] = GlazeBlock(p);
-        gl_blocks_completed = gl_blocks_completed+1;
-        
-        
-    elseif strcmp('RW', p.sequence.block_type)
-        if blocks_completed == 0
-            explain_retino_block(p)
-        end
-        KbQueueStop(p.ptb.device);
-        KbQueueRelease(p.ptb.device);
-        p = InitEyeLink(p);
-        if block == 1 || ~calibrated
+        if strcmp('IR', p.sequence.block_type)
+            all_rewards.weight = 0.7;
+            if blocks_completed > 0
+                p = TakeABreak(p);
+            end
+            if ir_blocks_completed == 0
+                explain_instructed_rule(p);
+            end
+            KbQueueStop(p.ptb.device);
+            KbQueueRelease(p.ptb.device);
+            p = InitEyeLink(p);
             CalibrateEL;
-            calibrated = true;
-        end
-        [p, abort] = RetinoBlock(p, 0.8, 5, 5.5, false, 1, 'wedge');
-        p = InitEyeLink(p);
-        [p, abort] = RetinoBlock(p, 0.8, 5, 5.5, true, 1, 'wedge');
+            [p, abort] = InstructedRuleBlock(p);
+            ir_blocks_completed = ir_blocks_completed+1;
 
-        
-    elseif strcmp('RR', p.sequence.block_type)
-        if blocks_completed == 0
-            explain_retino_block(p)
-        end
-        KbQueueStop(p.ptb.device);
-        KbQueueRelease(p.ptb.device);
-        p = InitEyeLink(p);
-        if block == 1 || ~calibrated
+
+        elseif strcmp('GL', p.sequence.block_type)
+            all_rewards.weight = 1;
+            if blocks_completed > 0
+                p = TakeABreak(p);
+            end
+            if gl_blocks_completed == 0
+                explain_glaze_rule(p);
+            end
+            KbQueueStop(p.ptb.device);
+            KbQueueRelease(p.ptb.device);
+            p = InitEyeLink(p);
             CalibrateEL;
-            calibrated = true;
-        end        
-        [p, abort] = RetinoBlock(p, 0.8, 5, 5.5, false, 1, 'ring');
-        p = InitEyeLink(p);
-        [p, abort] = RetinoBlock(p, 0.8, 5, 5.5, true, 1, 'ring');
-    
-        
-    elseif strcmp('NR', p.sequence.block_type)
-        % A block of the Nassar prediction task.
-        if blocks_completed == 0
-            %explain_nassar_block(p)
+            [p, abort] = GlazeBlock(p);
+            gl_blocks_completed = gl_blocks_completed+1;
+
+
+        elseif strcmp('RW', p.sequence.block_type)
+            all_rewards.weight = 0.0;
+            if blocks_completed == 0
+                explain_retino_block(p)
+            end
+            KbQueueStop(p.ptb.device);
+            KbQueueRelease(p.ptb.device);
+            p = InitEyeLink(p);
+            if block == 1 || ~calibrated
+                CalibrateEL;
+                calibrated = true;
+            end
+            [p, abort] = RetinoBlock(p, 0.8, 5, 5.5, false, 1, 'wedge');
+            p = InitEyeLink(p);
+            [p, abort] = RetinoBlock(p, 0.8, 5, 5.5, true, 1, 'wedge');
+
+
+        elseif strcmp('RR', p.sequence.block_type)
+            all_rewards.weight = 0.0;
+            if blocks_completed == 0
+                explain_retino_block(p)
+            end
+            KbQueueStop(p.ptb.device);
+            KbQueueRelease(p.ptb.device);
+            p = InitEyeLink(p);
+            if block == 1 || ~calibrated
+                CalibrateEL;
+                calibrated = true;
+            end        
+            [p, abort] = RetinoBlock(p, 0.8, 5, 5.5, false, 1, 'ring');
+            p = InitEyeLink(p);
+            [p, abort] = RetinoBlock(p, 0.8, 5, 5.5, true, 1, 'ring');
+
+
+        elseif strcmp('NR', p.sequence.block_type)        
+            % A block of the Nassar prediction task.
+            all_rewards.weight = 0.6;
+            if blocks_completed == 0
+                %explain_nassar_block(p)
+            end
+            KbQueueStop(p.ptb.device);
+            KbQueueRelease(p.ptb.device);
+            p = InitEyeLink(p);
+            if block == 1 || ~calibrated
+                CalibrateEL;
+                calibrated = true;
+            end        
+            [p, abort] = NassarPredictionBlock(p);        
         end
-        KbQueueStop(p.ptb.device);
-        KbQueueRelease(p.ptb.device);
-        p = InitEyeLink(p);
-        if block == 1 || ~calibrated
-            CalibrateEL;
-            calibrated = true;
-        end        
-        [p, abort] = NassarPredictionBlock(p);        
-    end
-    
-    blocks_completed = blocks_completed+1;
-    if abort
-        cleanup
-        return
+
+        blocks_completed = blocks_completed+1;
+        if abort
+            cleanup
+            return
+        end
     end
 end
 
-
-
-
 WaitSecs(2.5);
 cleanup;
+lasterr
 
     %% ----------------------------------- 
     %  Experiment blocks
@@ -271,7 +286,7 @@ cleanup;
         
         p = dump_keys(p);
         
-        money_earned = p.earned_rewards*all_rewards.eur_per_reward;
+        money_earned = p.earned_rewards*all_rewards.eur_per_reward*all_rewards.weight;
         all_rewards.money = all_rewards.money+money_earned;
         all_rewards.total_rewards = all_rewards.total_rewards + p.earned_rewards;
         
@@ -388,7 +403,7 @@ cleanup;
         % Need to show feedback here!
         p.earned_rewards = sum(outcomes);
         %money_earned = p.earned_rewards*all_rewards.eur_per_reward;
-        money_earned = sum(outcomes)*all_rewards.eur_per_reward;
+        money_earned = sum(outcomes)*all_rewards.eur_per_reward*all_rewards.weight;
         all_rewards.money = all_rewards.money+money_earned;
         all_rewards.total_rewards = all_rewards.total_rewards + p.earned_rewards;
         
@@ -408,6 +423,10 @@ cleanup;
 
 
     function [p, abort] = RetinoBlock(p, TR, nrep, IBI, reverse, wait_triggers, type)
+        %
+        % TR = repetition time
+        % nrep = how often to repeat the stimulus
+        % IBI 
         rule = binornd(1, 0.5);
         abort = false;
         p.start_time = datestr(now, 'dd-mmm-yy-HH:MM:SS');
@@ -582,6 +601,7 @@ cleanup;
         Eyelink('Message', sprintf('BLOCK %d', p.block));
 
         TimeEndStim     = GetSecs();
+        
 
         % Reward stuff
         draw_prd_background(p);
@@ -590,23 +610,30 @@ cleanup;
         p.possible_reward = 0;
         prediction = p.sequence.sample(1);
         last_sample = p.sequence.sample(1);
+        
+        lower_bound = mean(abs(diff(p.sequence.sample)));
+        upper_bound = mean(abs(p.sequence.sample(2:end) - p.sequence.mu(1:end-1)));
+        prediction_errors = nan(size(p.sequence.stim,2));
         for trial  = 1:size(p.sequence.stim, 2);
             %Get the variables that Trial function needs.
-            stim_id      = p.sequence.stim(trial);
-            ISI          = p.sequence.isi(trial);
-            jitter       = p.sequence.jitter(trial);
-            sample       = p.sequence.sample(trial);
-            OnsetTime    = TimeEndStim + ISI;
-            type         = p.sequence.trial_type(trial);
-            
+            stim_id         = p.sequence.stim(trial);
+            ISI             = p.sequence.isi(trial);
+            jitter          = p.sequence.jitter(trial);
+            sample          = p.sequence.sample(trial);
+            OnsetTime       = TimeEndStim + ISI;
+            sample_duration = p.sequence.sample_duration(trial);                        
             
             fprintf('%d of %d, STIM: %i,  SAMPLE: %i, ISI: %2.2f, Block: %i \n',...
                 trial, size(p.sequence.stim, 2), stim_id, round(sample), ISI,  p.block);
 
             StartEyelinkRecording(trial, p.phase, 0, stim_id, 0, 0); 
             %type, p, TimeStimOnset, stim_id, sample, jitter
-            [TimeEndStim, p, abort, prediction] = PredictionTrial(p, OnsetTime, sample, jitter, prediction, last_sample);          
+            [TimeEndStim, p, abort, prediction] = PredictionTrial(p, OnsetTime, sample, sample_duration, jitter, prediction, last_sample);          
             last_sample = sample;
+            
+            prediction_errors(trial) = abs(prediction-sample);
+          
+            
             [keycode, secs] = KbQueueDump(p); %this contains both the pulses and keypresses.
             if numel(keycode)
                 %log everything but "pulse keys" as pulses, not as keypresses.
@@ -630,13 +657,33 @@ cleanup;
                 return
             end
         end
+        
+        mean_prediction_error = nanmean(prediction_errors(:));
+        fprintf('Mean prediction error: %2.1f\n', mean_prediction_error);
+        fprintf('Lower bound: %3.2f, upper bound: %3.2f', lower_bound, upper_bound);
+        payout_weight = 1/4;
+        if (lower_bound < mean_prediction_error) &&...
+                (mean_prediction_error < ((2*lower_bound/3) + (upper_bound/3)))
+            payout_weight = 2/4;
+        elseif (((2*lower_bound/3) + (upper_bound/3)) < mean_prediction_error) &&...
+                (mean_prediction_error < (lower_bound+upper_bound)/2)
+            payout_weight = 3/4;
+        elseif mean_prediction_error < (lower_bound+upper_bound)/2
+            payout_weight = 1;
+        end
+             
+        %money_earned = p.earned_rewards*all_rewards.eur_per_reward;
+        money_earned = trial*all_rewards.eur_per_reward*all_rewards.weight*payout_weight;
+        all_rewards.money = all_rewards.money+money_earned;
+        all_rewards.total_rewards = all_rewards.total_rewards + p.earned_rewards;              
+
         %wait 6 seconds for the pupil signal to come back to the baseline...
         start = GetSecs();
         while GetSecs() < start+6
         end
 
         
-        [keycode, secs] = KbQueueDump;%this contains both the pulses and keypresses.        
+        [keycode, secs] = KbQueueDump(p);%this contains both the pulses and keypresses.        
         pulses          = (keycode == KbName(p.keys.pulse));
         if any(~pulses);%log keys presses if only there is one
             p = Log(p,secs(~pulses), 1000,keycode(~pulses), p.phase, p.block);
@@ -644,17 +691,12 @@ cleanup;
         if any(pulses);%log pulses if only there is one
             p = Log(p,secs(pulses), 0,keycode(pulses), p.phase, p.block);
         end
-
-        
-        
-        %money_earned = p.earned_rewards*all_rewards.eur_per_reward;
-        money_earned = sum(p.earned_rewards)*all_rewards.eur_per_reward;
-        all_rewards.money = all_rewards.money+money_earned;
-        all_rewards.total_rewards = all_rewards.total_rewards + p.earned_rewards;              
-
-        text = RewardText(p.earned_reward, p.earned_reward/trial, money_earned, all_rewards.money);
+        text = NassarRewardText(mean_prediction_error, payout_weight, money_earned, all_rewards.money);
 
         Screen('FillRect',p.ptb.w,p.var.current_bg);
+        Screen('TextSize', p.ptb.w,  15);
+        Screen('TextFont', p.ptb.w, 'Courier');
+        Screen('TextStyle', p.ptb.w, 1);
         DrawFormattedText(p.ptb.w, text, 'center', 'center', p.stim.white,[],[],[],2,[]);
         Screen('Flip',p.ptb.w);
         start = GetSecs();
@@ -713,8 +755,9 @@ cleanup;
             else
                 reward = 0;
             end
+            
         end
-        [p, TimeFeedbackOffset] = show_feedback(p, RT+jitter, rule, rewarded_rule, reward, phase, block);
+        [p, TimeFeedbackOffset] = show_feedback(p, 0, RT+jitter, rule, reward, phase, block);
         
         if ~isnan(reward)
             p.earned_rewards = p.earned_rewards + reward;
@@ -723,31 +766,20 @@ cleanup;
     end
 
 
-    function [TimeFeedbackOffset, p, abort, prediction] = PredictionTrial(p, TimeStimOnset, sample, jitter, old_prediction, last_sample)
+    function [TimeFeedbackOffset, p, abort, prediction] = PredictionTrial(p, TimeStimOnset, sample, sample_duration, jitter, old_prediction, last_sample)
         %% Run one trial
         rule = nan;
         abort = false;
         TimeFeedbackOffset = nan;
         TrialStart = GetSecs;
         p = Log(p,TrialStart, 2, sample, p.phase, p.block);
-        %if (TimeStimOnset-TrialStart) > 4
-        %    TimeCrossOn = start_prd_trial(p, TrialStart);
-        %else
-        %    TimeCrossOn = start_prd_trial(p, -1);
-        %end
-        
         
         [prediction_time, prediction, error, abort] = predict_prd_sample(p, TimeStimOnset, old_prediction, last_sample);
         if abort
             return
         end
         
-        [TimeFeedbackOffset] = show_prd_sample(p, prediction_time+jitter, 5, sample);
-        payout = p.possible_reward *  min((15/3) ./ (abs(error)), 1);
-        p.earned_rewards = p.earned_rewards + payout;
-        fprintf('Payout is %2.2f', payout)
-        p.possible_reward = 0;
-        
+        [TimeFeedbackOffset] = show_prd_sample(p, jitter, sample_duration, sample, prediction);
         p.prev_sample = sample;
     end
 
@@ -817,57 +849,59 @@ cleanup;
         draw_stimulus(p, stim_id)
         % STIMULUS ONSET
         TimeStimOnset  = Screen('Flip',p.ptb.w, TimeStimOnset, 0);  %<----- FLIP
+        start_rt_counter  = TimeStimOnset;
         p = Log(p,TimeStimOnset, 'CHOICE_TRIAL_ONSET', nan, phase, block);
-        Eyelink('Message', 'CHOICE_TRIAL_ONSET');        
+        Eyelink('Message', 'CHOICE_TRIAL_ONSET');
         MarkCED( p.com.lpt.address, p.com.lpt.stim);
-        
         % Check for key events
         p = dump_keys(p);
-        %KbQueueFlush(p.ptb.device);
-        
-        % Stimulus Offset
-        draw_fix_bg(p);
-        Screen('FillRect',  p.ptb.w, [255,255,255], p.FixCross');
-        TimeStimOffset  = Screen('Flip', p.ptb.w, TimeStimOnset+0.5, 0);  %<----- FLIP
-        p = Log(p,TimeStimOffset, 'CHOICE_TRIAL_STIMOFF', nan, phase, p.block);
-        Eyelink('Message', 'CHOICE_TRIAL_STIMOFF');
-        
-        
+        KbQueueFlush(p.ptb.device);        
         % Now wait for response!
         start = GetSecs;
         response = nan;
         RT = nan;
-        while (GetSecs-start) < 2
-            [keycodes, secs] = KbQueueDump(p);
-            if numel(keycodes)
-                for iii = 1:length(keycodes)
-                    RT = secs(iii);
-                    keys = KbName(keycodes(iii));
-                    
-                    switch keys
-                        case  p.keys.quit
-                            abort = true;
-                            return
-                        case cat(2, p.keys.answer_a, p.keys.answer_a_train) %{p.keys.answer_a, p.keys.answer_a_train}
-                            % Answer a = Left
-                            response = 0;
-                            break
-                        case cat(2, p.keys.answer_b, p.keys.answer_b_train) %{p.keys.answer_b, p.keys.answer_b_train}
-                            % Answer b = Right
-                            response = 1;
-                            break
-                        case p.keys.pulse
-                            fprintf('Logging pulse\n')
-                            p = Log(p, RT, 0, KbName(p.keys.pulse), phase, p.block);
-                    end
-                end
-                if ~isnan(response)
-                    break
+        num_flips = 0.2/p.ptb.slack;
+        phase = rand*180;        
+        while (GetSecs-start) < (2)
+            % Stimulus Offset
+            draw_stimulus(p, stim_id, phase);
+            step = randsample(45:10:360, 1);
+            phase = mod(phase + step, 360);            
+            draw_fix_bg(p);
+            Screen('FillRect',  p.ptb.w, [255,255,255], p.FixCross');
+            TimeStimOnset  = Screen('Flip', p.ptb.w, TimeStimOnset+(num_flips*p.ptb.slack), 0);  %<----- FLIP
+        end
+        
+        p = Log(p,TimeStimOnset, 'CHOICE_TRIAL_STIMOFF', nan, phase, p.block);
+        Eyelink('Message', 'CHOICE_TRIAL_STIMOFF');
+        response = nan;
+        [keycodes, secs] = KbQueueDump(p);
+        if numel(keycodes)
+            for iii = 1:length(keycodes)
+                RT = secs(iii);
+                keys = KbName(keycodes(iii));
+                
+                switch keys
+                    case  p.keys.quit
+                        abort = true;
+                        return
+                    case cat(2, p.keys.answer_a, p.keys.answer_a_train) %{p.keys.answer_a, p.keys.answer_a_train}
+                        % Answer a = Left
+                        response = 0;                        
+                        break
+                    case cat(2, p.keys.answer_b, p.keys.answer_b_train) %{p.keys.answer_b, p.keys.answer_b_train}
+                        % Answer b = Right
+                        response = 1;
+                        break
+                    case p.keys.pulse
+                        fprintf('Logging pulse\n')
+                        p = Log(p, RT, 0, KbName(p.keys.pulse), phase, p.block);
                 end
             end
         end
-        
-        %fprintf('RESPONSE: %i, ', response);
+        if ~isnan(RT)
+            Eyelink('Message', sprintf('RT %i', round(1000*(RT-start_rt_counter))));
+        end
         if response == 0
             MarkCED(p.com.lpt.address, p.com.lpt.resp0);
         else
@@ -877,14 +911,18 @@ cleanup;
         p = Log(p,RT, 'CHOICE_TRIAL_RESP', response, phase, block);
         p = Log(p,RT, 'CHOICE_TRIAL_RT', RT-start, phase, block);
         
-        if response == stim_id 
-            % Stim_id 0: ||, stim_id 1: =
-            % Rule A: || <> Left, = <> Right
-            rule = 1;
-        else
-            % Rule B: || <> Right, = <> Left
-            rule = 0;
+        if ~isnan(response)
+            if response == stim_id
+                % Stim_id 0: ||, stim_id 1: =
+                % Rule A: || <> Left, = <> Right
+                rule = 1;
+            else
+                % Rule B: || <> Right, = <> Left
+                rule = 0;
+            end
         end
+        fprintf('RULE: %i, ', rule);
+
     end
 
 
@@ -914,7 +952,11 @@ cleanup;
             Eyelink('message', 'FEEDBACKOFF');
             p = Log(p,TimeFeedbackOffset, 'FEEDBACK_OFF', 0, phase, block);
         else
-            draw_fix(p, [220, 220, 220]);
+            if ~isnan(rule)
+                draw_fix(p, [220, 220, 220]);
+            else
+                draw_fix(p);
+            end
             TimeFeedback  = Screen('Flip',p.ptb.w);      %<----- FLIP
             draw_fix(p);
             TimeFeedbackOffset  = Screen('Flip',p.ptb.w, TimeFeedback+0.1);      %<----- FLIP
@@ -951,11 +993,10 @@ cleanup;
 
         TimeSampleOffset = Screen('Flip',p.ptb.w,SampleOnset+p.sample_duration, 0);     %<----- FLIP
         draw_fix(p);
-        TimeSampleOffset = Screen('Flip',p.ptb.w,TimeSampleOffset+(.25-p.sample_duration), 0);
+        TimeSampleOffset = Screen('Flip',p.ptb.w,TimeSampleOffset+(.25), 0);
     end
   
 
- 
 
     %% ----------------------------------- 
     %  Helper functions
@@ -975,13 +1016,16 @@ cleanup;
     end
 
 
-    function draw_stimulus(p, stim_id)
+    function draw_stimulus(p, stim_id, phase)
+        if nargin==2
+            phase = 0;
+        end
         angle = 90*stim_id;
         df = p.ptb.rect(3) -  p.ptb.rect(4);
         rect = [df/2., 0, p.ptb.rect(4)+df/2, p.ptb.rect(4)];
         draw_fix(p);
         Screen('DrawTexture', p.ptb.w, p.ptb.gabortex, [], rect, ...
-            angle, [], [], [], [], [], [0, p.stim.sf, 150, 100, 1, 0, 0, 0]);
+            angle, [], [], [], [], [], [phase, p.stim.sf, 150, 100, 1, 0, 0, 0]);
         radius = 2.5;
         oc = [p.ptb.midpoint(1)-p.display.ppd*radius, p.ptb.midpoint(2)-p.display.ppd*radius,...
             p.ptb.midpoint(1)+p.display.ppd*radius, p.ptb.midpoint(2)+p.display.ppd*radius];
@@ -996,7 +1040,8 @@ cleanup;
         angle = 90*stim_id;
         df = p.ptb.rect(3) -  p.ptb.rect(4);
         %rect = [df/2., 0, p.ptb.rect(4)+df/2, p.ptb.rect(4)];
-        oc = [p.ptb.midpoint(1)-15, p.ptb.midpoint(2)-15, p.ptb.midpoint(1)+15, p.ptb.midpoint(2)+15];
+        ppd = p.display.ppd*0.5;
+        oc = [p.ptb.midpoint(1)-ppd, p.ptb.midpoint(2)-ppd, p.ptb.midpoint(1)+ppd, p.ptb.midpoint(2)+ppd];
         Screen('DrawTexture', p.ptb.w, p.ptb.gabortex, [], oc, ...
             angle, [], [], [], [], [], [0, p.stim.sf/5, 150, 10, 1, 0, 0, 0]);
        
@@ -1085,12 +1130,17 @@ cleanup;
     end
     
 
-    function [TimeFeedbackOffset] = show_prd_sample(p, TimeFeedbackOnset, duration, sample)      
+    function [TimeFeedbackOffset] = show_prd_sample(p, jitter, duration, sample, prediction)      
+        draw_prd_background(p)
+        draw_prd_sample(p, prediction)
+        draw_fix_bg_angled(p, 45);        
+        TimeFeedbackOnset  = Screen('Flip',p.ptb.w);      %<----- FLIP
+        
         draw_prd_background(p)
         draw_fix_bg_angled(p, 45);        
         draw_prd_sample(p, sample)
         error = false;
-        TimeFeedback  = Screen('Flip',p.ptb.w, TimeFeedbackOnset, 0);      %<----- FLIP
+        TimeFeedback  = Screen('Flip',p.ptb.w, TimeFeedbackOnset+jitter, 0);      %<----- FLIP
         Eyelink('message', sprintf('FEEDBACK %f', sample));
         p = Log(p,TimeFeedback, 9, sample, p.phase, p.block);
         MarkCED( p.com.lpt.address, 130+sample);
@@ -1443,6 +1493,14 @@ cleanup;
     end
 
 
+    function text = NassarRewardText(error, reward_rate, earned_money, total_money)
+        text = [sprintf('Im letzten Block war ihr mittlerer Fehler %3.1f.\n', roundn(error, -1))...
+            sprintf('Damit bekommen Sie %2.0d%% der Belohung ausgezahlt\n', reward_rate*100),...
+            sprintf('Das entspricht %1.2f EUR!\n', earned_money)...
+            sprintf('Insgesamt haben sich damit %1.2f EUR Bonus angesammelt!', total_money)];
+    end
+
+
     function ShowInstruction(waitforkeypress, text) 
         %ShowInstruction(nInstruct,waitforkeypress)
         %if waitforkeypress is 1, ==> subject presses a button to proceed
@@ -1687,6 +1745,7 @@ cleanup;
             [p.ptb.w, p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, [128, 128, 128], [0, 0, 1000, 500]);
         end
         
+        BackupCluts();
         if numel(p.ptb.gamma, 2) > 0
             [old_table] = Screen('LoadNormalizedGammaTable', p.ptb.w, p.ptb.gamma);
             p.ptb.gamma_loaded = true;
@@ -1742,7 +1801,7 @@ cleanup;
         % pixels, and a RGB color offset of 0.5 -- a 50% gray.
         p.stim.radius = p.ptb.rect(4)/2;
         p.stim.radius_deg = (p.ptb.rect(4)/2)/p.display.ppd;
-        p.stim.sf = 2/p.display.ppd;
+        p.stim.sf = 1.2/p.display.ppd;
         fprintf('R and SF: %f %f', p.stim.radius, p.stim.sf)
         %p.ptb.gabortex = CreateProceduralGabor(p.ptb.w, p.ptb.width, p.ptb.height, 0, [0.5 0.5 0.5 0.0]);
         p.ptb.gabortex = CreateProceduralSineGrating(p.ptb.w, 2*p.stim.radius, 2*p.stim.radius,...
@@ -1906,10 +1965,8 @@ cleanup;
 
     function cleanup
         % Close window:
-        if p.ptb.gamma_loaded            
-            Screen('LoadNormalizedGammaTable', p.ptb.w, p.ptb.old_gamma);
-            Screen('flip', p.ptb.w)
-        end
+        RestoreCluts()
+        %Screen('flip', p.ptb.w)
         sca;
         %set back the old resolution
         if strcmp(p.hostname,'triostim1')
@@ -2125,10 +2182,11 @@ cleanup;
         %p.stim.fix_rect = [cx-d, cy-d, cx+d, cy+d];
     end
     
+
     function p = make_sample_textures(p)
         [~, hostname] = system('hostname');
         hostname = hostname(1:end-1);
-        cachefile = sprintf('%s_nassar_sample_spec.mat', hostname)
+        cachefile = sprintf('%s_nassar_sample_spec.mat', hostname);
         stimuli = {};
         if exist(cachefile, 'file')
             stimuli = load(cachefile);
@@ -2137,18 +2195,20 @@ cleanup;
             w = p.ptb.rect(3)-p.ptb.rect(1);
             h = p.ptb.rect(4)-p.ptb.rect(2);
             I = cat(3, ones(h, w)*0);
-            noise = round(rand(round(h), round(w))*255);
+            noise = (double(rand(round(h), round(w))>0.5))*255;
+            fprintf('Uniques....\n')
+            unique(noise)
             for ii = 1:300
                 txt = Screen('MakeTexture', p.ptb.w, I);
-                Screen('TextSize', txt,  70);
+                Screen('TextSize', txt,  50);
                 Screen('TextFont', txt, 'Courier');
                 Screen('TextStyle', txt, 1);
                 hpos = p.ptb.rect(2) + (p.ptb.rect(4)-p.ptb.rect(2))/2 + 10;
+                %Screen('FillRect', txt , p.stim.bg, [] );
                 DrawFormattedText(txt, sprintf('%03d', ii), 'center', hpos, [255, 255, 255], [],[],[],2,[]);
                 imageArray=Screen('GetImage', txt);
-                a = noise.*mean(imageArray, 3);
-                b = mean(imageArray, 3);
-                img_incl_alpha = cat(3, a, b);
+                b = mean(imageArray, 3);                
+                img_incl_alpha = cat(3, noise, b);
                 stimuli{ii} = img_incl_alpha; %#ok<AGROW>
             end
             
