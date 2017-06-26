@@ -7,7 +7,11 @@ end
 fmri = true; % if false skip waiting for pulses.
 debug   = 0; %debug mode => 1: transparent window enabling viewing the background.
 small_window = 0; % Open a small window only
+<<<<<<< HEAD
 NoEyelink = 1; %is Eyelink wanted?
+=======
+NoEyelink = 0; %is Eyelink wanted?
+>>>>>>> cb873235fbe3269c707c2a4c5eedf4600db01152
 test_sequences = 0; % Load shorter test sequences
 
 
@@ -611,6 +615,7 @@ lasterr
         prediction = p.sequence.sample(1);
         last_sample = p.sequence.sample(1);
         
+<<<<<<< HEAD
         lower_bound = mean(abs(diff(p.sequence.sample)));
         upper_bound = mean(abs(p.sequence.sample(2:end) - p.sequence.mu(1:end-1)));
         prediction_errors = nan(size(p.sequence.stim,2));
@@ -622,13 +627,44 @@ lasterr
             sample          = p.sequence.sample(trial);
             OnsetTime       = TimeEndStim + ISI;
             sample_duration = p.sequence.sample_duration(trial);                        
+=======
+        lower_benchmark  = mean(abs(diff(p.sequence.sample)));
+        higher_benchmark = mean(abs(p.sequence.sample-p.sequence.mu(1:length(p.sequence.sample))));
+        for trial  = 1:size(p.sequence.stim, 2);
+            %Get the variables that Trial function needs.            
+            duration     = p.sequence.duration(trial);
+            jitter       = p.sequence.jitter(trial);
+            sample       = abs(p.sequence.sample(trial));            
             
-            fprintf('%d of %d, STIM: %i,  SAMPLE: %i, ISI: %2.2f, Block: %i \n',...
-                trial, size(p.sequence.stim, 2), stim_id, round(sample), ISI,  p.block);
+            
+>>>>>>> cb873235fbe3269c707c2a4c5eedf4600db01152
+            
+            fprintf('%d of %d, SAMPLE: %i, Block: %i \n',...
+                trial, size(p.sequence.stim, 2), round(sample), p.block);
 
-            StartEyelinkRecording(trial, p.phase, 0, stim_id, 0, 0); 
+            StartEyelinkRecording(trial, p.phase, 0, 0, 0, 0); 
             %type, p, TimeStimOnset, stim_id, sample, jitter
+<<<<<<< HEAD
             [TimeEndStim, p, abort, prediction] = PredictionTrial(p, OnsetTime, sample, sample_duration, jitter, prediction, last_sample);          
+=======
+            [TimeEndStim, p, abort, prediction, fixerror] = PredictionTrial(p, sample, duration, jitter, prediction, last_sample);          
+            
+            % Take care of reward;
+            error = abs(prediction-sample);
+            if error > lower_benchmark
+                payout = 0;
+            elseif (lower_benchmark > error) && (error > (lower_benchmark*2/3 + higher_benchmark/3))
+                payout = 2/7;
+            elseif (error > (lower_benchmark*2/3 + higher_benchmark/3)) && (error > (lower_benchmark+ higher_benchmark)/2)                
+                payout = 4/7;
+            else
+                payout = 1;
+            end
+            
+            p.earned_rewards = p.earned_rewards + payout;
+            fprintf('Payout is %2.2f', payout)
+            
+>>>>>>> cb873235fbe3269c707c2a4c5eedf4600db01152
             last_sample = sample;
             
             prediction_errors(trial) = abs(prediction-sample);
@@ -691,7 +727,17 @@ lasterr
         if any(pulses);%log pulses if only there is one
             p = Log(p,secs(pulses), 0,keycode(pulses), p.phase, p.block);
         end
+<<<<<<< HEAD
         text = NassarRewardText(mean_prediction_error, payout_weight, money_earned, all_rewards.money);
+=======
+
+                        
+        money_earned = sum(p.earned_rewards)*all_rewards.eur_per_reward;
+        all_rewards.money = all_rewards.money+money_earned;
+        all_rewards.total_rewards = all_rewards.total_rewards + p.earned_rewards;              
+    
+        text = RewardText(p.earned_rewards, p.earned_rewards/trial, money_earned, all_rewards.money);
+>>>>>>> cb873235fbe3269c707c2a4c5eedf4600db01152
 
         Screen('FillRect',p.ptb.w,p.var.current_bg);
         Screen('TextSize', p.ptb.w,  15);
@@ -766,20 +812,31 @@ lasterr
     end
 
 
+<<<<<<< HEAD
     function [TimeFeedbackOffset, p, abort, prediction] = PredictionTrial(p, TimeStimOnset, sample, sample_duration, jitter, old_prediction, last_sample)
+=======
+    function [TimeFeedbackOffset, p, abort, prediction, fixerror] = PredictionTrial(p, sample, duration, jitter, old_prediction, last_sample)
+>>>>>>> cb873235fbe3269c707c2a4c5eedf4600db01152
         %% Run one trial
+        fixerror = nan;
         rule = nan;
         abort = false;
         TimeFeedbackOffset = nan;
         TrialStart = GetSecs;
         p = Log(p,TrialStart, 2, sample, p.phase, p.block);
         
-        [prediction_time, prediction, error, abort] = predict_prd_sample(p, TimeStimOnset, old_prediction, last_sample);
+        [p, prediction_time, prediction, abort] = predict_prd_sample(p, old_prediction, last_sample);
         if abort
             return
+<<<<<<< HEAD
         end
         
         [TimeFeedbackOffset] = show_prd_sample(p, jitter, sample_duration, sample, prediction);
+=======
+        end        
+        [p, TimeFeedbackOffset, fixerror] = show_prd_sample(p, prediction_time+jitter, duration, sample);
+        error = prediction-sample;                        
+>>>>>>> cb873235fbe3269c707c2a4c5eedf4600db01152
         p.prev_sample = sample;
     end
 
@@ -1073,7 +1130,14 @@ lasterr
         Screen('BlendFunction', p.ptb.w, 'GL_ONE', 'GL_ZERO');
         
     end
-    
+
+
+    function draw_square(p, angle)                      
+        Screen('BlendFunction', p.ptb.w, 'GL_SRC_ALPHA', 'GL_ONE_MINUS_SRC_ALPHA');
+        Screen('DrawTexture',  p.ptb.w, p.stim.square, [], [], angle);
+        Screen('BlendFunction', p.ptb.w, 'GL_ONE', 'GL_ZERO');
+    end
+
 
     function draw_fix(p, color, rule)
         if nargin==1
@@ -1130,12 +1194,16 @@ lasterr
     end
     
 
+<<<<<<< HEAD
     function [TimeFeedbackOffset] = show_prd_sample(p, jitter, duration, sample, prediction)      
         draw_prd_background(p)
         draw_prd_sample(p, prediction)
         draw_fix_bg_angled(p, 45);        
         TimeFeedbackOnset  = Screen('Flip',p.ptb.w);      %<----- FLIP
         
+=======
+    function [p, TimeFeedbackOffset, error] = show_prd_sample(p, TimeFeedbackOnset, duration, sample)      
+>>>>>>> cb873235fbe3269c707c2a4c5eedf4600db01152
         draw_prd_background(p)
         draw_fix_bg_angled(p, 45);        
         draw_prd_sample(p, sample)
@@ -1148,12 +1216,21 @@ lasterr
         draw_prd_background(p)
         draw_fix_bg_angled(p, 45);
         draw_prd_sample(p, sample)
-        
+        eyeused = Eyelink('EyeAvailable')+1;
         % Now check eye movements
+        xc = (p.ptb.rect(3) -  p.ptb.rect(1))/2;
+        yc = (p.ptb.rect(4) -  p.ptb.rect(2))/2;
+        error = false;
         while GetSecs() < (TimeFeedback+duration-p.ptb.slack)
             if Eyelink('NewFloatSampleAvailable')
-                sample = Eyelink('NewestFloatSample');
-                error = false;
+                esample = Eyelink('NewestFloatSample');
+                x = esample.gx(eyeused);
+                y = esample.gy(eyeused);
+                distance = (((x-xc)^2 + (y-yc)^2)^.5)/p.display.ppd;
+                if distance > 1.5
+                    error = true;
+                end
+                
             end
         end
         TimeFeedbackOffset = Screen('Flip',p.ptb.w,TimeFeedback+duration-p.ptb.slack/2, 0);     %<----- FLIP
@@ -1163,25 +1240,26 @@ lasterr
         
         if error
             draw_prd_background(p);
-            draw_fix_bg(p, [200, 128, 128]);
+            draw_square(p, 45);
+            draw_prd_sample(p, sample)
             TimeErrorOnset = Screen('Flip',p.ptb.w);     %<----- FLIP
             draw_prd_background(p);
-            draw_fix_bg(p, [200, 128, 128]);
+            draw_square(p, 45);
+            draw_prd_sample(p, sample)
             TimeErrorOffset = Screen('Flip',p.ptb.w, TimeErrorOnset+1);     %<----- FLIP
         end
     end
 
 
-    function [TimeFeedbackOffset, prediction, error, abort] = predict_prd_sample(p, TimeStimOnset, old_prediction, sample)
+    function [p, TimeFeedbackOffset, prediction, abort] = predict_prd_sample(p, old_prediction, sample)
         % Predict sample trial
         abort = false;
-        error =nan;
         prediction = nan;
         update = nan;
         TimeFeedbackOffset = nan;
         %% STIMULUS ONSET
       
-        p = Log(p,TimeStimOnset, 4, nan, p.phase, p.block);
+        p = Log(p, GetSecs, 4, nan, p.phase, p.block);
         Eyelink('Message', 'StimOnset');
         Eyelink('Message', 'SYNCTIME');
         MarkCED( p.com.lpt.address, 4);        
@@ -1334,8 +1412,8 @@ lasterr
 
     function vbl = explain_retino_block(p)
         %Screen('DrawTexture', p.ptb.w, instructions, [], p.ptb.rect)
-        text = ['Im nächsten Block musst du auf kleine Muster mit einem Knopfdruck reagieren.\n',...
-             'Welcher Knopf gedrückt werden muss hängt von der aktiven Regel ab.\n',...
+        text = ['Im nï¿½chsten Block musst du auf kleine Muster mit einem Knopfdruck reagieren.\n',...
+             'Welcher Knopf gedrï¿½ckt werden muss hï¿½ngt von der aktiven Regel ab.\n',...
              'Die aktive Regel wird durch Punkte neben dem Fixationskreuz angezeigt.\n'];
         DrawFormattedText(p.ptb.w, text, 'center', round(p.ptb.rect(4)*.1), p.stim.white,[],[],[],2,[]);
         draw_fix(p);
@@ -1358,7 +1436,7 @@ lasterr
         draw_fix(p, [], 0);     
         draw_very_small_stimulus(p, 1)
         text = ['Wenn die rechte Regel aktiv ist und ein\n',...
-            'horizontales Muster erscheint muss die linke Taste gedrückt werden.'];
+            'horizontales Muster erscheint muss die linke Taste gedrï¿½ckt werden.'];
         DrawFormattedText(p.ptb.w, text, 'center', round(p.ptb.rect(4)*.1), p.stim.white,[],[],[],2,[]);        
         vbl = Screen('Flip', p.ptb.w);        
         KbStrokeWait(p.ptb.device);
@@ -1367,7 +1445,7 @@ lasterr
         draw_fix(p, [], 0);     
         draw_very_small_stimulus(p, 0)
         text = ['Wenn die rechte Regel aktiv ist und ein\n',...
-            'vertikales Muster erscheint muss die rechte Taste gedrückt werden.'];
+            'vertikales Muster erscheint muss die rechte Taste gedrï¿½ckt werden.'];
         DrawFormattedText(p.ptb.w, text, 'center', round(p.ptb.rect(4)*.1), p.stim.white,[],[],[],2,[]);        
         vbl = Screen('Flip', p.ptb.w);        
         KbStrokeWait(p.ptb.device);
@@ -1376,7 +1454,7 @@ lasterr
         draw_fix(p, [], 1);     
         draw_very_small_stimulus(p, 1)
         text = ['Wenn die linke Regel aktiv ist und ein\n',...
-            'horizontales Muster erscheint muss die rechte Taste gedrückt werden.'];
+            'horizontales Muster erscheint muss die rechte Taste gedrï¿½ckt werden.'];
         DrawFormattedText(p.ptb.w, text, 'center', round(p.ptb.rect(4)*.1), p.stim.white,[],[],[],2,[]);        
         vbl = Screen('Flip', p.ptb.w);        
         KbStrokeWait(p.ptb.device);
@@ -1385,22 +1463,22 @@ lasterr
         draw_fix(p, [], 0);     
         draw_very_small_stimulus(p, 0)
         text = ['Wenn die linke Regel aktiv ist und ein\n',...
-            'vertikales Muster erscheint muss die linke Taste gedrückt werden.'];
+            'vertikales Muster erscheint muss die linke Taste gedrï¿½ckt werden.'];
         DrawFormattedText(p.ptb.w, text, 'center', round(p.ptb.rect(4)*.1), p.stim.white,[],[],[],2,[]);        
         vbl = Screen('Flip', p.ptb.w);        
         KbStrokeWait(p.ptb.device);
         
         Screen('DrawTexture', p.ptb.w, p.stim.instruction_both, [], p.ptb.rect)
-        text = ['Hier noch einmal eine Übersicht:'];
+        text = ['Hier noch einmal eine ï¿½bersicht:'];
         DrawFormattedText(p.ptb.w, text, 'center', round(p.ptb.rect(4)*.1), p.stim.white,[],[],[],2,[]);        
         vbl = Screen('Flip', p.ptb.w);        
         KbStrokeWait(p.ptb.device);
         
         
-        text = ['Du hast jetzt die Möglichkeit diese Regeln zu üben.\n\n'...
-            'Das Fixationskreuz wird grün nach einer richtigen Regelanwendung\n'...
+        text = ['Du hast jetzt die Mï¿½glichkeit diese Regeln zu ï¿½ben.\n\n'...
+            'Das Fixationskreuz wird grï¿½n nach einer richtigen Regelanwendung\n'...
             'und rot nach einer falschen Regelanwendung.\n\n'...
-            'Nicht vergessen: So wenig wie möglich bewegen und immer (!) auf das\n'...
+            'Nicht vergessen: So wenig wie mï¿½glich bewegen und immer (!) auf das\n'...
             'Fixationskreuz schauen. Das sich bewegende Zeug im Hintergrund einfach ignorieren...'];
         DrawFormattedText(p.ptb.w, text, 'center', round(p.ptb.rect(4)*.1), p.stim.white,[],[],[],2,[]);        
         vbl = Screen('Flip', p.ptb.w);        
@@ -1411,9 +1489,9 @@ lasterr
 
     function vbl = explain_instructed_rule(p)
         %Screen('DrawTexture', p.ptb.w, instructions, [], p.ptb.rect)
-        text = ['Im nächsten Block musst du auf große Muster mit einem Knopfdruck reagieren.\n',...
-             'Welcher Knopf gedrückt werden muss hängt wieder von der aktiven Regel ab.\n',...
-             'Welche Regel aktiv ist zeigen wir dir bevor sie sich ändert.\n'];
+        text = ['Im nï¿½chsten Block musst du auf groï¿½e Muster mit einem Knopfdruck reagieren.\n',...
+             'Welcher Knopf gedrï¿½ckt werden muss hï¿½ngt wieder von der aktiven Regel ab.\n',...
+             'Welche Regel aktiv ist zeigen wir dir bevor sie sich ï¿½ndert.\n'];
         DrawFormattedText(p.ptb.w, text, 'center', round(p.ptb.rect(4)*.1), p.stim.white,[],[],[],2,[]);        
         vbl = Screen('Flip', p.ptb.w);   
         KbStrokeWait(p.ptb.device);                
@@ -1433,8 +1511,8 @@ lasterr
         KbStrokeWait(p.ptb.device);
         
         text = ['Bereit?\n\n'...
-            'Ach, in diesem Block wirst du übrigens für richtige Antworten bezahlt.\nWie viel du verdient hast erfährst du am Ende vom Block.\n\n',...
-            'Nicht vergessen: So wenig wie möglich bewegen\n'...
+            'Ach, in diesem Block wirst du ï¿½brigens fï¿½r richtige Antworten bezahlt.\nWie viel du verdient hast erfï¿½hrst du am Ende vom Block.\n\n',...
+            'Nicht vergessen: So wenig wie mï¿½glich bewegen\n'...
             'und immer (!) auf das Fixationskreuz schauen.'];
         DrawFormattedText(p.ptb.w, text, 'center', round(p.ptb.rect(4)*.1), p.stim.white,[],[],[],2,[]);        
         vbl = Screen('Flip', p.ptb.w);        
@@ -1445,11 +1523,11 @@ lasterr
 
     function vbl = explain_glaze_rule(p)
         %Screen('DrawTexture', p.ptb.w, instructions, [], p.ptb.rect)
-        text = ['Im nächsten Block musst du auf große Muster mit einem Knopfdruck reagieren.\n',...
-             'Welcher Knopf gedrückt werden muss hängt wieder von der aktiven Regel ab.\n',...
+        text = ['Im nï¿½chsten Block musst du auf groï¿½e Muster mit einem Knopfdruck reagieren.\n',...
+             'Welcher Knopf gedrï¿½ckt werden muss hï¿½ngt wieder von der aktiven Regel ab.\n',...
              'Welche Regel aktiv ist musst du dieses mal selber herrausfinden.\n\n',...
              'Du wirst gleich in schneller Reihenfolge Punkte aufblinken sehen, deren seitlicher\n'...
-             'Verschub Rückschlüsse auf die aktive Regel zulässt.'];
+             'Verschub Rï¿½ckschlï¿½sse auf die aktive Regel zulï¿½sst.'];
         DrawFormattedText(p.ptb.w, text, 'center', round(p.ptb.rect(4)*.1), p.stim.white,[],[],[],2,[]);        
         vbl = Screen('Flip', p.ptb.w);   
         KbStrokeWait(p.ptb.device);                
@@ -1474,11 +1552,11 @@ lasterr
         Screen('DrawTexture', p.ptb.w, p.stim.right_txt, [], p.stim.right_rect)        
         Screen('DrawTexture', p.ptb.w, p.stim.left_txt, [], p.stim.left_rect)        
         draw_fix(p);            
-        text = ['Wie du siehst sind beide Verteilungen stark überlappend!\n',...
+        text = ['Wie du siehst sind beide Verteilungen stark ï¿½berlappend!\n',...
             'Deswegen reicht ein einzelner Punkt nicht aus um die richtige Regel zu bestimmen.\n'];            
         DrawFormattedText(p.ptb.w, text, 'center', round(p.ptb.rect(4)*.1), p.stim.white,[],[],[],2,[]);        
-        text = ['Stattdessen solltest du kontinuierlich überlegen welche Regel am besten mit der\n Position der letzten Punkte übereinstimmt.\n',...
-            'Auch wichtig: Die aktive Regel ändert sich unvorhersehbar!'];
+        text = ['Stattdessen solltest du kontinuierlich ï¿½berlegen welche Regel am besten mit der\n Position der letzten Punkte ï¿½bereinstimmt.\n',...
+            'Auch wichtig: Die aktive Regel ï¿½ndert sich unvorhersehbar!'];
         DrawFormattedText(p.ptb.w, text, 'center', round(p.ptb.rect(4)*.75), p.stim.white,[],[],[],2,[]);        
         vbl = Screen('Flip', p.ptb.w);        
         KbStrokeWait(p.ptb.device);
@@ -1550,7 +1628,7 @@ lasterr
     
     function [text]=GetText(nInstruct, train)
         if nInstruct == 1 %Retinotopy.
-            text = ['Im nächsten Block hast du die Gelegenheit beide Regeln zu üben.\n'...
+            text = ['Im nï¿½chsten Block hast du die Gelegenheit beide Regeln zu ï¿½ben.\n'...
                     ''];
             
             
@@ -1715,8 +1793,17 @@ lasterr
             gamma = load('dell241i_calibration.mat');
             p.ptb.gamma = gamma.gTmp;
         elseif strcmp(p.hostname, 'donnerlab-Precision-T1700')
-            p.ptb.screenNumber          =  1;
-            p.ptb.device        = 9;
+            p.ptb.screenNumber          =  0;
+            [idx, names, ~] = GetKeyboardIndices;
+            p.ptb.device = nan;
+            for iii = 1:length(idx)
+                if strcmp(names{iii}, 'DELL Dell USB Entry Keyboard')
+                    p.ptb.device = idx(iii);
+                    break
+                end
+            end
+            p.ptb.device
+            
             gamma = load('vpixx_gamma_table.mat');
             p.ptb.gamma = gamma.table;
         else
@@ -1742,7 +1829,7 @@ lasterr
         if ~small_window
             [p.ptb.w, p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, [128, 128, 128]);
         else
-            [p.ptb.w, p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, [128, 128, 128], [0, 0, 1000, 500]);
+            [p.ptb.w, p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, [128, 128, 128], [0, 0, 1700, 1000]);
         end
         
         BackupCluts();
@@ -1833,6 +1920,9 @@ lasterr
         
         fprintf('Continuing...\n');
         fix          = [p.ptb.CrossPosition_x p.ptb.CrossPosition_y];
+        
+        d = (p.ptb.fc_size(1)^2/2)^.5;
+        p.square = [fix(1)-d, fix(2)-d, fix(1)+d, fix(2)+d];        
         p.FixCross     = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];
         p.FixCross_s   = [fix(1)-1,fix(2)-p.ptb.fc_size/2,fix(1)+1,fix(2)+p.ptb.fc_size/2;fix(1)-p.ptb.fc_size/2,fix(2)-1,fix(1)+p.ptb.fc_size/2,fix(2)+1];
         p = make_dist_textures(p);
@@ -2180,14 +2270,19 @@ lasterr
         %cy = h/2;
         %d = p.display.ppd*0.5;
         %p.stim.fix_rect = [cx-d, cy-d, cx+d, cy+d];
+        I = cat(3, ones(h, w)*128, ones(h, w)*0);
+        p.stim.square = Screen('MakeTexture', p.ptb.w, I);
+        Screen('FrameRect', p.stim.square, [255, 255, 255], p.square, 2);
     end
     
 
     function p = make_sample_textures(p)
+        tic;
         [~, hostname] = system('hostname');
         hostname = hostname(1:end-1);
         cachefile = sprintf('%s_nassar_sample_spec.mat', hostname);
         stimuli = {};
+<<<<<<< HEAD
         if exist(cachefile, 'file')
             stimuli = load(cachefile);
             stimuli = stimuli.stimuli;
@@ -2214,13 +2309,23 @@ lasterr
             
             save(cachefile, 'stimuli', '-v7.3');
         end    
+=======
+        
+        stimuli = load(cachefile);
+        stimuli = stimuli.textures;
+        
+>>>>>>> cb873235fbe3269c707c2a4c5eedf4600db01152
         %noise = (noise>mean(noise(:)));
         textures = [];
+        target_rect = [1960/2-200, 1080/2-200, 1960/2+200, 1080/2+200];
         for ii = 1:300
-             txt = Screen('MakeTexture', p.ptb.w, stimuli{ii});
-             textures = [textures, txt]; %#ok<AGROW>
-        end      
+            stim = stimuli{ii};
+            stim = cat(3, stim, (~(stim==128))*255);
+            txt = Screen('MakeTexture', p.ptb.w, stim);
+            textures = [textures, txt]; %#ok<AGROW>
+        end
         p.stim.sample_textures = textures;
+        toc;
     end
 
 end
