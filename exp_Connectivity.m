@@ -6,12 +6,8 @@ end
 
 fmri = true; % if false skip waiting for pulses.
 debug   = 0; %debug mode => 1: transparent window enabling viewing the background.
-small_window = 0; % Open a small window only
-<<<<<<< HEAD
+small_window = 1; % Open a small window only
 NoEyelink = 1; %is Eyelink wanted?
-=======
-NoEyelink = 0; %is Eyelink wanted?
->>>>>>> cb873235fbe3269c707c2a4c5eedf4600db01152
 test_sequences = 0; % Load shorter test sequences
 
 
@@ -43,6 +39,25 @@ if ~fmri
     p.mrt.dummy_scan = 0;
 end
 
+if subject == -100 % <---- Do sample retino measurements.
+    p = make_sample_textures(p);
+
+    KbQueueStop(p.ptb.device);
+    KbQueueRelease(p.ptb.device);
+    p.phase = -100;
+    p.block = -100;
+    p = InitEyeLink(p);
+    CalibrateEL;
+    KbQueueCreate(p.ptb.device);
+    KbQueueStart(p.ptb.device);
+    KbQueueFlush(p.ptb.device);
+    [p, abort] = MeasureSamplePupilResponses(p);
+    StopEyelink(p.edffile, 'sample_test.edf')
+    cleanup;
+    return
+end
+
+
 %Time Storage
 p.var.event_count         = 0;
 p.possible_reward = 0;
@@ -70,6 +85,7 @@ reward_file = fullfile(path_reward,'rewards_latest.mat');
 if strcmp(experiment, 'connectivity')    
     eur_per_reward = 0.07;
 elseif strcmp(experiment, 'immuno')
+    p = make_sample_textures(p);
     eur_per_reward = 0.017;
 end
 
@@ -96,14 +112,14 @@ p.subject = subject;
 % Vormessung
 p.phase = phase;
 ii = 0;
+
 %while ~(k == KbName(p.keys.el_calib));
 %    pause(0.1);
 %    fprintf('Experimenter!! press V key when the vormessung is finished.\n');
 %    [~, k] = KbStrokeWait(p.ptb.device);
 %    k = find(k);
 %end
-fprintf('Continuing...\n');
-%%
+
 
 if (numel(target_block) == 0) || (target_block == -1) 
     target_block = 1:length(sequence);
@@ -115,13 +131,12 @@ gl_blocks_completed = 0;
 
 calibrated = false;
 
-p = make_sample_textures(p);
 
 Screen('TextSize', p.ptb.w,  20);
 Screen('TextFont', p.ptb.w, 'Courier');
 Screen('TextStyle', p.ptb.w, 1);
 
-try
+%try
     for block = target_block
         fprintf('Running SUB=%i, PHASE=%i, BLOCK=%i\n', subject, phase, block);
         p.block = block;    
@@ -216,9 +231,9 @@ try
             return
         end
     end
-end
+%end
 
-WaitSecs(2.5);
+%WaitSecs(2.5);
 cleanup;
 lasterr
 
@@ -615,7 +630,6 @@ lasterr
         prediction = p.sequence.sample(1);
         last_sample = p.sequence.sample(1);
         
-<<<<<<< HEAD
         lower_bound = mean(abs(diff(p.sequence.sample)));
         upper_bound = mean(abs(p.sequence.sample(2:end) - p.sequence.mu(1:end-1)));
         prediction_errors = nan(size(p.sequence.stim,2));
@@ -627,44 +641,14 @@ lasterr
             sample          = p.sequence.sample(trial);
             OnsetTime       = TimeEndStim + ISI;
             sample_duration = p.sequence.sample_duration(trial);                        
-=======
-        lower_benchmark  = mean(abs(diff(p.sequence.sample)));
-        higher_benchmark = mean(abs(p.sequence.sample-p.sequence.mu(1:length(p.sequence.sample))));
-        for trial  = 1:size(p.sequence.stim, 2);
-            %Get the variables that Trial function needs.            
-            duration     = p.sequence.duration(trial);
-            jitter       = p.sequence.jitter(trial);
-            sample       = abs(p.sequence.sample(trial));            
-            
-            
->>>>>>> cb873235fbe3269c707c2a4c5eedf4600db01152
+
             
             fprintf('%d of %d, SAMPLE: %i, Block: %i \n',...
                 trial, size(p.sequence.stim, 2), round(sample), p.block);
 
             StartEyelinkRecording(trial, p.phase, 0, 0, 0, 0); 
             %type, p, TimeStimOnset, stim_id, sample, jitter
-<<<<<<< HEAD
             [TimeEndStim, p, abort, prediction] = PredictionTrial(p, OnsetTime, sample, sample_duration, jitter, prediction, last_sample);          
-=======
-            [TimeEndStim, p, abort, prediction, fixerror] = PredictionTrial(p, sample, duration, jitter, prediction, last_sample);          
-            
-            % Take care of reward;
-            error = abs(prediction-sample);
-            if error > lower_benchmark
-                payout = 0;
-            elseif (lower_benchmark > error) && (error > (lower_benchmark*2/3 + higher_benchmark/3))
-                payout = 2/7;
-            elseif (error > (lower_benchmark*2/3 + higher_benchmark/3)) && (error > (lower_benchmark+ higher_benchmark)/2)                
-                payout = 4/7;
-            else
-                payout = 1;
-            end
-            
-            p.earned_rewards = p.earned_rewards + payout;
-            fprintf('Payout is %2.2f', payout)
-            
->>>>>>> cb873235fbe3269c707c2a4c5eedf4600db01152
             last_sample = sample;
             
             prediction_errors(trial) = abs(prediction-sample);
@@ -727,17 +711,8 @@ lasterr
         if any(pulses);%log pulses if only there is one
             p = Log(p,secs(pulses), 0,keycode(pulses), p.phase, p.block);
         end
-<<<<<<< HEAD
         text = NassarRewardText(mean_prediction_error, payout_weight, money_earned, all_rewards.money);
-=======
 
-                        
-        money_earned = sum(p.earned_rewards)*all_rewards.eur_per_reward;
-        all_rewards.money = all_rewards.money+money_earned;
-        all_rewards.total_rewards = all_rewards.total_rewards + p.earned_rewards;              
-    
-        text = RewardText(p.earned_rewards, p.earned_rewards/trial, money_earned, all_rewards.money);
->>>>>>> cb873235fbe3269c707c2a4c5eedf4600db01152
 
         Screen('FillRect',p.ptb.w,p.var.current_bg);
         Screen('TextSize', p.ptb.w,  15);
@@ -764,6 +739,57 @@ lasterr
         ShowText('1 Minute Pause!\n');
         ShowText('Weiter in 15s. \n', start+45);
         ShowText('Weiter in 5s. \n', start+55);                
+    end
+
+
+    function [p, abort] = MeasureSamplePupilResponses(p)
+        % Display 'Take a break', info about next block and next task.
+        Eyelink('StartRecording');
+        WaitSecs(.01);
+        Eyelink('Message', sprintf('SUBJECT %d', p.subject));
+        p = Log(p, GetSecs, 'START_SAMPLE_MEASUREMENT', nan, p.phase, p.block);
+        p = Log(p, GetSecs, 'SUBJECT', p.subject, p.phase, p.block);
+        Eyelink('Message', sprintf('PHASE %d', p.phase));
+        Eyelink('Message', sprintf('BLOCK %d', p.block));
+        Screen('Flip', p.ptb.w);    
+        abort = false;
+        dt = 5;
+        for sample = dt+1:dt:300            
+            start = GetSecs();
+            KbQueueFlush(p.ptb.device);
+            [evt, n]   = KbEventGet(p.ptb.device);
+            [evt, n]   = KbEventGet(p.ptb.device);
+            while (GetSecs()-start) < 20           
+                [evt, n]   = KbEventGet(p.ptb.device);
+                if numel(evt)>0
+                    keys = KbName(evt.Keycode);
+                    switch keys
+                        case  p.keys.quit
+                            abort = true;
+                            return
+                        case {'space'}
+                            break
+                        case p.keys.pulse
+                            p = Log(p,RT, 0, NaN, p.phase, p.block);
+                    end
+                end
+            end
+            
+            draw_prd_sample(p, sample-dt);
+            draw_fix_bg_angled(p, 0);
+            Offset = Screen('Flip', p.ptb.w);
+            Eyelink('message', 'TRIALID %d', sample);            
+            draw_prd_sample(p, sample);
+            draw_fix_bg_angled(p, 45);
+            Screen('Flip', p.ptb.w, Offset+0.5)
+            Eyelink('Message', 'sample %i', sample);
+            draw_prd_sample(p, sample);
+            draw_fix_bg_angled(p, 0);
+            Screen('Flip', p.ptb.w, Offset+3.5)
+            if abort 
+                return
+            end
+        end
     end
 
     %% ----------------------------------- 
@@ -812,11 +838,7 @@ lasterr
     end
 
 
-<<<<<<< HEAD
     function [TimeFeedbackOffset, p, abort, prediction] = PredictionTrial(p, TimeStimOnset, sample, sample_duration, jitter, old_prediction, last_sample)
-=======
-    function [TimeFeedbackOffset, p, abort, prediction, fixerror] = PredictionTrial(p, sample, duration, jitter, old_prediction, last_sample)
->>>>>>> cb873235fbe3269c707c2a4c5eedf4600db01152
         %% Run one trial
         fixerror = nan;
         rule = nan;
@@ -828,15 +850,10 @@ lasterr
         [p, prediction_time, prediction, abort] = predict_prd_sample(p, old_prediction, last_sample);
         if abort
             return
-<<<<<<< HEAD
         end
         
         [TimeFeedbackOffset] = show_prd_sample(p, jitter, sample_duration, sample, prediction);
-=======
-        end        
-        [p, TimeFeedbackOffset, fixerror] = show_prd_sample(p, prediction_time+jitter, duration, sample);
-        error = prediction-sample;                        
->>>>>>> cb873235fbe3269c707c2a4c5eedf4600db01152
+
         p.prev_sample = sample;
     end
 
@@ -1194,16 +1211,11 @@ lasterr
     end
     
 
-<<<<<<< HEAD
     function [TimeFeedbackOffset] = show_prd_sample(p, jitter, duration, sample, prediction)      
         draw_prd_background(p)
         draw_prd_sample(p, prediction)
         draw_fix_bg_angled(p, 45);        
-        TimeFeedbackOnset  = Screen('Flip',p.ptb.w);      %<----- FLIP
-        
-=======
-    function [p, TimeFeedbackOffset, error] = show_prd_sample(p, TimeFeedbackOnset, duration, sample)      
->>>>>>> cb873235fbe3269c707c2a4c5eedf4600db01152
+        TimeFeedbackOnset  = Screen('Flip',p.ptb.w);      %<----- FLIP       
         draw_prd_background(p)
         draw_fix_bg_angled(p, 45);        
         draw_prd_sample(p, sample)
@@ -1222,7 +1234,7 @@ lasterr
         yc = (p.ptb.rect(4) -  p.ptb.rect(2))/2;
         error = false;
         while GetSecs() < (TimeFeedback+duration-p.ptb.slack)
-            if Eyelink('NewFloatSampleAvailable')
+            if ~NoEyelink && Eyelink('NewFloatSampleAvailable')
                 esample = Eyelink('NewestFloatSample');
                 x = esample.gx(eyeused);
                 y = esample.gy(eyeused);
@@ -1917,8 +1929,6 @@ lasterr
         %         end
         
         
-        
-        fprintf('Continuing...\n');
         fix          = [p.ptb.CrossPosition_x p.ptb.CrossPosition_y];
         
         d = (p.ptb.fc_size(1)^2/2)^.5;
@@ -2001,7 +2011,11 @@ lasterr
         PsychEyelinkDispatchCallback(el);
         
         % open file.
-        p.edffile = sprintf('%d%d%d.edf', p.subject, p.phase, p.block);
+        if p.subject == -100
+            p.edffile = 'samptest.edf';
+        else
+            p.edffile = sprintf('%d%d%d.edf', p.subject, p.phase, p.block);
+        end
         res = Eyelink('Openfile', p.edffile); %#ok<NASGU>
         
         %Eyelink('command', 'add_file_preamble_text ''Recorded by EyelinkToolbox FearAmy Experiment (Selim Onat)''');
@@ -2282,13 +2296,13 @@ lasterr
         hostname = hostname(1:end-1);
         cachefile = sprintf('%s_nassar_sample_spec.mat', hostname);
         stimuli = {};
-<<<<<<< HEAD
         if exist(cachefile, 'file')
             stimuli = load(cachefile);
             stimuli = stimuli.stimuli;
         else
             w = p.ptb.rect(3)-p.ptb.rect(1);
             h = p.ptb.rect(4)-p.ptb.rect(2);
+
             I = cat(3, ones(h, w)*0);
             noise = (double(rand(round(h), round(w))>0.5))*255;
             fprintf('Uniques....\n')
@@ -2301,29 +2315,33 @@ lasterr
                 hpos = p.ptb.rect(2) + (p.ptb.rect(4)-p.ptb.rect(2))/2 + 10;
                 %Screen('FillRect', txt , p.stim.bg, [] );
                 DrawFormattedText(txt, sprintf('%03d', ii), 'center', hpos, [255, 255, 255], [],[],[],2,[]);
-                imageArray=Screen('GetImage', txt);
-                b = mean(imageArray, 3);                
-                img_incl_alpha = cat(3, noise, b);
+                imageArray= double(Screen('GetImage', txt));      
+                
+                b = double(mean(imageArray, 3)>128);           
+                [w, h] = size(b);
+                cx = w/2;
+                cy = h/2;
+                b = b(cx-200:cx+200, cy-200:cy+200);
+                
+                img_incl_alpha = cat(3, b.*noise(cx-200:cx+200, cy-200:cy+200), b*255);                
                 stimuli{ii} = img_incl_alpha; %#ok<AGROW>
             end
             
             save(cachefile, 'stimuli', '-v7.3');
         end    
-=======
-        
-        stimuli = load(cachefile);
-        stimuli = stimuli.textures;
-        
->>>>>>> cb873235fbe3269c707c2a4c5eedf4600db01152
         %noise = (noise>mean(noise(:)));
         textures = [];
         target_rect = [1960/2-200, 1080/2-200, 1960/2+200, 1080/2+200];
         for ii = 1:300
+            if mod(ii, 10)==0
+                fprintf('.')
+            end
             stim = stimuli{ii};
-            stim = cat(3, stim, (~(stim==128))*255);
+            %stim = cat(3, stim, (~(stim==128))*255);
             txt = Screen('MakeTexture', p.ptb.w, stim);
             textures = [textures, txt]; %#ok<AGROW>
         end
+        fprintf('\n')
         p.stim.sample_textures = textures;
         toc;
     end
