@@ -39,6 +39,25 @@ if ~fmri
     p.mrt.dummy_scan = 0;
 end
 
+if subject == -100 % <---- Do sample retino measurements.
+    p = make_sample_textures(p);
+
+    KbQueueStop(p.ptb.device);
+    KbQueueRelease(p.ptb.device);
+    p.phase = -100;
+    p.block = -100;
+    p = InitEyeLink(p);
+    CalibrateEL;
+    KbQueueCreate(p.ptb.device);
+    KbQueueStart(p.ptb.device);
+    KbQueueFlush(p.ptb.device);
+    [p, abort] = MeasureSamplePupilResponses(p);
+    StopEyelink(p.edffile, 'sample_test.edf')
+    cleanup;
+    return
+end
+
+
 %Time Storage
 p.var.event_count         = 0;
 p.possible_reward = 0;
@@ -720,6 +739,57 @@ lasterr
         ShowText('1 Minute Pause!\n');
         ShowText('Weiter in 15s. \n', start+45);
         ShowText('Weiter in 5s. \n', start+55);                
+    end
+
+
+    function [p, abort] = MeasureSamplePupilResponses(p)
+        % Display 'Take a break', info about next block and next task.
+        Eyelink('StartRecording');
+        WaitSecs(.01);
+        Eyelink('Message', sprintf('SUBJECT %d', p.subject));
+        p = Log(p, GetSecs, 'START_SAMPLE_MEASUREMENT', nan, p.phase, p.block);
+        p = Log(p, GetSecs, 'SUBJECT', p.subject, p.phase, p.block);
+        Eyelink('Message', sprintf('PHASE %d', p.phase));
+        Eyelink('Message', sprintf('BLOCK %d', p.block));
+        Screen('Flip', p.ptb.w);    
+        abort = false;
+        dt = 5;
+        for sample = dt+1:dt:300            
+            start = GetSecs();
+            KbQueueFlush(p.ptb.device);
+            [evt, n]   = KbEventGet(p.ptb.device);
+            [evt, n]   = KbEventGet(p.ptb.device);
+            while (GetSecs()-start) < 20           
+                [evt, n]   = KbEventGet(p.ptb.device);
+                if numel(evt)>0
+                    keys = KbName(evt.Keycode);
+                    switch keys
+                        case  p.keys.quit
+                            abort = true;
+                            return
+                        case {'space'}
+                            break
+                        case p.keys.pulse
+                            p = Log(p,RT, 0, NaN, p.phase, p.block);
+                    end
+                end
+            end
+            
+            draw_prd_sample(p, sample-dt);
+            draw_fix_bg_angled(p, 0);
+            Offset = Screen('Flip', p.ptb.w);
+            Eyelink('message', 'TRIALID %d', sample);            
+            draw_prd_sample(p, sample);
+            draw_fix_bg_angled(p, 45);
+            Screen('Flip', p.ptb.w, Offset+0.5)
+            Eyelink('Message', 'sample %i', sample);
+            draw_prd_sample(p, sample);
+            draw_fix_bg_angled(p, 0);
+            Screen('Flip', p.ptb.w, Offset+3.5)
+            if abort 
+                return
+            end
+        end
     end
 
     %% ----------------------------------- 
@@ -1941,7 +2011,11 @@ lasterr
         PsychEyelinkDispatchCallback(el);
         
         % open file.
-        p.edffile = sprintf('%d%d%d.edf', p.subject, p.phase, p.block);
+        if p.subject == -100
+            p.edffile = 'samptest.edf';
+        else
+            p.edffile = sprintf('%d%d%d.edf', p.subject, p.phase, p.block);
+        end
         res = Eyelink('Openfile', p.edffile); %#ok<NASGU>
         
         %Eyelink('command', 'add_file_preamble_text ''Recorded by EyelinkToolbox FearAmy Experiment (Selim Onat)''');
@@ -2228,6 +2302,7 @@ lasterr
         else
             w = p.ptb.rect(3)-p.ptb.rect(1);
             h = p.ptb.rect(4)-p.ptb.rect(2);
+
             I = cat(3, ones(h, w)*0);
             noise = (double(rand(round(h), round(w))>0.5))*255;
             fprintf('Uniques....\n')
@@ -2240,9 +2315,15 @@ lasterr
                 hpos = p.ptb.rect(2) + (p.ptb.rect(4)-p.ptb.rect(2))/2 + 10;
                 %Screen('FillRect', txt , p.stim.bg, [] );
                 DrawFormattedText(txt, sprintf('%03d', ii), 'center', hpos, [255, 255, 255], [],[],[],2,[]);
-                imageArray=Screen('GetImage', txt);
-                b = mean(imageArray, 3);                
-                img_incl_alpha = cat(3, b.*noise, b);                
+                imageArray= double(Screen('GetImage', txt));      
+                
+                b = double(mean(imageArray, 3)>128);           
+                [w, h] = size(b);
+                cx = w/2;
+                cy = h/2;
+                b = b(cx-200:cx+200, cy-200:cy+200);
+                
+                img_incl_alpha = cat(3, b.*noise(cx-200:cx+200, cy-200:cy+200), b*255);                
                 stimuli{ii} = img_incl_alpha; %#ok<AGROW>
             end
             
@@ -2252,7 +2333,9 @@ lasterr
         textures = [];
         target_rect = [1960/2-200, 1080/2-200, 1960/2+200, 1080/2+200];
         for ii = 1:300
-            fprintf('.')
+            if mod(ii, 10)==0
+                fprintf('.')
+            end
             stim = stimuli{ii};
             %stim = cat(3, stim, (~(stim==128))*255);
             txt = Screen('MakeTexture', p.ptb.w, stim);
