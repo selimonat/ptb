@@ -6,8 +6,8 @@ end
 
 fmri = true; % if false skip waiting for pulses.
 debug   = 0; %debug mode => 1: transparent window enabling viewing the background.
-small_window = 1; % Open a small window only
-NoEyelink = 1; %is Eyelink wanted?
+small_window = 0; % Open a small window only
+NoEyelink = 0; %is Eyelink wanted?
 test_sequences = 0; % Load shorter test sequences
 
 
@@ -39,9 +39,12 @@ if ~fmri
     p.mrt.dummy_scan = 0;
 end
 
-if subject == -100 % <---- Do sample retino measurements.
-    p = make_sample_textures(p);
-
+if subject <= -100 % <---- Do sample retino measurements.
+    if subject == -101
+        p = make_sample_textures(p, false);
+    else
+        p = make_sample_textures(p, true);
+    end
     KbQueueStop(p.ptb.device);
     KbQueueRelease(p.ptb.device);
     p.phase = -100;
@@ -754,12 +757,14 @@ lasterr
         Screen('Flip', p.ptb.w);    
         abort = false;
         dt = 5;
-        for sample = dt+1:dt:300            
+        samples = [1, 10*(randperm(9)), 10*(randperm(9)), 10*(randperm(9)), 10*(randperm(9)), 10*(randperm(9)), ];        
+        for iii = 2:length(samples)            
+            sample = samples(iii);
             start = GetSecs();
             KbQueueFlush(p.ptb.device);
             [evt, n]   = KbEventGet(p.ptb.device);
             [evt, n]   = KbEventGet(p.ptb.device);
-            while (GetSecs()-start) < 20           
+            while (GetSecs()-start) < 20
                 [evt, n]   = KbEventGet(p.ptb.device);
                 if numel(evt)>0
                     keys = KbName(evt.Keycode);
@@ -775,20 +780,67 @@ lasterr
                 end
             end
             
-            draw_prd_sample(p, sample-dt);
-            draw_fix_bg_angled(p, 0);
+            draw_prd_sample(p, 10);
+            draw_fix_bg_angled(p, 45);
             Offset = Screen('Flip', p.ptb.w);
-            Eyelink('message', 'TRIALID %d', sample);            
+            Eyelink('message', 'TRIALID %d', iii);
             draw_prd_sample(p, sample);
             draw_fix_bg_angled(p, 45);
-            Screen('Flip', p.ptb.w, Offset+0.5)
-            Eyelink('Message', 'sample %i', sample);
-            draw_prd_sample(p, sample);
+            Screen('Flip', p.ptb.w, Offset+1)
+            samplestr = sprintf('sample %i', sample);
+
+            Eyelink('Message', samplestr);
+            lumstr = sprintf('lum %f', mean(p.stim.sample_stimuli{sample}(:)));
+            Eyelink('Message', lumstr);
+            draw_prd_sample(p, 10);
             draw_fix_bg_angled(p, 0);
             Screen('Flip', p.ptb.w, Offset+3.5)
-            if abort 
+            if abort
                 return
+            end            
+        end
+        
+        samples = [255*(randperm(10)/10), 255*(randperm(10)/10), 255*(randperm(10)/10), 255*(randperm(10)/10), 255*(randperm(10)/10)];        
+        for iii = 1:length(samples)            
+            sample = samples(iii);
+            start = GetSecs();
+            KbQueueFlush(p.ptb.device);
+            [evt, n]   = KbEventGet(p.ptb.device);
+            [evt, n]   = KbEventGet(p.ptb.device);
+            while (GetSecs()-start) < 20
+                [evt, n]   = KbEventGet(p.ptb.device);
+                if numel(evt)>0
+                    keys = KbName(evt.Keycode);
+                    switch keys
+                        case  p.keys.quit
+                            abort = true;
+                            return
+                        case {'space'}
+                            break
+                        case p.keys.pulse
+                            p = Log(p,RT, 0, NaN, p.phase, p.block);
+                    end
+                end
             end
+            
+            Screen('FillRect', p.ptb.w, [128, 128, 128])
+            draw_fix_bg_angled(p, 0);
+            Offset = Screen('Flip', p.ptb.w);
+            Eyelink('message', 'TRIALID %d', iii);
+            Screen('FillRect', p.ptb.w, [sample, sample, sample])
+            draw_fix_bg_angled(p, 45);
+            Screen('Flip', p.ptb.w, Offset+1)
+            lumstr = sprintf('sample %f', sample)        ;    
+            Eyelink('Message', lumstr);
+            lumstr = sprintf('lum %f', sample);
+            Eyelink('Message', lumstr);
+            Screen('FillRect', p.ptb.w, [128, 128, 128])
+            draw_fix_bg_angled(p, 0);
+            Screen('Flip', p.ptb.w, Offset+3.5)
+
+            if abort
+                return
+            end            
         end
     end
 
@@ -2011,7 +2063,7 @@ lasterr
         PsychEyelinkDispatchCallback(el);
         
         % open file.
-        if p.subject == -100
+        if p.subject <= -100
             p.edffile = 'samptest.edf';
         else
             p.edffile = sprintf('%d%d%d.edf', p.subject, p.phase, p.block);
@@ -2290,7 +2342,10 @@ lasterr
     end
     
 
-    function p = make_sample_textures(p)
+    function p = make_sample_textures(p, noise)
+        if nargin==1
+            noise = true;
+        end
         tic;
         [~, hostname] = system('hostname');
         hostname = hostname(1:end-1);
@@ -2304,9 +2359,12 @@ lasterr
             h = p.ptb.rect(4)-p.ptb.rect(2);
 
             I = cat(3, ones(h, w)*0);
-            noise = (double(rand(round(h), round(w))>0.5))*255;
+            if noise
+                noise = (double(rand(round(h), round(w))>0.5))*255;
+            else
+                noise = ones(round(h), round(w))*255;
+            end
             fprintf('Uniques....\n')
-            unique(noise)
             for ii = 1:300
                 txt = Screen('MakeTexture', p.ptb.w, I);
                 Screen('TextSize', txt,  50);
@@ -2343,6 +2401,7 @@ lasterr
         end
         fprintf('\n')
         p.stim.sample_textures = textures;
+        p.stim.sample_stimuli=stimuli;
         toc;
     end
 
