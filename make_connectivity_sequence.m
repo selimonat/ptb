@@ -49,15 +49,18 @@ for s = 1:ns % Iterates over subjects
                 
             elseif strcmp(type, 'GL')                
                 [seq, es] = make_glaze_block(block_length);
-                blocks{block} = seq; %#ok<*AGROW>
-                
+                blocks{block} = seq; %#ok<*AGROW>                
             else
                 seq = struct();
                 seq.block_type = type{1};
                 seq.rule = mod(block, 2);
                 blocks{block} = seq;
             end
-            
+            if p == 1
+                blocks{block}.fmri = false;
+            else
+                blocks{block}.fmri = true;
+            end
         end
         
         stimuli{s}{p} = blocks; %#ok<AGROW>

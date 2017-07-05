@@ -46,6 +46,7 @@ for s = 1:ns % Iterates over subjects
                 [seq es] = make_glaze_block(block_length);
             end
             blocks{block} = seq; %#ok<AGROW>
+            blocks{block}.fmri = false; %#ok<AGROW>
             
         end
         stimuli{s}{p} = blocks; %#ok<AGROW>

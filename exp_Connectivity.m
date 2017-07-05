@@ -2,16 +2,32 @@ function [p]=exp_Connectivity(subject, phase, target_block, experiment)
 
 if nargin == 3
     experiment = 'connectivity';
+elseif ~ (strcmp(experiment, 'connectivity') || strcmp(experiment, 'immuno'))
+    ME = MException('VerifyInput:ExperimentType', ...
+        'experiment string must be connecvivity or immuno');
+    throw(ME);
 end
+    
 
-fmri = true; % if false skip waiting for pulses.
+NoEyelink = 1; %is Eyelink wanted?
 debug   = 0; %debug mode => 1: transparent window enabling viewing the background.
 small_window = 1; % Open a small window only
-NoEyelink = 1; %is Eyelink wanted?
-test_sequences = 0; % Load shorter test sequences
 
+%% >>>>> Set up a lot of stuff
+% Load stimulus sequence
+if strcmp(experiment, 'connectivity')
+    if ~test_sequences
+        sequences = load('connectivity_sequences.mat');
+    else
+        sequences = load('short_stimulus_sequences.mat');
+    end
+elseif strcmp(experiment, 'immuno')
+    sequences = load('immuno_sequences.mat');
+end
+sequences = sequences.sequences;
+sequence = sequences{subject}{phase};
 
-
+fmri = sequence{1}.fmri; % if false skip waiting for pulses.
 
 %replace parallel port function with a dummy function
 if ~IsWindows
@@ -21,16 +37,16 @@ end
 commandwindow; %focus on the command window, so that output is not written on the editor
 %clear everything
 clear mex global functions;%clear all before we start.
+
 if IsWindows	%clear cogent if we are in Windows and rely on Cogent for outp.
     cgshut;
     global cogent; %#ok<TLEV>
 end
-GetSecs; %%%%%%%%%%%load the GETSECS mex files so call them at least once
+GetSecs;
 WaitSecs(0.001);
 
 el        = [];%eye-tracker variable
 p         = [];%parameter structure that contains all info about the experiment.
-
 
 SetParams;%set parameters of the experiment
 SetPTB;%set visualization parameters.
@@ -41,7 +57,6 @@ end
 
 if subject == -100 % <---- Do sample retino measurements.
     p = make_sample_textures(p);
-
     KbQueueStop(p.ptb.device);
     KbQueueRelease(p.ptb.device);
     p.phase = -100;
@@ -62,18 +77,6 @@ end
 p.var.event_count         = 0;
 p.possible_reward = 0;
 p.earned_rewards  = 0;
-%% Load stimulus sequence
-if strcmp(experiment, 'connectivity')
-    if ~test_sequences
-        sequences = load('connectivity_sequences.mat');
-    else
-        sequences = load('short_stimulus_sequences.mat');
-    end
-elseif strcmp(experiment, 'immuno')
-    sequences = load('immuno_sequences.mat');
-end
-sequences = sequences.sequences;
-sequence = sequences{subject}{phase};
 
 % Load reward file
 path_reward = fullfile(p.path.baselocation, sprintf('SUB_%i', p.subject));
@@ -102,13 +105,9 @@ else
     save(reward_file, 'all_rewards');
 end
 
-
-
 p.subject = subject;
 
 
-
-%% Training
 % Vormessung
 p.phase = phase;
 ii = 0;
@@ -131,11 +130,11 @@ gl_blocks_completed = 0;
 
 calibrated = false;
 
-
 Screen('TextSize', p.ptb.w,  20);
 Screen('TextFont', p.ptb.w, 'Courier');
 Screen('TextStyle', p.ptb.w, 1);
 
+%% >>>>>>> Experiment starts.
 %try
     for block = target_block
         fprintf('Running SUB=%i, PHASE=%i, BLOCK=%i\n', subject, phase, block);
@@ -600,8 +599,6 @@ lasterr
         KbQueueStop(p.ptb.device);
         KbQueueRelease(p.ptb.device);
         
-        %p = InitEyeLink(p);
-        %CalibrateEL;
         
         Screen('FillRect',p.ptb.w,p.var.current_bg);
         t = Screen('Flip',p.ptb.w);
@@ -633,7 +630,12 @@ lasterr
         lower_bound = mean(abs(diff(p.sequence.sample)));
         upper_bound = mean(abs(p.sequence.sample(2:end) - p.sequence.mu(1:end-1)));
         prediction_errors = nan(size(p.sequence.stim,2));
+        
+        Log(p, vbl, 'PRD_LOWER_BOUND', lower_bound, p.phase, p.block);
+        Log(p, vbl, 'PRD_UPPER_BOUND', upper_bound, p.phase, p.block);
+        
         for trial  = 1:size(p.sequence.stim, 2);
+            Log(p, vbl, 'PRD_TRIAL', trial, p.phase, p.block);
             %Get the variables that Trial function needs.
             stim_id         = p.sequence.stim(trial);
             ISI             = p.sequence.isi(trial);
@@ -652,7 +654,7 @@ lasterr
             last_sample = sample;
             
             prediction_errors(trial) = abs(prediction-sample);
-          
+            Log(p, vbl, 'PRD_ERROR', prediction_errors(trial), p.phase, p.block);
             
             [keycode, secs] = KbQueueDump(p); %this contains both the pulses and keypresses.
             if numel(keycode)
@@ -845,7 +847,7 @@ lasterr
         abort = false;
         TimeFeedbackOffset = nan;
         TrialStart = GetSecs;
-        p = Log(p,TrialStart, 2, sample, p.phase, p.block);
+        p = Log(p,TrialStart, 'PRD_TRIAL_START', sample, p.phase, p.block);
         
         [p, prediction_time, prediction, abort] = predict_prd_sample(p, old_prediction, last_sample);
         if abort
@@ -1269,26 +1271,29 @@ lasterr
         prediction = nan;
         update = nan;
         TimeFeedbackOffset = nan;
-        %% STIMULUS ONSET
-      
-        p = Log(p, GetSecs, 4, nan, p.phase, p.block);
-        Eyelink('Message', 'StimOnset');
-        Eyelink('Message', 'SYNCTIME');
-        MarkCED( p.com.lpt.address, 4);        
+        %% STIMULUS ONSET              
         [keycode, secs] = KbQueueDump(p);
         if numel(keycode)            
-            pulses = (keycode == KbName(p.keys.pulse));
-            if any(pulses);
-                p = Log(p,secs(pulses), 0, keycode(pulses), p.phase, p.block);
+            for iii = 1:length(keycode)
+                pulses = (keycode(iii) == KbName(p.keys.pulse));
+                if any(pulses);
+                    p = Log(p,secs(pulses), 0, keycode(pulses), p.phase, p.block);
+                else
+                    Log(p, secs(iii), 'NASSAR_PRD_BEFORE_RESP', keycode(iii), p.phase, p.block);
+                end
             end
         end
         KbQueueFlush(p.ptb.device);
-        % Stimulus Offset
+        
         Screen('FillRect',  p.ptb.w, [20,20,255], p.FixCross');
         draw_prd_background(p);
         draw_prd_sample(p, old_prediction);
         draw_fix_bg_angled(p, 0);
         TimeStimOnset  = Screen('Flip',p.ptb.w);  %<----- FLIP                       
+        Eyelink('Message', 'StimOnset');
+        Eyelink('Message', 'SYNCTIME');
+        MarkCED( p.com.lpt.address, 4);        
+        p = Log(p, GetSecs, 'PRD_PREDICT_SAMPLE_ON', nan, p.phase, p.block); 
         p = Log(p,TimeStimOnset, 5, nan, p.phase, p.block);
         Eyelink('Message', 'StimOff');
         MarkCED( p.com.lpt.address, 5);
@@ -1814,8 +1819,7 @@ lasterr
                     break
                 end
             end
-            p.ptb.device
-            
+            p.ptb.device            
             gamma = load('vpixx_gamma_table.mat');
             p.ptb.gamma = gamma.table;
         else
@@ -1841,7 +1845,7 @@ lasterr
         if ~small_window
             [p.ptb.w, p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, [128, 128, 128]);
         else
-            [p.ptb.w, p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, [128, 128, 128], [0, 0, 1700, 1000]);
+            [p.ptb.w, p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, [128, 128, 128], [0, 0, 900, 700]);
         end
         
         BackupCluts();
@@ -2094,7 +2098,14 @@ lasterr
         Eyelink('Message','%s', messageString);%
         WaitSecs(0.05);
         fprintf('=================\n=================\nNow we are done with the calibration\n')
-        
+        if numel(p.ptb.gamma, 2) > 0
+            [old_table] = Screen('LoadNormalizedGammaTable', p.ptb.w, p.ptb.gamma);
+            p.ptb.gamma_loaded = true;
+            p.ptb.old_gamma = old_table;
+            p.ptb.gamma_loaded = false;
+        else
+            p.ptb.gamma_loaded=false;
+        end
     end
 
 
