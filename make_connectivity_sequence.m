@@ -16,6 +16,9 @@ function stimuli = make_connectivity_sequence(ns, block_length)
 
 duration = [2, 8];
 hazard_rate = 1/70;
+fudge_factor = 0.7; % Determines by how much the instructed rule block 
+                    % length should be shortened to account for illusionary block changes.
+glaze_duration = 0.4;
 stimuli = {};
 
 
@@ -36,12 +39,12 @@ for s = 1:ns % Iterates over subjects
                    
             if strcmp(type, 'IR') % Instructed rule
                 % Match block length to hazard rate.
-                avg_trials = 1/hazard_rate;
                 avg_trial_length = 7.; % 2 sec Stim (incl. resp) + 5s
                 % Compute how long a rule is on display on average;
                 %avg_glaze_block_length = duration_glaze* avg_trials + choice_length*(duration_glaze*avg_trials*Q_rate);
-                avg_glaze_block_length = 1/hazard_rate;
+                avg_glaze_block_length = (1/hazard_rate) * glaze_duration * fudge_factor;
                 trials_per_block = floor(avg_glaze_block_length/avg_trial_length);
+                duration_per_block = trials_per_block*avg_trial_length;
                 n_trials = round(block_length/avg_trial_length);               
                 validities = [0, 1];
                 [seq, es] = make_instructed_rule_sequence(n_trials, validities, trials_per_block, duration);

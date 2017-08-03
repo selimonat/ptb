@@ -11,16 +11,12 @@ end
 
 NoEyelink = 1; %is Eyelink wanted?
 debug   = 0; %debug mode => 1: transparent window enabling viewing the background.
-small_window = 1; % Open a small window only
+small_window = 0; % Open a small window only
 
 %% >>>>> Set up a lot of stuff
 % Load stimulus sequence
 if strcmp(experiment, 'connectivity')
-    if ~test_sequences
         sequences = load('connectivity_sequences.mat');
-    else
-        sequences = load('short_stimulus_sequences.mat');
-    end
 elseif strcmp(experiment, 'immuno')
     sequences = load('immuno_sequences.mat');
 end
@@ -30,9 +26,19 @@ sequence = sequences{subject}{phase};
 fmri = sequence{1}.fmri; % if false skip waiting for pulses.
 
 %replace parallel port function with a dummy function
-if ~IsWindows
-    outp = @(x,y) 1;
-end
+outp = @(x,y) 1;
+% if ~IsWindows
+%     outp = @(x,y) 1;
+% else
+%     addpath('C:\USER\_parallelport_cogent')
+%     config_io;                        
+%     keyboard
+%     outp(p.com.lpt.address,0); 
+%     
+%     if( cogent.io.status ~= 0 )
+%         error('inp/outp installation failed');
+%     end
+% end
 
 commandwindow; %focus on the command window, so that output is not written on the editor
 %clear everything
@@ -190,7 +196,7 @@ Screen('TextStyle', p.ptb.w, 1);
                 CalibrateEL;
                 calibrated = true;
             end
-            [p, abort] = RetinoBlock(p, 0.8, 5, 5.5, false, 1, 'wedge');
+            [p, abort] = RetinoBlock(p, 0.8, 5, 5.5, false, 5, 'wedge');
             p = InitEyeLink(p);
             [p, abort] = RetinoBlock(p, 0.8, 5, 5.5, true, 1, 'wedge');
 
@@ -207,7 +213,7 @@ Screen('TextStyle', p.ptb.w, 1);
                 CalibrateEL;
                 calibrated = true;
             end
-            [p, abort] = RetinoBlock(p, 0.8, 5, 5.5, false, 1, 'ring');
+            [p, abort] = RetinoBlock(p, 0.8, 5, 5.5, false, 5, 'ring');
             p = InitEyeLink(p);
             [p, abort] = RetinoBlock(p, 0.8, 5, 5.5, true, 1, 'ring');
 
@@ -507,7 +513,7 @@ lasterr
 
         p = dump_keys(p);
 
-        show_block(p, -1, 10);
+        %show_block(p, -1, 10);
 
         % Break
         % Wait for trigger
@@ -1757,9 +1763,14 @@ lasterr
             p.display.dimension = [52, 29.5];
             p.display.distance = [62, 59];
             p.path.baselocation           = '/home/donnerlab/experiments/immuno/data';
-        else
-            p.path.baselocation           = 'C:\Users\...\Documents\Experiments\immuno/data';
+        else           
+            p.display.resolution = [1920 1080];
+            p.display.dimension = [52, 29.5];
+            p.display.distance = [62, 59];
+            p.path.baselocation           = 'C:\USER\wilming\experiment\data';
         end
+            %p.path.baselocation           = 'C:\Users\...\Documents\Experiments\immuno/data';
+        
         p.display.ppd = ppd(mean(p.display.distance), p.display.resolution(1),...
             p.display.dimension(1));
         p.stim.bar_width = 400;
@@ -1879,7 +1890,8 @@ lasterr
             p.ptb.screenNumber          =  max(screens);%the maximum is the second monitor
             p.ptb.device        = -1;
             gamma = load('nne_uke_scanner.mat');
-            p.ptb.gamma = gamma.gammaTable;
+            gamma = [0 0 0; gamma.gammaTable];
+            p.ptb.gamma = gamma;
         end
         p.ptb.screenNumber
         %Make everything transparent for debugging purposes.

@@ -1,4 +1,4 @@
-function params = make_wedge_experiment()
+function params = make_retinotopy_experiment()
 %% Create a VistaDisp retinotopy experiment 
 
 params = struct();
