@@ -1,5 +1,7 @@
 function params = make_ring_experiment()
 %% Create a VistaDisp retinotopy experiment
+tr = 0.88;
+
 params = struct()
 params.experiment= 'expanding ring (45% duty)';
 params.fixation= 'double disk';
@@ -9,13 +11,14 @@ params.repetitions= 1;
 params.runPriority= 7;
 params.skipCycleFrames= 0;
 params.prescanDuration= 0;
-params.period= 24;
+%params.period= 24;
+params.period = 27*tr%24;
 params.numCycles= 1;
-params.motionSteps= 8;
+params.motionSteps= 10%8;
 params.tempFreq= 2.5000;
 params.contrast= 1;
 params.interleaves= [];
-params.tr= 0.8000;
+params.tr= tr;
 params.loadMatrix= [];
 params.saveMatrix= [];
 params.calibration= [];

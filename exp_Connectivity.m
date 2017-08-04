@@ -1484,8 +1484,8 @@ lasterr
 
     function vbl = explain_retino_block(p)
         %Screen('DrawTexture', p.ptb.w, instructions, [], p.ptb.rect)
-        text = ['Im n�chsten Block musst du auf kleine Muster mit einem Knopfdruck reagieren.\n',...
-             'Welcher Knopf gedr�ckt werden muss h�ngt von der aktiven Regel ab.\n',...
+        text = ['Im naechsten Block musst du auf kleine Muster mit einem Knopfdruck reagieren.\n',...
+             'Welcher Knopf gedrueckt werden muss haengt von der aktiven Regel ab.\n',...
              'Die aktive Regel wird durch Punkte neben dem Fixationskreuz angezeigt.\n'];
         DrawFormattedText(p.ptb.w, text, 'center', round(p.ptb.rect(4)*.1), p.stim.white,[],[],[],2,[]);
         draw_fix(p);
@@ -1508,7 +1508,7 @@ lasterr
         draw_fix(p, [], 0);
         draw_very_small_stimulus(p, 1)
         text = ['Wenn die rechte Regel aktiv ist und ein\n',...
-            'horizontales Muster erscheint muss die linke Taste gedr�ckt werden.'];
+            'horizontales Muster erscheint muss die linke Taste gedrueckt werden.'];
         DrawFormattedText(p.ptb.w, text, 'center', round(p.ptb.rect(4)*.1), p.stim.white,[],[],[],2,[]);
         vbl = Screen('Flip', p.ptb.w);
         KbStrokeWait(p.ptb.device);
@@ -1517,7 +1517,7 @@ lasterr
         draw_fix(p, [], 0);
         draw_very_small_stimulus(p, 0)
         text = ['Wenn die rechte Regel aktiv ist und ein\n',...
-            'vertikales Muster erscheint muss die rechte Taste gedr�ckt werden.'];
+            'vertikales Muster erscheint muss die rechte Taste gedrueckt werden.'];
         DrawFormattedText(p.ptb.w, text, 'center', round(p.ptb.rect(4)*.1), p.stim.white,[],[],[],2,[]);
         vbl = Screen('Flip', p.ptb.w);
         KbStrokeWait(p.ptb.device);
@@ -1526,7 +1526,7 @@ lasterr
         draw_fix(p, [], 1);
         draw_very_small_stimulus(p, 1)
         text = ['Wenn die linke Regel aktiv ist und ein\n',...
-            'horizontales Muster erscheint muss die rechte Taste gedr�ckt werden.'];
+            'horizontales Muster erscheint muss die rechte Taste gedrueckt werden.'];
         DrawFormattedText(p.ptb.w, text, 'center', round(p.ptb.rect(4)*.1), p.stim.white,[],[],[],2,[]);
         vbl = Screen('Flip', p.ptb.w);
         KbStrokeWait(p.ptb.device);
@@ -1535,22 +1535,22 @@ lasterr
         draw_fix(p, [], 0);
         draw_very_small_stimulus(p, 0)
         text = ['Wenn die linke Regel aktiv ist und ein\n',...
-            'vertikales Muster erscheint muss die linke Taste gedr�ckt werden.'];
+            'vertikales Muster erscheint muss die linke Taste gedrueckt werden.'];
         DrawFormattedText(p.ptb.w, text, 'center', round(p.ptb.rect(4)*.1), p.stim.white,[],[],[],2,[]);
         vbl = Screen('Flip', p.ptb.w);
         KbStrokeWait(p.ptb.device);
 
         Screen('DrawTexture', p.ptb.w, p.stim.instruction_both, [], p.ptb.rect)
-        text = ['Hier noch einmal eine �bersicht:'];
+        text = ['Hier noch einmal eine Uebersicht:'];
         DrawFormattedText(p.ptb.w, text, 'center', round(p.ptb.rect(4)*.1), p.stim.white,[],[],[],2,[]);
         vbl = Screen('Flip', p.ptb.w);
         KbStrokeWait(p.ptb.device);
 
 
-        text = ['Du hast jetzt die M�glichkeit diese Regeln zu �ben.\n\n'...
-            'Das Fixationskreuz wird gr�n nach einer richtigen Regelanwendung\n'...
+        text = ['Du hast jetzt die Moeglichkeit diese Regeln zu ueben.\n\n'...
+            'Das Fixationskreuz wird gruen nach einer richtigen Regelanwendung\n'...
             'und rot nach einer falschen Regelanwendung.\n\n'...
-            'Nicht vergessen: So wenig wie m�glich bewegen und immer (!) auf das\n'...
+            'Nicht vergessen: So wenig wie moeglich bewegen und immer (!) auf das\n'...
             'Fixationskreuz schauen. Das sich bewegende Zeug im Hintergrund einfach ignorieren...'];
         DrawFormattedText(p.ptb.w, text, 'center', round(p.ptb.rect(4)*.1), p.stim.white,[],[],[],2,[]);
         vbl = Screen('Flip', p.ptb.w);
@@ -1561,9 +1561,9 @@ lasterr
 
     function vbl = explain_instructed_rule(p)
         %Screen('DrawTexture', p.ptb.w, instructions, [], p.ptb.rect)
-        text = ['Im n�chsten Block musst du auf gro�e Muster mit einem Knopfdruck reagieren.\n',...
-             'Welcher Knopf gedr�ckt werden muss h�ngt wieder von der aktiven Regel ab.\n',...
-             'Welche Regel aktiv ist zeigen wir dir bevor sie sich �ndert.\n'];
+        text = ['Im naechsten Block musst du auf grosze Muster mit einem Knopfdruck reagieren.\n',...
+             'Welcher Knopf gedrueckt werden muss haengt wieder von der aktiven Regel ab.\n',...
+             'Welche Regel aktiv ist zeigen wir dir bevor sie sich aendert.\n'];
         DrawFormattedText(p.ptb.w, text, 'center', round(p.ptb.rect(4)*.1), p.stim.white,[],[],[],2,[]);
         vbl = Screen('Flip', p.ptb.w);
         KbStrokeWait(p.ptb.device);
@@ -1583,8 +1583,8 @@ lasterr
         KbStrokeWait(p.ptb.device);
 
         text = ['Bereit?\n\n'...
-            'Ach, in diesem Block wirst du �brigens f�r richtige Antworten bezahlt.\nWie viel du verdient hast erf�hrst du am Ende vom Block.\n\n',...
-            'Nicht vergessen: So wenig wie m�glich bewegen\n'...
+            'Ach, in diesem Block wirst du uebrigens fuer richtige Antworten bezahlt.\nWie viel du verdient hast erfaehrst du am Ende vom Block.\n\n',...
+            'Nicht vergessen: So wenig wie moeglich bewegen\n'...
             'und immer (!) auf das Fixationskreuz schauen.'];
         DrawFormattedText(p.ptb.w, text, 'center', round(p.ptb.rect(4)*.1), p.stim.white,[],[],[],2,[]);
         vbl = Screen('Flip', p.ptb.w);
@@ -1595,11 +1595,11 @@ lasterr
 
     function vbl = explain_glaze_rule(p)
         %Screen('DrawTexture', p.ptb.w, instructions, [], p.ptb.rect)
-        text = ['Im n�chsten Block musst du auf gro�e Muster mit einem Knopfdruck reagieren.\n',...
-             'Welcher Knopf gedr�ckt werden muss h�ngt wieder von der aktiven Regel ab.\n',...
+        text = ['Im naechsten Block musst du auf grosze Muster mit einem Knopfdruck reagieren.\n',...
+             'Welcher Knopf gedrueckt werden muss haengt wieder von der aktiven Regel ab.\n',...
              'Welche Regel aktiv ist musst du dieses mal selber herrausfinden.\n\n',...
              'Du wirst gleich in schneller Reihenfolge Punkte aufblinken sehen, deren seitlicher\n'...
-             'Verschub R�ckschl�sse auf die aktive Regel zul�sst.'];
+             'Verschub Rueckschluesse auf die aktive Regel zulaesst.'];
         DrawFormattedText(p.ptb.w, text, 'center', round(p.ptb.rect(4)*.1), p.stim.white,[],[],[],2,[]);
         vbl = Screen('Flip', p.ptb.w);
         KbStrokeWait(p.ptb.device);
@@ -1624,11 +1624,11 @@ lasterr
         Screen('DrawTexture', p.ptb.w, p.stim.right_txt, [], p.stim.right_rect)
         Screen('DrawTexture', p.ptb.w, p.stim.left_txt, [], p.stim.left_rect)
         draw_fix(p);
-        text = ['Wie du siehst sind beide Verteilungen stark �berlappend!\n',...
+        text = ['Wie du siehst sind beide Verteilungen stark ueberlappend!\n',...
             'Deswegen reicht ein einzelner Punkt nicht aus um die richtige Regel zu bestimmen.\n'];
         DrawFormattedText(p.ptb.w, text, 'center', round(p.ptb.rect(4)*.1), p.stim.white,[],[],[],2,[]);
-        text = ['Stattdessen solltest du kontinuierlich �berlegen welche Regel am besten mit der\n Position der letzten Punkte �bereinstimmt.\n',...
-            'Auch wichtig: Die aktive Regel �ndert sich unvorhersehbar!'];
+        text = ['Stattdessen solltest du kontinuierlich ueberlegen welche Regel am besten mit der\n Position der letzten Punkte uebereinstimmt.\n',...
+            'Auch wichtig: Die aktive Regel aendert sich unvorhersehbar!'];
         DrawFormattedText(p.ptb.w, text, 'center', round(p.ptb.rect(4)*.75), p.stim.white,[],[],[],2,[]);
         vbl = Screen('Flip', p.ptb.w);
         KbStrokeWait(p.ptb.device);

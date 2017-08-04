@@ -1,6 +1,6 @@
 function params = make_wedge_experiment()
 %% Create a VistaDisp retinotopy experiment 
-
+tr = 0.88;
 params = struct();
 params.experiment= 'rotating wedge (45deg duty)';
 params.fixation= 'double disk';
@@ -11,13 +11,13 @@ params.runPriority= 7;
 params.skipCycleFrames= 0;
 params.prescanDuration= 0;
 %params.period= 192;
-params.period= 24;
+params.period = 27*tr%24;
 params.numCycles= 1;
-params.motionSteps= 8;
+params.motionSteps= 10 %8;
 params.tempFreq= 2.5;
 params.contrast= 1;
 params.interleaves= [];
-params.tr= 0.8;
+params.tr= tr;
 %params.loadMatrix= '/Users/nwilming/u/flexible_rule/experiment/retinotopy/forward_retino_stim.mat';
 params.loadMatrix=[];
 params.saveMatrix= '/Users/nwilming/u/flexible_rule/experiment/retinotopy/forward_retino_stim.mat';
