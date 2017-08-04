@@ -47,7 +47,9 @@ for s = 1:ns % Iterates over subjects
                 duration_per_block = trials_per_block*avg_trial_length;
                 n_trials = round(block_length/avg_trial_length);               
                 validities = [0, 1];
-                [seq, es] = make_instructed_rule_sequence(n_trials, validities, trials_per_block, duration);
+                % Account for switches which also have 5s ISI+2 on average.
+                n_switches = floor(n_trials/(trials_per_block+1));
+                [seq, es] = make_instructed_rule_sequence(n_trials-n_switches, validities, trials_per_block, duration);
                 blocks{block} = seq; 
                 
             elseif strcmp(type, 'GL')                
@@ -93,6 +95,7 @@ end
         end
         seq.validity = seq.validity(1:trials);
         seq.isi = duration(1) + (duration(2)-duration(1)).*rand(1, trials);
+        seq.isi2 = duration(1) + (duration(2)-duration(1)).*rand(1, trials);
         seq.jitter = 0.3 + 0.7*rand(1, trials);
         seq.isi = seq.isi-seq.jitter;
     end
