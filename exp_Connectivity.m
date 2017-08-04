@@ -251,6 +251,7 @@ lasterr
     %  -----------------------------------
 
     function [p, abort] = InstructedRuleBlock(p)
+        % 4.8.17 - Check data save.
         p.start_time = datestr(now, 'dd-mmm-yy-HH:MM:SS');
 
         Screen('FillRect',p.ptb.w,p.var.current_bg);
@@ -311,7 +312,6 @@ lasterr
         WaitPulse(p, p.keys.pulse, p.mrt.dummy_scan);%
         fprintf('OK!! Stop the Scanner\n');
 
-
         p = dump_keys(p);
 
         money_earned = p.earned_rewards*all_rewards.eur_per_reward*all_rewards.weight;
@@ -334,6 +334,7 @@ lasterr
 
 
     function [p, abort] = GlazeBlock(p)
+        % 4.8 Check data save
         abort=false;
         p.start_time = datestr(now, 'dd-mmm-yy-HH:MM:SS');
         %wait for the dummy scans
@@ -383,15 +384,21 @@ lasterr
             end
             Eyelink('Command', 'record_status_message "Trial: %i/%i"', trial, size(p.sequence.stim, 2));
             Eyelink('Message', 'trial_id %i', trial);
+            
+            p = Log(p, GetSecs, 'GL_TRIAL_START', trial, p.phase, p.block);
             if ~isnan(stim_id)
+                p = Log(p, GetSecs, 'GL_TRIAL_STIM_ID', stim_id, p.phase, p.block);
                 Eyelink('Message', 'stim_id %i', stim_id);
             end
             if ~isnan(gener_side)
+                p = Log(p, GetSecs, 'GL_TRIAL_GENSIDE', gener_side, p.phase, p.block);
                 Eyelink('Message', 'gener_side %i', round(100*gener_side));
             end
             if ~isnan(location)
                 Eyelink('Message', 'location %d', round(1000*location));
+                p = Log(p, GetSecs, 'GL_TRIAL_LOCATION', location, p.phase, p.block);
             end
+            p = Log(p, GetSecs, 'GL_TRIAL_TYPE', type, p.phase, p.block);
             Eyelink('Message', 'type %i', type);
 
             if type == 0
@@ -451,10 +458,7 @@ lasterr
 
 
     function [p, abort] = RetinoBlock(p, TR, nrep, IBI, reverse, wait_triggers, type)
-        %
-        % TR = repetition time
-        % nrep = how often to repeat the stimulus
-        % IBI
+        % 4.8.17 - Check data save
         rule = binornd(1, 0.5);
         abort = false;
         p.start_time = datestr(now, 'dd-mmm-yy-HH:MM:SS');
@@ -512,11 +516,6 @@ lasterr
         KbQueueStop(p.ptb.device);
 
         p = dump_keys(p);
-
-        %show_block(p, -1, 10);
-
-        % Break
-        % Wait for trigger
         Screen('BlendFunction', p.ptb.w, 'GL_SRC_ALPHA', 'GL_ONE_MINUS_SRC_ALPHA');
 
         [secs, p] = WaitPulse(p, p.keys.pulse, wait_triggers);%will log it
@@ -598,10 +597,14 @@ lasterr
         draw_fix(p, [], rule);
         Screen('Flip',p.ptb.w, start+onset, 0);
         p = save_data(p, all_rewards);
+        %stop the queue
+        KbQueueStop(p.ptb.device);
+        KbQueueRelease(p.ptb.device);
     end
 
 
     function [p, abort] = NassarPredictionBlock(p)
+        % 4.8.17 - Check data save
         p.start_time = datestr(now, 'dd-mmm-yy-HH:MM:SS');
         [oldFontName,~,oldTextStyle] = Screen('TextFont', p.ptb.w, 'Courier');
         oldTextSize=Screen('TextSize', p.ptb.w,  70);
@@ -868,15 +871,10 @@ lasterr
         trial_info = sprintf('STIM=%i, REW_RULE=%i', stim_id, rewarded_rule);
         p = Log(p, TrialStart, 'IR_TRIAL_START', trial_info, phase, block);
 
-
-
         p = dump_keys(p);
 
-        if (TimeStimOnset-TrialStart) > 4
-            [p, TimeCrossOn] = start_ir_trial(p, phase, block); %#ok<NASGU>
-        else
-            [p, TimeCrossOn] = start_ir_trial(p, phase, block); %#ok<NASGU>
-        end
+        [p, TimeCrossOn] = start_ir_trial(p, phase, block); %#ok<NASGU>
+     
         [p, RT, ~, rule, abort] = choice_trial(p, TimeStimOnset, stim_id, phase, block);
         reward = nan;
 
@@ -961,13 +959,11 @@ lasterr
 
 
     function [p, TimeCrossOn] = start_ir_trial(p, phase, block)
-        %% Start a trial, also allows time for blinks.
+        %% Start a trial
         Screen('FillRect', p.ptb.w , p.stim.bg, [] ); %always create a gray background
         draw_fix(p);
-
         Screen('FillRect',  p.ptb.w, [255, 255, 255], p.FixCross');%draw the prestimus cross atop
         TimeCrossOn  = Screen('Flip',p.ptb.w);      %<----- FLIP
-
         p = Log(p,TimeCrossOn, 'IR_TRIAL_FIXON', nan, phase, block);
         Eyelink('Message', 'IR_TRIAL_FIXON');
         %MarkCED( p.com.lpt.address, p.com.lpt.trialOnset);
@@ -985,8 +981,8 @@ lasterr
         % STIMULUS ONSET
         TimeStimOnset  = Screen('Flip',p.ptb.w, TimeStimOnset, 0);  %<----- FLIP
         start_rt_counter  = TimeStimOnset;
-        p = Log(p,TimeStimOnset, 'CHOICE_TRIAL_ONSET', nan, phase, block);
-        Eyelink('Message', 'CHOICE_TRIAL_ONSET');
+        p = Log(p,TimeStimOnset, 'CHOICE_TRIAL_ONSET', stim_id, phase, block);
+        Eyelink('Message', 'CHOICE_TRIAL_ONSET %i', stim_id);
         MarkCED( p.com.lpt.address, p.com.lpt.stim);
         % Check for key events
         p = dump_keys(p);
@@ -1015,10 +1011,10 @@ lasterr
             for iii = 1:length(keycodes)
                 RT = secs(iii);
                 keys = KbName(keycodes(iii));
-
+                p = Log(p, RT, 'BUTTON_PRESS', keys, phase, p.block);
                 switch keys
                     case  p.keys.quit
-                        abort = true;
+                        abort = true;                    
                         return
                     case cat(2, p.keys.answer_a, p.keys.answer_a_train) %{p.keys.answer_a, p.keys.answer_a_train}
                         % Answer a = Left
@@ -1042,9 +1038,9 @@ lasterr
         else
             MarkCED(p.com.lpt.address, p.com.lpt.resp1);
         end
-        Eyelink('message', sprintf('ANSWER %i', response));
+        Eyelink('message', sprintf('CHOICE_TRIAL_RESP %i', response));
         p = Log(p,RT, 'CHOICE_TRIAL_RESP', response, phase, block);
-        p = Log(p,RT, 'CHOICE_TRIAL_RT', RT-start, phase, block);
+        p = Log(p,RT, 'CHOICE_TRIAL_RT', RT-start_rt_counter, phase, block);
 
         if ~isnan(response)
             if response == stim_id
@@ -1056,6 +1052,7 @@ lasterr
                 rule = 0;
             end
         end
+        p = Log(p,RT, 'CHOICE_TRIAL_RULE_RESP', rule, phase, block);
         fprintf('RULE: %i, ', rule);
 
     end
@@ -1110,7 +1107,6 @@ lasterr
         r_inner = r_inner*p.display.ppd;
         cx = p.ptb.CrossPosition_x;
         cy = p.ptb.CrossPosition_y;
-
 
         % left, top, right, bottom
         location = location*p.display.ppd;
