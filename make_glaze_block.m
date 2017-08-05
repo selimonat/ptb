@@ -16,7 +16,7 @@ trials = ceil(block_length/mean_duration);
         seq.sample = [];
         seq.generating_side = [];
         seq.type = [];
-        seq.isi = [];
+        %seq.isi = [];
         seq.stimulus_onset = [0];
         seq.stim = [];
         es = [];
@@ -24,6 +24,7 @@ trials = ceil(block_length/mean_duration);
         sides = [1, -1];
         side = randsample(sides, 1);
         cnt = 0;
+        last_choice = false;
         while seq.stimulus_onset(end)<block_length
             %e = round(exprnd(mean_inter_change_length));
             %if e <= 5 || e > (mean_inter_change_length*2)
@@ -36,19 +37,26 @@ trials = ceil(block_length/mean_duration);
                 seq.generating_side = [seq.generating_side, side*threshold];
                 % Sample spacing is between 200 and 300ms.
                 isi =  duration(1) + (duration(2)-duration(1)).*rand;
-                seq.isi = [seq.isi, isi]; 
-                seq.stimulus_onset = [seq.stimulus_onset, seq.stimulus_onset(end)+isi];
+                %seq.isi = [seq.isi, isi]; 
+                %if last_choice
+                %    seq.stimulus_onset = [seq.stimulus_onset, seq.stimulus_onset(end) + 2 + isi + (3-2)*rand];
+                %    last_choice = false;
+                %else
+                    seq.stimulus_onset = [seq.stimulus_onset, seq.stimulus_onset(end)+isi];
+                %end
                 seq.type = [seq.type, 0];
                 seq.stim = [seq.stim nan];
                 cnt = cnt +1;
+                
                 if ((binornd(1, Q_rate) > 0.5) && (cnt > 10)) || (cnt > 20/.4)                    
                     seq.sample = [seq.sample, nan];
                     seq.generating_side = [seq.generating_side, side*threshold];
                     seq.type = [seq.type, 1];
-                    seq.isi = [seq.isi, 2 + (3-2)*rand];
-                    seq.stimulus_onset = [seq.stimulus_onset, seq.stimulus_onset(end)+isi+2];
+                    %seq.isi = [seq.isi, isi];
+                    seq.stimulus_onset = [seq.stimulus_onset, seq.stimulus_onset(end) + 2 + isi + (3-2)*rand];
                     seq.stim = [seq.stim randi(2, 1)-1];
                     cnt = 0;
+                    last_choice = true;
                 end
             end
             side = side*-1;

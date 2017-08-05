@@ -11,7 +11,7 @@ end
 
 NoEyelink = 1; %is Eyelink wanted?
 debug   = 0; %debug mode => 1: transparent window enabling viewing the background.
-small_window = 0; % Open a small window only
+small_window = 1; % Open a small window only
 
 %% >>>>> Set up a lot of stuff
 % Load stimulus sequence
@@ -365,18 +365,17 @@ lasterr
         % Reward stuff
         draw_fix(p);
         p.prev_sample=0;
-        ISI = .25;
+        %ISI = .25;
         StartGlazeEyelinkRecording(p.block, p.phase);
         outcomes = [];
+        start = GetSecs()+0.4;
         for trial  = 1:size(p.sequence.stim, 2);
-
             %Get the variables that Trial function needs.
             stim_id       = p.sequence.stim(trial);
             type          = p.sequence.type(trial);
             location      = p.sequence.sample(trial);
             gener_side    = p.sequence.generating_side(trial);
-            OnsetTime     = TimeEndStim + ISI;
-
+            OnsetTime     = start+p.sequence.stimulus_onset(trial);
             if location < 0
                 fprintf('-');
             else
@@ -416,7 +415,6 @@ lasterr
                     outcomes = [outcomes 0]; %#ok<AGROW>
                     fprintf('NO REWARD!\n')
                 end
-
             end
             p = dump_keys(p);
 
@@ -424,7 +422,7 @@ lasterr
                 break
             end
 
-            ISI           = p.sequence.isi(trial);
+            %ISI           = p.sequence.isi(trial);
 
         end
 
@@ -970,40 +968,40 @@ lasterr
     end
 
 
-    function [p, RT, response, rule, abort] = choice_trial(p, TimeStimOnset, stim_id, phase, block)
-
+    function [p, RT, response, rule, abort] = choice_trial(p, ChoiceStimOnset, stim_id, phase, block)
         rule = nan;
         response = nan; %#ok<NASGU>
         RT = nan; %#ok<NASGU>
         abort = false;
-
         draw_stimulus(p, stim_id)
         % STIMULUS ONSET
-        TimeStimOnset  = Screen('Flip',p.ptb.w, TimeStimOnset, 0);  %<----- FLIP
+        TimeStimOnset  = Screen('Flip',p.ptb.w, ChoiceStimOnset, 0);  %<----- FLIP        
         start_rt_counter  = TimeStimOnset;
         p = Log(p,TimeStimOnset, 'CHOICE_TRIAL_ONSET', stim_id, phase, block);
         Eyelink('Message', 'CHOICE_TRIAL_ONSET %i', stim_id);
+        
         MarkCED( p.com.lpt.address, p.com.lpt.stim);
         % Check for key events
         p = dump_keys(p);
         KbQueueFlush(p.ptb.device);
         % Now wait for response!
-        start = GetSecs;
         response = nan;
         RT = nan;
         num_flips = 0.2/p.ptb.slack;
         phase = rand*180;
-        while (GetSecs-start) < (2)
+        % Duration needs to be exactly 2s. Use for loop for this.
+        for onset_time = 0.2:0.2:1.8
             % Stimulus Offset
             draw_stimulus(p, stim_id, phase);
             step = randsample(45:10:360, 1);
             phase = mod(phase + step, 360);
             draw_fix_bg(p);
             Screen('FillRect',  p.ptb.w, [255,255,255], p.FixCross');
-            TimeStimOnset  = Screen('Flip', p.ptb.w, TimeStimOnset+(num_flips*p.ptb.slack), 0);  %<----- FLIP
+            LastOnset  = Screen('Flip', p.ptb.w, TimeStimOnset+onset_time-p.ptb.slack, 0);  %<----- FLIP            
         end
-
-        p = Log(p,TimeStimOnset, 'CHOICE_TRIAL_STIMOFF', nan, phase, p.block);
+        draw_fix_bg(p)        
+        TimeStimOffset  = Screen('Flip', p.ptb.w, TimeStimOnset+ 2 -p.ptb.slack, 0);  %<----- FLIP                    
+        p = Log(p,TimeStimOffset, 'CHOICE_TRIAL_STIMOFF', nan, phase, p.block);
         Eyelink('Message', 'CHOICE_TRIAL_STIMOFF');
         response = nan;
         [keycodes, secs] = KbQueueDump(p);
@@ -1053,8 +1051,7 @@ lasterr
             end
         end
         p = Log(p,RT, 'CHOICE_TRIAL_RULE_RESP', rule, phase, block);
-        fprintf('RULE: %i, ', rule);
-
+        fprintf('RULE: %i, ', rule);        
     end
 
 
@@ -1116,15 +1113,15 @@ lasterr
         Screen('FillOval', p.ptb.w, [128-o, 128-o, 128-o], rout);
         Screen('FillOval', p.ptb.w, [128+o, 128+o, 128+o], rin);
 
-        SampleOnset  = Screen('Flip',p.ptb.w, SampleOnset, 0);      %<----- FLIP
+        ActSampleOnset  = Screen('Flip',p.ptb.w, SampleOnset, 0);      %<----- FLIP
         Eyelink('message', sprintf('sample %f', location));
-        p = Log(p,SampleOnset, 'SAMPLE_ONSET', location, p.phase, p.block);
+        p = Log(p,ActSampleOnset, 'SAMPLE_ONSET', location, p.phase, p.block);
         %MarkCED( p.com.lpt.address, p.com.lpt.event);
         draw_fix(p);
 
-        TimeSampleOffset = Screen('Flip',p.ptb.w,SampleOnset+p.sample_duration, 0);     %<----- FLIP
+        TimeSampleOffset = Screen('Flip',p.ptb.w,ActSampleOnset+p.sample_duration, 0);     %<----- FLIP
         draw_fix(p);
-        TimeSampleOffset = Screen('Flip',p.ptb.w,TimeSampleOffset+(.25), 0);
+        %TimeSampleOffset = Screen('Flip',p.ptb.w,TimeSampleOffset+(.25), 0);
     end
 
 
