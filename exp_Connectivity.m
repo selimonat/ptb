@@ -9,7 +9,7 @@ elseif ~ (strcmp(experiment, 'connectivity') || strcmp(experiment, 'immuno'))
 end
 
 
-NoEyelink = 1; %is Eyelink wanted?
+NoEyelink = 0; %is Eyelink wanted?
 debug   = 0; %debug mode => 1: transparent window enabling viewing the background.
 small_window = 1; % Open a small window only
 
@@ -96,7 +96,7 @@ end
 reward_file = fullfile(path_reward,'rewards_latest.mat');
 
 if strcmp(experiment, 'connectivity')
-    eur_per_reward = 0.07;
+    eur_per_reward = 0.05;
 elseif strcmp(experiment, 'immuno')
     p = make_sample_textures(p);
     eur_per_reward = 0.017;
@@ -130,7 +130,7 @@ ii = 0;
 %end
 
 
-if (numel(target_block) == 0) || (target_block == -1)
+if (numel(target_block) == 0) || sum((target_block == -1))==1
     target_block = 1:length(sequence);
 end
 
@@ -196,11 +196,16 @@ Screen('TextStyle', p.ptb.w, 1);
                 CalibrateEL;
                 calibrated = true;
             end
-            [p, abort] = RetinoBlock(p, 0.8, 5, 5.5, false, 5, 'wedge');
-            p = InitEyeLink(p);
-            [p, abort] = RetinoBlock(p, 0.8, 5, 5.5, true, 1, 'wedge');
-
-
+            if fmri 
+                [p, abort] = RetinoBlock(p, 0.8, 5, 5.5, false, 5, 'wedge');
+                p = InitEyeLink(p);
+                [p, abort] = RetinoBlock(p, 0.8, 5, 5.5, true, 1, 'wedge');
+            else
+                [p, abort] = RetinoBlock(p, 0.8, 5, 5.5, false, 0, 'wedge');
+                p = InitEyeLink(p);
+                [p, abort] = RetinoBlock(p, 0.8, 5, 5.5, true, 0, 'wedge');
+            end
+            
         elseif strcmp('RR', p.sequence.block_type)
             all_rewards.weight = 0.0;
             if blocks_completed == 0
@@ -213,10 +218,15 @@ Screen('TextStyle', p.ptb.w, 1);
                 CalibrateEL;
                 calibrated = true;
             end
-            [p, abort] = RetinoBlock(p, 0.8, 5, 5.5, false, 5, 'ring');
-            p = InitEyeLink(p);
-            [p, abort] = RetinoBlock(p, 0.8, 5, 5.5, true, 1, 'ring');
-
+            if fmri
+                [p, abort] = RetinoBlock(p, 0.8, 5, 5.5, false, 5, 'ring');
+                p = InitEyeLink(p);
+                [p, abort] = RetinoBlock(p, 0.8, 5, 5.5, true, 1, 'ring');
+            else
+                [p, abort] = RetinoBlock(p, 0.8, 5, 5.5, false, 0, 'ring');
+                p = InitEyeLink(p);
+                [p, abort] = RetinoBlock(p, 0.8, 5, 5.5, true, 0, 'ring');
+            end
 
         elseif strcmp('NR', p.sequence.block_type)
             % A block of the Nassar prediction task.
@@ -283,6 +293,7 @@ lasterr
             %Get the variables that Trial function needs.
             stim_id       = p.sequence.stim(trial);
             ISI           = p.sequence.isi(trial);
+            ISI2           = p.sequence.isi2(trial);
             jitter        = p.sequence.jitter(trial);
             validity      = p.sequence.validity(trial);
             rewarded_rule = p.sequence.rewarded_rule(trial);
@@ -290,8 +301,8 @@ lasterr
             block_change  = p.sequence.onset(trial);
 
             if block_change
-                show_block(p, validity, 2);
-                OnsetTime = GetSecs + ISI + 4;
+                show_block(p, validity, 2, GetSecs+ISI2);
+                OnsetTime = GetSecs + ISI;
             end
 
 
@@ -369,6 +380,7 @@ lasterr
         StartGlazeEyelinkRecording(p.block, p.phase);
         outcomes = [];
         start = GetSecs()+0.4;
+
         for trial  = 1:size(p.sequence.stim, 2);
             %Get the variables that Trial function needs.
             stim_id       = p.sequence.stim(trial);
@@ -408,7 +420,7 @@ lasterr
                 fprintf('\nCHOICE TRIAL; stim_id:%i, gener_side:%02.2f ', stim_id, gener_side>0);
                 [p, ~, response, rule, abort] = choice_trial(p, OnsetTime, stim_id, p.phase, p.block);
                 fprintf(' RULE: %i ', rule)
-                if rule == (gener_side>0)
+                if rule ~= (gener_side>0)
                     outcomes = [outcomes 1]; %#ok<AGROW>
                     fprintf('REWARD!\n');
                 else
@@ -440,7 +452,7 @@ lasterr
         all_rewards.money = all_rewards.money+money_earned;
         all_rewards.total_rewards = all_rewards.total_rewards + p.earned_rewards;
 
-        text = RewardText(p.earned_rewards, p.earned_rewards/trial, money_earned, all_rewards.money);
+        text = RewardText(p.earned_rewards, p.earned_rewards/sum(outcomes), money_earned, all_rewards.money);
         Screen('FillRect',p.ptb.w,p.var.current_bg);
         DrawFormattedText(p.ptb.w, text, 'center', 'center', p.stim.white,[],[],[],2,[]);
         Screen('Flip',p.ptb.w);
@@ -1442,7 +1454,7 @@ lasterr
     end
 
 
-    function vbl = show_block(p, validity, duration)
+    function vbl = show_block(p, validity, duration, onset_time)
         switch validity
             case 1
                 img=imread('instructions/instruction_A.png', 'BackgroundColor', [.5, .5, .5]);
@@ -1456,7 +1468,7 @@ lasterr
         draw_fix(p, [], validity);
         %text = ['Nochmal die Regeln als Erinnerung. Gleich gehts los'];
         %DrawFormattedText(p.ptb.w, text, 'center', round(p.ptb.rect(4)*.1), p.stim.white,[],[],[],2,[]);
-        vbl = Screen('Flip', p.ptb.w);
+        vbl = Screen('Flip', p.ptb.w, onset_time);
         draw_fix(p);
         vbl = Screen('Flip', p.ptb.w, vbl+duration);
     end
@@ -2027,7 +2039,8 @@ lasterr
 
     function [t]=StarRetinoEyelinkRecording(type, reverse)
             if ~NoEyelink
-                Eyelink('Message', 'RETINO_BLOCK_START %s %i', type, reverse);
+                str = sprintf( 'RETINO_BLOCK_START %s %i', type, reverse);
+                Eyelink('Message', str);
                 t = GetSecs;
             else
                 t = GetSecs;
