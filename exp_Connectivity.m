@@ -9,7 +9,7 @@ elseif ~ (strcmp(experiment, 'connectivity') || strcmp(experiment, 'immuno'))
 end
 
 
-NoEyelink = 0; %is Eyelink wanted?
+NoEyelink = 1; %is Eyelink wanted?
 debug   = 0; %debug mode => 1: transparent window enabling viewing the background.
 small_window = 1; % Open a small window only
 
@@ -289,11 +289,12 @@ lasterr
         % Reward stuff
         draw_fix(p);
         p.prev_sample=0;
+        start_block = GetSecs();
         for trial  = 1:size(p.sequence.stim, 2);
             %Get the variables that Trial function needs.
             stim_id       = p.sequence.stim(trial);
             ISI           = p.sequence.isi(trial);
-            ISI2           = p.sequence.isi2(trial);
+            ISI2          = p.sequence.isi2(trial);
             jitter        = p.sequence.jitter(trial);
             validity      = p.sequence.validity(trial);
             rewarded_rule = p.sequence.rewarded_rule(trial);
@@ -316,6 +317,9 @@ lasterr
             p = dump_keys(p);
 
             if abort
+                break
+            end
+            if GetSecs() > start_block+600
                 break
             end
         end
@@ -380,7 +384,6 @@ lasterr
         StartGlazeEyelinkRecording(p.block, p.phase);
         outcomes = [];
         start = GetSecs()+0.4;
-
         for trial  = 1:size(p.sequence.stim, 2);
             %Get the variables that Trial function needs.
             stim_id       = p.sequence.stim(trial);
@@ -433,8 +436,9 @@ lasterr
             if abort
                 break
             end
-
-            %ISI           = p.sequence.isi(trial);
+            if GetSecs() > start+600
+                break
+            end
 
         end
 
