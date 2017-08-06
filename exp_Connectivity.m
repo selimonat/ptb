@@ -301,6 +301,10 @@ lasterr
             OnsetTime     = TimeEndStim + ISI;
             block_change  = p.sequence.onset(trial);
 
+            p = Log(p, GetSecs, 'IR_STIM', stim_id, p.phase, p.block);
+            Eyelink('Message', 'IR_STIM %i', stim_id);
+            p = Log(p, GetSecs, 'IR_REWARDED_RULE', rewarded_rule, p.phase, p.block);
+            Eyelink('Message', 'IR_REWARDED_RULE %i', rewarded_rule);
             if block_change
                 show_block(p, validity, 2, GetSecs+ISI2);
                 OnsetTime = GetSecs + ISI;
@@ -312,8 +316,12 @@ lasterr
 
             StartEyelinkRecording(trial, p.phase, validity, stim_id, p.block, rewarded_rule);
             [p, TimeEndStim, abort, reward] = InstructedRuleTrial(phase, p.block, p, OnsetTime, stim_id, rewarded_rule, jitter);
-
             fprintf(' REWARD: %i, TOTAL: %i\n',reward, p.earned_rewards);
+            p = Log(p, GetSecs, 'IR_TRIAL_REWARD', reward, p.phase, p.block);
+            if ~isnan(reward)
+                Eyelink('Message', 'IR_TRIAL_REWARD %i', reward);
+            end
+
             p = dump_keys(p);
 
             if abort
@@ -423,12 +431,22 @@ lasterr
                 fprintf('\nCHOICE TRIAL; stim_id:%i, gener_side:%02.2f ', stim_id, gener_side>0);
                 [p, ~, response, rule, abort] = choice_trial(p, OnsetTime, stim_id, p.phase, p.block);
                 fprintf(' RULE: %i ', rule)
-                if rule ~= (gener_side>0)
-                    outcomes = [outcomes 1]; %#ok<AGROW>
-                    fprintf('REWARD!\n');
+                if ~isnan(rule)
+                    if rule ~= (gener_side>0)
+                        outcomes = [outcomes 1]; %#ok<AGROW>
+                        p = Log(p, GetSecs, 'GL_TRIAL_REWARD', 1, p.phase, p.block);
+                        Eyelink('Message', 'GL_TRIAL_REWARD 1');
+                        fprintf('REWARD!\n');
+                    else
+                        outcomes = [outcomes 0]; %#ok<AGROW>
+                        p = Log(p, GetSecs, 'GL_TRIAL_REWARD', 0, p.phase, p.block);
+                        Eyelink('Message', 'GL_TRIAL_REWARD 0');
+                        fprintf('NO REWARD!\n')
+                    end
                 else
-                    outcomes = [outcomes 0]; %#ok<AGROW>
-                    fprintf('NO REWARD!\n')
+                    p = Log(p, GetSecs, 'GL_TRIAL_REWARD', nan, p.phase, p.block);
+                    Eyelink('Message', 'IR_TRIAL_REWARD -1');
+
                 end
             end
             p = dump_keys(p);
