@@ -49,7 +49,7 @@ for s = 1:ns % Iterates over subjects
                 validities = [0, 1];
                 % Account for switches which also have 5s ISI+2 on average.
                 n_switches = floor(n_trials/(trials_per_block+1));
-                [seq, es] = make_instructed_rule_sequence(n_trials-n_switches, validities, trials_per_block, duration);
+                [seq, es] = make_instructed_rule_onsets(600, validities, trials_per_block, duration);
                 blocks{block} = seq; 
                 
             elseif strcmp(type, 'GL')                
@@ -92,12 +92,52 @@ end
             seq.onset = [seq.onset, 1, zeros(1, block_length-1)];
             rewarded_rule = binornd(1, vs, 1, block_length);
             seq.rewarded_rule = [seq.rewarded_rule, rewarded_rule];
+            
         end
         seq.validity = seq.validity(1:trials);
         seq.isi = duration(1) + (duration(2)-duration(1)).*rand(1, trials);
         seq.isi2 = duration(1) + (duration(2)-duration(1)).*rand(1, trials);
         seq.jitter = 0.3 + 0.7*rand(1, trials);
         seq.isi = seq.isi-seq.jitter;
+    end
+
+    function [seq, es] = make_instructed_rule_onsets(block_duration, validities, block_length, duration)
+        %% Makes a sequence of rules that change with a specific hazard rate.
+        % validities = [0, 0.25, 0.75, 1];
+        isi = duration(1) + (duration(2)-duration(1)).*rand;
+        seq.block_type = 'IR';
+        seq.stimulus_onset = isi;
+        seq.type = 0;        
+        seq.stim = nan;
+        seq.rewarded_rule = binornd(1, 0.5, 1);
+        es = [];
+        %First determine stimulus onsets and number of trials
+        cur_block = 1;
+        while seq.stimulus_onset(end)<(block_duration-2)
+            isi = duration(1) + (duration(2)-duration(1)).*rand;        
+            if seq.stimulus_onset(end) + isi > block_duration-2                   
+                break
+            end
+            seq.stimulus_onset = [seq.stimulus_onset (seq.stimulus_onset(end) + isi +2)];
+            % Determine next trial type
+            
+
+            if cur_block == (block_length+1)
+                cur_block = 0;
+                seq.type = [seq.type 0];
+                newset = setdiff(validities, seq.rewarded_rule(end));
+                seq.stim = [seq.stim nan];
+                rewarded_rule = binornd(1, newset, 1, block_length);
+                seq.rewarded_rule = [seq.rewarded_rule, rewarded_rule];
+            else
+                seq.type = [seq.type 1];
+                seq.stim = [seq.stim randi(2, 1, 1);];
+                seq.rewarded_rule = [seq.rewarded_rule, seq.rewarded_rule(end)];
+            end
+            cur_block = cur_block +1;
+            seq.stimulus_onset(end);
+        end
+              
     end
 
        

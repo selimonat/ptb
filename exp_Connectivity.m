@@ -16,7 +16,7 @@ small_window = 1; % Open a small window only
 %% >>>>> Set up a lot of stuff
 % Load stimulus sequence
 if strcmp(experiment, 'connectivity')
-        sequences = load('connectivity_sequences.mat');
+        sequences = load('new_connectivity_sequences.mat');
 elseif strcmp(experiment, 'immuno')
     sequences = load('immuno_sequences.mat');
 end
@@ -197,13 +197,9 @@ Screen('TextStyle', p.ptb.w, 1);
                 calibrated = true;
             end
             if fmri 
-                [p, abort] = RetinoBlock(p, 0.8, 5, 5.5, false, 5, 'wedge');
-                p = InitEyeLink(p);
-                [p, abort] = RetinoBlock(p, 0.8, 5, 5.5, true, 1, 'wedge');
+                [p, abort] = RetinoBlock(p, 0.8, 5, 5.5, false, 5, 'wedge');                
             else
-                [p, abort] = RetinoBlock(p, 0.8, 5, 5.5, false, 0, 'wedge');
-                p = InitEyeLink(p);
-                [p, abort] = RetinoBlock(p, 0.8, 5, 5.5, true, 0, 'wedge');
+                [p, abort] = RetinoBlock(p, 0.8, 5, 5.5, false, 0, 'wedge');                
             end
             
         elseif strcmp('RR', p.sequence.block_type)
@@ -220,12 +216,12 @@ Screen('TextStyle', p.ptb.w, 1);
             end
             if fmri
                 [p, abort] = RetinoBlock(p, 0.8, 5, 5.5, false, 5, 'ring');
-                p = InitEyeLink(p);
-                [p, abort] = RetinoBlock(p, 0.8, 5, 5.5, true, 1, 'ring');
+                %p = InitEyeLink(p);
+                %[p, abort] = RetinoBlock(p, 0.8, 5, 5.5, true, 1, 'ring');
             else
                 [p, abort] = RetinoBlock(p, 0.8, 5, 5.5, false, 0, 'ring');
-                p = InitEyeLink(p);
-                [p, abort] = RetinoBlock(p, 0.8, 5, 5.5, true, 0, 'ring');
+                %p = InitEyeLink(p);
+                %[p, abort] = RetinoBlock(p, 0.8, 5, 5.5, true, 0, 'ring');
             end
 
         elseif strcmp('NR', p.sequence.block_type)
@@ -266,12 +262,8 @@ lasterr
 
         Screen('FillRect',p.ptb.w,p.var.current_bg);
         Screen('Flip',p.ptb.w);
-        KbQueueStop(p.ptb.device);
-        KbQueueRelease(p.ptb.device);
-
-
-        [secs, p] = WaitPulse(p, p.keys.pulse, p.mrt.dummy_scan);%will log it
-
+        
+        [secs, p] = WaitPulse(p, p.keys.pulse, p.mrt.dummy_scan); %will log pulses and release keyboard q
         KbQueueCreate(p.ptb.device);%, p.ptb.keysOfInterest);%default device.
         KbQueueStart(p.ptb.device);
         KbQueueFlush(p.ptb.device);
@@ -284,7 +276,7 @@ lasterr
         Eyelink('Message', sprintf('PHASE %d', p.phase));
         Eyelink('Message', sprintf('BLOCK %d', p.block));
 
-        TimeEndStim     = secs(end)- p.ptb.slack;%take the first valid pulse as the end of the last stimulus.
+        start_block     = secs(end)- p.ptb.slack;%take the first valid pulse as the end of the last stimulus.
 
         % Reward stuff
         draw_fix(p);
@@ -292,50 +284,51 @@ lasterr
         start_block = GetSecs();
         for trial  = 1:size(p.sequence.stim, 2);
             %Get the variables that Trial function needs.
-            stim_id       = p.sequence.stim(trial);
-            ISI           = p.sequence.isi(trial);
-            ISI2          = p.sequence.isi2(trial);
-            jitter        = p.sequence.jitter(trial);
-            validity      = p.sequence.validity(trial);
-            rewarded_rule = p.sequence.rewarded_rule(trial);
-            OnsetTime     = TimeEndStim + ISI;
-            block_change  = p.sequence.onset(trial);
+            stim_id        = p.sequence.stim(trial);            
+            rewarded_rule  = p.sequence.rewarded_rule(trial);
+            stimulus_onset = p.sequence.stimulus_onset(trial);
+            block_change   = p.sequence.type(trial);
 
             p = Log(p, GetSecs, 'IR_STIM', stim_id, p.phase, p.block);
-            Eyelink('Message', 'IR_STIM %i', stim_id);
+            Eyelink('Message', sprintf('IR_STIM %i', stim_id));
             p = Log(p, GetSecs, 'IR_REWARDED_RULE', rewarded_rule, p.phase, p.block);
-            Eyelink('Message', 'IR_REWARDED_RULE %i', rewarded_rule);
-            if block_change
-                show_block(p, validity, 2, GetSecs+ISI2);
-                OnsetTime = GetSecs + ISI;
-            end
-
-
-            fprintf('%d of %d, STIM: %i,  VALIDITY: %0.2f,  ISI: %2.2f, Block: %i REWARDED_RULE: %i,',...
-                trial, size(p.sequence.stim, 2), stim_id, validity, ISI,  p.block, rewarded_rule);
-
-            StartEyelinkRecording(trial, p.phase, validity, stim_id, p.block, rewarded_rule);
-            [p, TimeEndStim, abort, reward] = InstructedRuleTrial(phase, p.block, p, OnsetTime, stim_id, rewarded_rule, jitter);
-            fprintf(' REWARD: %i, TOTAL: %i\n',reward, p.earned_rewards);
-            p = Log(p, GetSecs, 'IR_TRIAL_REWARD', reward, p.phase, p.block);
-            if ~isnan(reward)
-                Eyelink('Message', 'IR_TRIAL_REWARD %i', reward);
-            end
-
-            p = dump_keys(p);
-
-            if abort
-                break
+            Eyelink('Message', sprintf('IR_REWARDED_RULE %i', rewarded_rule));
+            
+            StartEyelinkRecording(trial, p.phase, rewarded_rule, stim_id, p.block, block_change);
+            
+            if block_change==0
+                % Block change trial
+                fprintf('BLOCK CHANGE! REWRULE: %d\n', rewarded_rule);
+                show_block(p, rewarded_rule, 2, stimulus_onset+start_block);
+            else               
+                
+                fprintf('%d of %d, STIM: %i, ONSET: %3.2f, REWARDED_RULE: %i,',...
+                    trial, size(p.sequence.stim, 2), stim_id, stimulus_onset, rewarded_rule);
+                
+                
+                [p, TimeEndStim, abort, reward] = InstructedRuleTrial(phase, p.block, p, stimulus_onset+start_block, stim_id, rewarded_rule, 0);
+                fprintf(' REWARD: %i, TOTAL: %i\n',reward, p.earned_rewards);
+                p = Log(p, GetSecs, 'IR_TRIAL_REWARD', reward, p.phase, p.block);
+                if ~isnan(reward)
+                    Eyelink('Message', 'IR_TRIAL_REWARD %i', reward);
+                end
+                
+                p = dump_keys(p);
+                
+                if abort
+                    break
+                end
             end
             if GetSecs() > start_block+600
                 break
             end
         end
+        p = dump_keys(p);
+        fprintf('This instructed rule block lasted %3.2fs', GetSecs()-secs(end))
         %wait 6 seconds for the BOLD signal to come back to the baseline...
         WaitPulse(p, p.keys.pulse, p.mrt.dummy_scan);%
         fprintf('OK!! Stop the Scanner\n');
 
-        p = dump_keys(p);
 
         money_earned = p.earned_rewards*all_rewards.eur_per_reward*all_rewards.weight;
         all_rewards.money = all_rewards.money+money_earned;
@@ -369,11 +362,11 @@ lasterr
 
         show_glaze_block(p, 0); % <-- Show glaze block
         [secs, p] = WaitPulse(p, p.keys.pulse,p.mrt.dummy_scan);
-
-        Screen('Flip', p.ptb.w);
         KbQueueCreate(p.ptb.device);
         KbQueueStart(p.ptb.device);
         KbQueueFlush(p.ptb.device);
+        
+        Screen('Flip', p.ptb.w);
 
         Eyelink('StartRecording');
         WaitSecs(.01);
@@ -391,7 +384,8 @@ lasterr
         %ISI = .25;
         StartGlazeEyelinkRecording(p.block, p.phase);
         outcomes = [];
-        start = GetSecs()+0.4;
+        start_trials = GetSecs();
+        start = start_trials+0.4;
         for trial  = 1:size(p.sequence.stim, 2);
             %Get the variables that Trial function needs.
             stim_id       = p.sequence.stim(trial);
@@ -459,13 +453,12 @@ lasterr
             end
 
         end
-
-        %wait 6 seconds for the BOLD signal to come back to the baseline...
-
+        fprintf('\n This block of trials lasted %3.2fs\n', GetSecs()-start_trials);
+        p = dump_keys(p);
+        %wait 6 seconds for the BOLD signal to come back to the baseline...        
         WaitPulse(p, p.keys.pulse, p.mrt.dummy_scan);%
         fprintf('OK!! Stop the Scanner\n');
-
-        p = dump_keys(p);
+        
 
         % Need to show feedback here!
         p.earned_rewards = sum(outcomes);
@@ -510,14 +503,15 @@ lasterr
         ret_sequence.seq = [];
         ret_sequence.seqtiming = 0;
         isi = mean(diff(stimulus.seqtiming));   % sample diff in seconds
-        for n = 1:nrep
-            if reverse
-                ret_sequence.seq = [ret_sequence.seq; flip(stimulus.seq)];
-            else
-                ret_sequence.seq = [ret_sequence.seq; stimulus.seq];
-            end
+        for n = 1:nrep                    
+            ret_sequence.seq = [ret_sequence.seq; stimulus.seq];            
             ret_sequence.seqtiming = [ret_sequence.seqtiming; stimulus.seqtiming + ret_sequence.seqtiming(end) + isi];
         end
+        for n = 1:nrep                    
+            ret_sequence.seq = [ret_sequence.seq; flip(stimulus.seq)];            
+            ret_sequence.seqtiming = [ret_sequence.seqtiming; stimulus.seqtiming + ret_sequence.seqtiming(end) + isi];
+        end
+           
         ret_sequence.seqtiming = ret_sequence.seqtiming(2:end);
         images = nan*ones(size(stimulus.images{1}, 3), 1);
         for i = 1:length(images)
@@ -549,17 +543,14 @@ lasterr
 
         p = dump_keys(p);
         Screen('BlendFunction', p.ptb.w, 'GL_SRC_ALPHA', 'GL_ONE_MINUS_SRC_ALPHA');
-
         [secs, p] = WaitPulse(p, p.keys.pulse, wait_triggers);%will log it
-
-        KbQueueRelease(p.ptb.device);
         KbQueueCreate(p.ptb.device);
         KbQueueStart(p.ptb.device)
         KbQueueFlush(p.ptb.device)
         start = secs(end);
         StarRetinoEyelinkRecording(type, reverse);
         Screen('DrawTexture', p.ptb.w, images(1), [], rect)
-        Screen('DrawTexture', p.ptb.w, mask, [], rect)
+        Screen('DrawTexture', p.ptb.w, mask, [], rect)       
         start  = Screen('Flip',p.ptb.w, start+TR, 0);  %<----- FLIP
         Eyelink('message', 'first_flip');
         onsets = onsets+start;
@@ -570,7 +561,7 @@ lasterr
         %ax = p.FixCross(2, 1);
         p.FixCross(4)
         last_stim_id = nan;
-        last_response = nan;
+        last_response = nan;        
         for i = 2:length(stimulus.seq)
             onset = stimulus.seqtiming(i);
             image = images(stimulus.seq(i));
@@ -625,6 +616,7 @@ lasterr
             end
 
         end
+        fprintf('This sequence took %3.2fs', GetSecs()-start);
         Screen('BlendFunction', p.ptb.w, 'GL_ONE', 'GL_ZERO');
         draw_fix(p, [], rule);
         Screen('Flip',p.ptb.w, start+onset, 0);
@@ -1012,7 +1004,7 @@ lasterr
         TimeStimOnset  = Screen('Flip',p.ptb.w, ChoiceStimOnset, 0);  %<----- FLIP        
         start_rt_counter  = TimeStimOnset;
         p = Log(p,TimeStimOnset, 'CHOICE_TRIAL_ONSET', stim_id, phase, block);
-        Eyelink('Message', 'CHOICE_TRIAL_ONSET %i', stim_id);
+        Eyelink('Message', sprintf('CHOICE_TRIAL_ONSET %i', stim_id));
         
         MarkCED( p.com.lpt.address, p.com.lpt.stim);
         % Check for key events
@@ -2038,9 +2030,9 @@ lasterr
     end
 
 
-    function [t]=StartEyelinkRecording(nTrial, phase, validity, stim, block_id, rewarded_rule)
+    function [t]=StartEyelinkRecording(nTrial, phase, rewarded_rule, stim, block_id, type)
         if ~NoEyelink
-            Eyelink('Message', 'TRIALID: %04d, PHASE: %04d, VALIDITY: %04d, STIM: %04d, BLOCK %04d', nTrial, phase, validity, stim, block_id, rewarded_rule);
+            Eyelink('Message', 'TRIALID: %04d, PHASE: %04d, REWRULE: %04d, STIM: %04d, BLOCK %04d, TYPE %04d', nTrial, phase, rewarded_rule, stim, block_id, type);
             Eyelink('Command', 'record_status_message "Trial: %i"', nTrial);
             t = GetSecs;
         else
@@ -2212,8 +2204,7 @@ lasterr
     end
 
 
-    function [secs, p]=WaitPulse(p, keycode,n)
-
+    function [secs, p]=WaitPulse(p, keycode,n)     
         %[secs]=WaitPulse(keycode,n)
         %
         %   This function waits for the Nth upcoming pulse. If N=1, it will wait for
@@ -2225,12 +2216,8 @@ lasterr
         %   level event queues, which are much less likely to skip short events. A
         %   nice discussion on the topic can be found here:
         %   http://ftp.tuebingen.mpg.de/pub/pub_dahl/stmdev10_D/Matlab6/Toolboxes/Psychtoolbox/PsychDocumentation/KbQueue.html
-
-        %KbQueueFlush(p.ptb.device);
-        %KbQueueStop(p.ptb.device);
-        %KbQueueRelease(p.ptb.device);
-
-
+        KbQueueStop(p.ptb.device);
+        KbQueueRelease(p.ptb.device);
         fprintf('Will wait for %i dummy pulses...\n',n);
         if n ~= 0
             secs  = nan(1,n);
