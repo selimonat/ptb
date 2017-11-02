@@ -1,8 +1,8 @@
 function [p]=exp_ChangeBlindness(subject)
 
 phase   = 1;
-debug   = 0;%debug mode => 1: transparent window enabling viewing the background.
-EyelinkWanted = 1;%is Eyelink wanted?
+debug   = 1;%debug mode => 1: transparent window enabling viewing the background.
+EyelinkWanted = 0;%is Eyelink wanted?
 %replace parallel port function with a dummy function
 if ~IsWindows
     %OUTP.m is used to communicate with the parallel port, mainly to send
@@ -142,6 +142,7 @@ cleanup;
                     [~, k] = KbStrokeWait(p.ptb.device);
                     k = find(k);
                 end
+                KbQueueFlush(p.ptb.device)
                 fprintf('Subject and experimenter confirmed. Starting experiment!\n');
                 TimeEndStim = GetSecs + 3;
             end
@@ -192,7 +193,6 @@ cleanup;
         StartEyelinkRecording(nTrial,stim_id,phase);%I would be cautious here, the first trial is never recorded in the EDF file, reason yet unknown.
         %% microTrial Loop: Change from A 2 B as often as needed
         for nnTrial = 1:p.duration.nChanges
-            
                 if mod(nnTrial,2)== 1 %% for odd number (1,3,5,..) show A, for even number (2,4,..) show B
                     image_id = stim_id;
                 else
@@ -203,7 +203,6 @@ cleanup;
                 ActualOnset  = Screen('Flip',p.ptb.w,TimeStimOnset(nnTrial),0);%asap and dont clear
                 %update the image on ET screen, so we can see the change
                 %there
-%                 Eyelink('ImageTransfer',p.stim.files24(stim_id,:),p.ptb.imrect(1),p.ptb.imrect(2),p.stim.width,p.stim.height,p.ptb.imrect(1),p.ptb.imrect(2),0);
                 %send eyelink marker
                 if nnTrial == 1
                     Log(ActualOnset,3,stim_id);%log the stimulus onset with file_number
@@ -249,14 +248,18 @@ cleanup;
         %Path Business.
         [~, hostname]                 = system('hostname');
         p.hostname                    = deblank(hostname);
+        if ismac
         p.path.baselocation           = '/Users/onat/Documents/Experiments/NoS/';
+        else
+            p.path.baselocation           = 'C:\Users\Lea\Documents\Experiments\NoS';
+        end
         %create the base folder if not yet there.
         if exist(p.path.baselocation) == 0
             mkdir(p.path.baselocation);
         end
         
         p.path.experiment             = [p.path.baselocation  filesep];
-         p.path.stim                  = [fileparts(which('exp_ChangeBlindness.m')) filesep 'bin' filesep 'CB_Stimuli' filesep];
+        p.path.stim                  = [fileparts(which('exp_ChangeBlindness.m')) filesep 'bin' filesep 'CB_Stimuli' filesep];
         p.path.stim24                 = [p.path.stim '24bit' filesep];%location of 24bit stimuli, useful only to send it to the eyelink system
         
         %
@@ -673,7 +676,7 @@ cleanup;
             % clear tracker display and draw box at center
             Eyelink('Command', 'clear_screen %d', 0);
             %draw the image on the screen but also the two crosses
-            if (nStim <= 16 && nStim>0)
+            if nStim>0                
                 Eyelink('ImageTransfer',p.stim.files24(nStim,:),p.ptb.imrect(1),p.ptb.imrect(2),p.stim.width,p.stim.height,p.ptb.imrect(1),p.ptb.imrect(2),0);
             end
             Eyelink('Command', 'draw_cross %d %d 15',fix(1),fix(2));
