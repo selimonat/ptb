@@ -84,6 +84,8 @@ p.out.log      = p.out.log;%copy it to the output variable.
 save(p.path.path_param,'p');
 %
 %move the file to its final location.
+%rename the edf file to data.edf
+movefile([p.path.path_edf p.path.edf],[p.path.path_edf 'data.edf'],'f')
 movefile(p.path.subject,p.path.finalsubject);
 %close everything down
 cleanup;
@@ -267,7 +269,7 @@ cleanup;
         timestamp                     = datestr(now,30);%the time_stamp of the current experiment.
         p.path.subject                = [p.path.experiment  'tmp' filesep p.subID '_' timestamp filesep sprintf('run%03d',phase) filesep];%subject folder, first we save it to the temp folder.
 %         p.path.subject           = [p.path.subject sprintf('run%03d',phase) filesep];
-        p.path.finalsubject           = [p.path.experiment  sprintf('sub%03d',subject) filesep sprintf('run%03d',phase) filesep];%final location of the subject folder
+        p.path.finalsubject           = [p.path.experiment  sprintf('sub%03d',subject) filesep];%final location of the subject folder
         p.path.path_edf               = [p.path.subject  'eye' filesep];%location of the edf file in the eyelink computer
         p.path.edf                    = sprintf([p.subID 'p%02d.edf' ],phase);%EDF file in the stimulus computer
         p.path.path_param             = [p.path.subject 'stimulation' filesep 'data.mat'];%location of the paradigm file.
