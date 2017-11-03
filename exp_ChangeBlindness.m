@@ -265,20 +265,23 @@ cleanup;
         %
         p.subID                       = sprintf('s%02d',subject);%subject id
         timestamp                     = datestr(now,30);%the time_stamp of the current experiment.
-        p.path.subject                = [p.path.experiment  'tmp' filesep p.subID '_' timestamp filesep ];%subject folder, first we save it to the temp folder.
-        p.path.finalsubject           = [p.path.experiment  sprintf('sub%03d',subject) filesep 'run001' filesep];%final location of the subject folder
+        p.path.subject                = [p.path.experiment  'tmp' filesep p.subID '_' timestamp filesep sprintf('run%03d',phase) filesep];%subject folder, first we save it to the temp folder.
+%         p.path.subject           = [p.path.subject sprintf('run%03d',phase) filesep];
+        p.path.finalsubject           = [p.path.experiment  sprintf('sub%03d',subject) filesep sprintf('run%03d',phase) filesep];%final location of the subject folder
         p.path.path_edf               = [p.path.subject  'eye' filesep];%location of the edf file in the eyelink computer
         p.path.edf                    = sprintf([p.subID 'p%02d.edf' ],phase);%EDF file in the stimulus computer
         p.path.path_param             = [p.path.subject 'stimulation' filesep 'data.mat'];%location of the paradigm file.
         %create folder hierarchy for this subject
+%         mkdir(p.path.subject);
         mkdir(p.path.subject);
+        mkdir(p.path.finalsubject);
         mkdir([p.path.subject 'scr']);%location for the SCR data
         mkdir([p.path.subject 'eye']);%location for the edf file and eye-movement related data.
         mkdir([p.path.subject 'stimulation']);%location of the stimulus presentation paradigm
         mkdir([p.path.subject 'midlevel']);%other data.
         %% %%%%%%%%%%%%%%%%%%%%%%%%%
         %get stim files
-        [p.stim.files p.stim.label]   = FileMatrix([p.path.stim '*.jpg']);%read in the stimlus
+        [p.stim.files p.stim.label]   = FileMatrix([p.path.stim '*.png']);%read in the stimlus
         p.stim.tFile                  = size(p.stim.files,1);%number of different files
         p.stim.tFace                  = 9;%number of scenes.
         %
@@ -289,7 +292,7 @@ cleanup;
             bg(i)                     = im(1,1,1);
         end
         % set bg as mean of each channel.
-        p.stim.bg                   =  squeeze(mean(mean(im),2));
+        p.stim.bg                   =  [155 155 155];%squeeze(mean(mean(im),2));
         
         %bg of the rating screen.
         p.stim.bg_rating               = p.stim.bg;
@@ -342,7 +345,7 @@ cleanup;
         %these are the intervals of importance
         %time2fixationcross->cross2onset->onset2shock->shock2offset
         %these (duration.BLA) are average duration values:
-        p.duration.stim                = 2;%s
+        p.duration.stim                = .25;%s
         p.duration.blank               = .25; %duration of blank screen when changing from A to B
         p.duration.shock               = 0.1;%s;x
         p.duration.shockpulse          = 0.005;%ms; duration of each individual pulses
@@ -351,7 +354,7 @@ cleanup;
         p.duration.crossmoves          = p.duration.stim./2;
         p.duration.keep_recording      = 0.25;%this is the time we will keep recording (eye data) after stim offset.
         p.duration.prestim             = .85;
-        p.duration.nChanges            = 5; %number of blanks during trial, i.e. changing from iamge A to B
+        p.duration.nChanges            = 20; %number of blanks during trial, i.e. changing from iamge A to B
         %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %stimulus sequence: Explanation of the fields:
         %Explanation of the fields:
