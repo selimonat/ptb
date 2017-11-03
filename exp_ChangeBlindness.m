@@ -1,8 +1,8 @@
 function [p]=exp_ChangeBlindness(subject)
 
 phase   = 1;
-debug   = 1;%debug mode => 1: transparent window enabling viewing the background.
-EyelinkWanted = 0;%is Eyelink wanted?
+debug   = 0;%debug mode => 1: transparent window enabling viewing the background.
+EyelinkWanted = 1;%is Eyelink wanted?
 %replace parallel port function with a dummy function
 if ~IsWindows
     %OUTP.m is used to communicate with the parallel port, mainly to send
@@ -101,7 +101,7 @@ cleanup;
         %those pulses would have been not logged.
         %log the pulse timings.
         TimeEndStim     = secs(end)- p.ptb.slack;%take the first valid pulse as the end of the last stimulus.
-        for nTrial  = 1%:p.presentation.tTrial;
+        for nTrial  = 1:p.presentation.tTrial;
             %Get the variables that Trial function needs.
             stim_id      = p.presentation.stim_id(nTrial);
             ISI          = p.presentation.ISI(nTrial);
@@ -197,8 +197,8 @@ cleanup;
                     image_id = stim_id;
                 else
                     image_id = stim_id+1;
-                end
-                Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(image_id));
+                end                
+                Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(image_id),[0 0 640 480],[p.ptb.midpoint-[320 240].*1.25 p.ptb.midpoint-[320 240].*1.25+[640 480].*1.25]);
                 %% STIMULUS ONSET
                 ActualOnset  = Screen('Flip',p.ptb.w,TimeStimOnset(nnTrial),0);%asap and dont clear
                 %update the image on ET screen, so we can see the change
@@ -215,10 +215,10 @@ cleanup;
                 %% flip to blank
                 FlipOnset = Screen('Flip',p.ptb.w,TimeFlip(nnTrial),0);
                 Log(FlipOnset,16,image_id);%log the stimulus offset
-                if  KbQueueCheck(p.ptb.device)
-                    TimeTrackerOff = GetSecs + p.duration.keep_recording;
-                    break
-                end
+%                 if  KbQueueCheck(p.ptb.device)
+%                     TimeTrackerOff = GetSecs + p.duration.keep_recording;
+%                     break
+%                 end
         end
         %% STIM OFF immediately
         TimeEndStim = Screen('Flip',p.ptb.w);
@@ -299,7 +299,7 @@ cleanup;
         p.stim.white                   = [0 0 0];
         %% font size and background gray level
         p.text.fontname                = 'Times New Roman';
-        p.text.fontsize                = 30;
+        p.text.fontsize                = 45;
         p.text.fixsize                 = 60;
         %rating business, how many ticks
         p.rating.division              = 10;%number of divisions for the rating slider
@@ -354,7 +354,7 @@ cleanup;
         p.duration.crossmoves          = p.duration.stim./2;
         p.duration.keep_recording      = 0.25;%this is the time we will keep recording (eye data) after stim offset.
         p.duration.prestim             = .85;
-        p.duration.nChanges            = 20; %number of blanks during trial, i.e. changing from iamge A to B
+        p.duration.nChanges            = 40; %number of blanks during trial, i.e. changing from iamge A to B
         %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %stimulus sequence: Explanation of the fields:
         %Explanation of the fields:
@@ -761,7 +761,7 @@ cleanup;
             Eyelink('message', 'DISPLAY_COORDS %ld %ld %ld %ld', 0, 0, p.ptb.width-1, p.ptb.height-1);
             % set calibration type.
             Eyelink('command','auto_calibration_messages = YES');
-            Eyelink('command', 'calibration_type = HV13');
+            Eyelink('command', 'calibration_type = HV5');
             Eyelink('command', 'select_parser_configuration = 1');
             %what do we want to record
             Eyelink('command', 'file_sample_data  = LEFT,RIGHT,GAZE,HREF,AREA,GAZERES,STATUS,INPUT,HTARGET');
