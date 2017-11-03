@@ -267,7 +267,7 @@ cleanup;
         timestamp                     = datestr(now,30);%the time_stamp of the current experiment.
         p.path.subject                = [p.path.experiment  'tmp' filesep p.subID '_' timestamp filesep sprintf('run%03d',phase) filesep];%subject folder, first we save it to the temp folder.
 %         p.path.subject           = [p.path.subject sprintf('run%03d',phase) filesep];
-        p.path.finalsubject           = [p.path.experiment  sprintf('sub%03d',subject) filesep sprintf('run%03d',phase) filesep];%final location of the subject folder
+        p.path.finalsubject           = [p.path.experiment  sprintf('sub%03d',subject) filesep];%final location of the subject folder
         p.path.path_edf               = [p.path.subject  'eye' filesep];%location of the edf file in the eyelink computer
         p.path.edf                    = sprintf([p.subID 'p%02d.edf' ],phase);%EDF file in the stimulus computer
         p.path.path_param             = [p.path.subject 'stimulation' filesep 'data.mat'];%location of the paradigm file.
