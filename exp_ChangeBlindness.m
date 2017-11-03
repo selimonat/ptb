@@ -281,7 +281,7 @@ cleanup;
         mkdir([p.path.subject 'midlevel']);%other data.
         %% %%%%%%%%%%%%%%%%%%%%%%%%%
         %get stim files
-        [p.stim.files p.stim.label]   = FileMatrix([p.path.stim '*.jpg']);%read in the stimlus
+        [p.stim.files p.stim.label]   = FileMatrix([p.path.stim '*.png']);%read in the stimlus
         p.stim.tFile                  = size(p.stim.files,1);%number of different files
         p.stim.tFace                  = 9;%number of scenes.
         %
@@ -292,7 +292,7 @@ cleanup;
             bg(i)                     = im(1,1,1);
         end
         % set bg as mean of each channel.
-        p.stim.bg                   =  squeeze(mean(mean(im),2));
+        p.stim.bg                   =  [155 155 155];%squeeze(mean(mean(im),2));
         
         %bg of the rating screen.
         p.stim.bg_rating               = p.stim.bg;
