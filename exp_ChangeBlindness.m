@@ -84,6 +84,8 @@ p.out.log      = p.out.log;%copy it to the output variable.
 save(p.path.path_param,'p');
 %
 %move the file to its final location.
+%rename the edf file to data.edf
+movefile([p.path.path_edf p.path.edf],[p.path.path_edf 'data.edf'],'f')
 movefile(p.path.subject,p.path.finalsubject);
 %close everything down
 cleanup;
@@ -761,7 +763,7 @@ cleanup;
             Eyelink('message', 'DISPLAY_COORDS %ld %ld %ld %ld', 0, 0, p.ptb.width-1, p.ptb.height-1);
             % set calibration type.
             Eyelink('command','auto_calibration_messages = YES');
-            Eyelink('command', 'calibration_type = HV13');
+            Eyelink('command', 'calibration_type = HV5');
             Eyelink('command', 'select_parser_configuration = 1');
             %what do we want to record
             Eyelink('command', 'file_sample_data  = LEFT,RIGHT,GAZE,HREF,AREA,GAZERES,STATUS,INPUT,HTARGET');
