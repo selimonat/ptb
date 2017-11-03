@@ -2,7 +2,7 @@ function [p]=exp_ChangeBlindness(subject)
 
 phase   = 1;
 debug   = 1;%debug mode => 1: transparent window enabling viewing the background.
-EyelinkWanted = 0;%is Eyelink wanted?
+EyelinkWanted = 1;%is Eyelink wanted?
 %replace parallel port function with a dummy function
 if ~IsWindows
     %OUTP.m is used to communicate with the parallel port, mainly to send
@@ -101,7 +101,7 @@ cleanup;
         %those pulses would have been not logged.
         %log the pulse timings.
         TimeEndStim     = secs(end)- p.ptb.slack;%take the first valid pulse as the end of the last stimulus.
-        for nTrial  = 1%:p.presentation.tTrial;
+        for nTrial  = 1:p.presentation.tTrial;
             %Get the variables that Trial function needs.
             stim_id      = p.presentation.stim_id(nTrial);
             ISI          = p.presentation.ISI(nTrial);
