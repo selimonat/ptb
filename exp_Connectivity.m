@@ -16,15 +16,16 @@ small_window = 1; % Open a small window only
 %% >>>>> Set up a lot of stuff
 % Load stimulus sequence
 if strcmp(experiment, 'connectivity')
-        sequences = load('new_connectivity_sequences.mat');
+        sequences = load('new_connectivity_sequences-S7andfollowing.mat');
 elseif strcmp(experiment, 'immuno')
     sequences = load('immuno_sequences.mat');
 end
+if subject > 0
 sequences = sequences.sequences;
 sequence = sequences{subject}{phase};
 
 fmri = sequence{1}.fmri; % if false skip waiting for pulses.
-
+end
 %replace parallel port function with a dummy function
 outp = @(x,y) 1;
 % if ~IsWindows
@@ -57,11 +58,8 @@ p         = [];%parameter structure that contains all info about the experiment.
 SetParams;%set parameters of the experiment
 SetPTB;%set visualization parameters.
 
-if ~fmri
-    p.mrt.dummy_scan = 0;
-end
 
-if subject <= -100 % <---- Do sample retino measurements.
+if subject == -100  % <---- Do sample retino measurements.
     if subject == -101
         p = make_sample_textures(p, false);
     else
@@ -82,6 +80,21 @@ if subject <= -100 % <---- Do sample retino measurements.
     return
 end
 
+
+if subject == -110 % <---- Do sample retino measurements.
+    ['test']
+    KbQueueStop(p.ptb.device);
+    KbQueueRelease(p.ptb.device);
+    draw_stimulus(p,0);
+    Screen('Flip',p.ptb.w);  %<----- FLIP
+    WaitSecs(5)
+    cleanup;
+    return
+end
+
+if ~fmri
+    p.mrt.dummy_scan = 0;
+end
 
 %Time Storage
 p.var.event_count         = 0;
@@ -194,7 +207,7 @@ Screen('TextStyle', p.ptb.w, 1);
             p = InitEyeLink(p);
             if block == 1 || ~calibrated
                 CalibrateEL;
-                calibrated = true;
+                calibrated = false;
             end
             if fmri 
                 [p, abort] = RetinoBlock(p, 0.8, 5, 5.5, false, 5, 'wedge');                
@@ -212,7 +225,7 @@ Screen('TextStyle', p.ptb.w, 1);
             p = InitEyeLink(p);
             if block == 1 || ~calibrated
                 CalibrateEL;
-                calibrated = true;
+                calibrated = false;
             end
             if fmri
                 [p, abort] = RetinoBlock(p, 0.8, 5, 5.5, false, 5, 'ring');
@@ -329,12 +342,12 @@ lasterr
         WaitPulse(p, p.keys.pulse, p.mrt.dummy_scan);%
         fprintf('OK!! Stop the Scanner\n');
 
-
+        n_trials = sum(p.sequence.type(1:trial));
         money_earned = p.earned_rewards*all_rewards.eur_per_reward*all_rewards.weight;
         all_rewards.money = all_rewards.money+money_earned;
         all_rewards.total_rewards = all_rewards.total_rewards + p.earned_rewards;
 
-        text = RewardText(p.earned_rewards, p.earned_rewards/trial, money_earned, all_rewards.money);
+        text = RewardText(p.earned_rewards, p.earned_rewards/n_trials, money_earned, all_rewards.money);
         Screen('FillRect',p.ptb.w,p.var.current_bg);
         DrawFormattedText(p.ptb.w, text, 'center', 'center', p.stim.white,[],[],[],2,[]);
         Screen('Flip',p.ptb.w);
