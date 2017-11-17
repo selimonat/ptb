@@ -9,9 +9,9 @@ elseif ~ (strcmp(experiment, 'connectivity') || strcmp(experiment, 'immuno'))
 end
 
 
-NoEyelink = 1; %is Eyelink wanted?
+NoEyelink = 0; %is Eyelink wanted?
 debug   = 0; %debug mode => 1: transparent window enabling viewing the background.
-small_window = 1; % Open a small window only
+small_window = 0; % Open a small window only
 
 %% >>>>> Set up a lot of stuff
 % Load stimulus sequence
@@ -609,6 +609,8 @@ lasterr
             vbl  = Screen('Flip',p.ptb.w, start+onset, 0);  %<----- FLIP
             p = Log(p, vbl, 'RETINO_SEQ_CNT', i, p.phase, p.block);
             if(abort)
+                ['Aborting, saving data']
+                 p = save_data(p, all_rewards);
                 return
             end
             if binornd(1, 1/450)
@@ -1781,7 +1783,7 @@ lasterr
             p.display.resolution = [1920 1080];
             p.display.dimension = [52, 29.5];
             p.display.distance = [62, 59];
-            p.path.baselocation           = '/home/donnerlab/experiments/immuno/data';
+            p.path.baselocation           = '/home/donnerlab/experiments/flexrule/data';
         else           
             p.display.resolution = [1920 1080];
             p.display.dimension = [52, 29.5];
@@ -2032,7 +2034,7 @@ lasterr
 
     function [t]=StartEyelinkRecording(nTrial, phase, rewarded_rule, stim, block_id, type)
         if ~NoEyelink
-            Eyelink('Message', 'TRIALID: %04d, PHASE: %04d, REWRULE: %04d, STIM: %04d, BLOCK %04d, TYPE %04d', nTrial, phase, rewarded_rule, stim, block_id, type);
+            Eyelink('Message', sprintf('TRIALID: %04d, PHASE: %04d, REWRULE: %04d, STIM: %04d, BLOCK %04d, TYPE %04d', nTrial, phase, rewarded_rule, stim, block_id, type));
             Eyelink('Command', 'record_status_message "Trial: %i"', nTrial);
             t = GetSecs;
         else
@@ -2282,8 +2284,8 @@ lasterr
             mkdir(path)
         end
 
-        path_edf = fullfile(path, sprintf('S%d_P%d_B%d_%s_%s.edf', p.subject, p.phase, p.block, p.start_time, rst));
-        path_data = fullfile(path, sprintf('S%d_P%d_B%d_%s_%s_data.mat', p.subject, p.phase, p.block, p.start_time, rst));
+        path_edf = fullfile(path, sprintf('S%d_P%d_B%d_%s_%s.edf', p.subject, p.phase, p.block, p.start_time, rst))
+        path_data = fullfile(path, sprintf('S%d_P%d_B%d_%s_%s_data.mat', p.subject, p.phase, p.block, p.start_time, rst))
         path_rewards = fullfile(path_reward,'rewards_latest.mat');
         path_rewards_ts = fullfile(path_reward, sprintf('rewards_%s_%s.mat', p.start_time, rst));
         %get the eyelink file back to this computer
