@@ -127,7 +127,7 @@ end
                 seq.type = [seq.type 0];
                 newset = setdiff(validities, seq.rewarded_rule(end));
                 seq.stim = [seq.stim nan];
-                rewarded_rule = binornd(1, newset, 1, block_length);
+                rewarded_rule = binornd(1, newset, 1, 1);
                 seq.rewarded_rule = [seq.rewarded_rule, rewarded_rule];
             else
                 seq.type = [seq.type 1];
