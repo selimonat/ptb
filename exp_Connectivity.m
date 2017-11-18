@@ -24,7 +24,7 @@ if subject > 0
 sequences = sequences.sequences;
 sequence = sequences{subject}{phase};
 
-fmri = sequence{1}.fmri; % if false skip waiting for pulses.
+fmri = sequence{1}.fmri; % qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqif false skip waiting for pulses.
 end
 %replace parallel port function with a dummy function
 outp = @(x,y) 1;
@@ -480,7 +480,7 @@ lasterr
         all_rewards.money = all_rewards.money+money_earned;
         all_rewards.total_rewards = all_rewards.total_rewards + p.earned_rewards;
 
-        text = RewardText(p.earned_rewards, p.earned_rewards/sum(outcomes), money_earned, all_rewards.money);
+        text = RewardText(p.earned_rewards, p.earned_rewards/length(outcomes), money_earned, all_rewards.money);
         Screen('FillRect',p.ptb.w,p.var.current_bg);
         DrawFormattedText(p.ptb.w, text, 'center', 'center', p.stim.white,[],[],[],2,[]);
         Screen('Flip',p.ptb.w);
