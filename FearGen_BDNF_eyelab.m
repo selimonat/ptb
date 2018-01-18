@@ -220,6 +220,7 @@ cleanup;
                 ShowInstruction(14,1)
                 CalibrateEL;
             end
+            p_var_ExpPhase = phase;
         end
     end
     function [TimeEndStim]=Trial(nTrial,TimeStimOnset , prestimdur, stim_id , ucs  , fix , oddball, dist )
@@ -322,11 +323,11 @@ cleanup;
         elseif strcmp(p.hostname,'etpc')
             p.path.baselocation       = 'C:\Users\onat\Documents\Experiments\';
         else
-            p.path.baselocation       = 'C:\Users\onat\Documents\Experiments\';
+            p.path.baselocation       = 'C:\Users\Lea\Documents\Experiments\';
         end
         
         p.path.experiment             = [p.path.baselocation 'BDNF' filesep];
-        p.path.stim                   = 'C:\Users\onat\Documents\Experiments\BDNF\stim\';
+        p.path.stim                   = 'C:\Users\Lea\Documents\Experiments\BDNF\stim\';
         p.path.stim24                 = [p.path.stim '24bit8' '\'];
         %
         p.subID                       = sprintf('sub%02d',subject);

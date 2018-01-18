@@ -1,4 +1,4 @@
-function [p]=exp_treatgen_calib(subject,run)
+function [p]=exp_treatgen_calib_mri(subject,run)
 %[p]=exp_treatgen_calib(subject,run)
 %
 %Used for fearamy project, based on the FearGen_eyelab code. It increments
@@ -8,6 +8,7 @@ function [p]=exp_treatgen_calib(subject,run)
 
 debug = 0;%debug mode;
 arduino = 1;
+
 commandwindow;
 %clear everything
 clear mex global functions
@@ -66,11 +67,11 @@ elseif run == 4
     LimitsProcedure;
     ShowInstruction(10,1);
 elseif run == 1
-    warning('Trigger connected?')
-    warning('Arduino active?')
-    ShowInstruction(0,0,3)
-    ShowInstruction(3,1);
-    BuzzDemo;
+%     warning('Trigger connected?')
+%     warning('Arduino active?')
+%     ShowInstruction(0,0,3)
+%     ShowInstruction(3,1);
+%     BuzzDemo;
     ShowInstruction(1,1);
     LimitsProcedure;
     ShowInstruction(10,0,3);
@@ -150,7 +151,7 @@ cleanup;
             %toc
             %wait for keypress
             k = 0;
-            while ~(k == p.keys.space);
+            while ~(k == p.keys.confirm);
                 [~, k] = KbStrokeWait(p.ptb.device);
                 k = find(k);
             end
@@ -202,8 +203,10 @@ cleanup;
         Screen('DrawingFinished',p.ptb.w,0);
         Screen('Flip',p.ptb.w);
         fprintf('STIMULATE.\n');
-        Buzzduino(p.duration.tens);
-        WaitSecs(p.duration.tens);
+        t = GetSecs + p.duration.tens;
+        while GetSecs < t;
+            Buzz;
+        end
         timeout = 180;
         response = vasScale(p.ptb.w,p.ptb.rect,timeout,1,p.stim.bg,p.ptb.startY,p.keys,'confirm',102); %180 means three minutes to answer
         Screen('Flip',p.ptb.w,0);
@@ -376,14 +379,14 @@ cleanup;
         [~, hostname] = system('hostname');
         p.hostname                    = deblank(hostname);
         if strcmp(p.hostname,'triostim1')
-            p.path.baselocation       = 'C:\USER\kampermann\Experiments\';
+            p.path.baselocation       = 'C:\USER\kampermann\';
         elseif strcmp(p.hostname,'isn3464a9d59588') % Lea's HP
             p.path.baselocation       = 'C:\Users\Lea\Documents\Experiments\';
         else
             error('Unknown PC found, please define it for folder structure.')
         end
         
-        p.path.experiment             = [p.path.baselocation 'TreatgenMRI\Day1\'];
+        p.path.experiment             = [p.path.baselocation 'Treatgen\'];
         p.path.stim                   = [p.path.experiment 'Stimuli\'];
         %
         p.subID                       = sprintf('sub%03d',subject);
@@ -411,7 +414,7 @@ cleanup;
         %
         %font size and background gray level
         p.text.fontname                = 'Arial';
-        p.text.fontsize                = 18;%30;
+        p.text.fontsize                = 30;
         p.text.linespace               = 10;
         p.text.lineheight              = p.text.fontsize + p.text.linespace;
         %rating business
@@ -420,11 +423,14 @@ cleanup;
         %
         p.stim.white                   = [255 255 255];
         if strcmp(p.hostname,'triostim1')
-            p.keys.space                   = KbName('space');
-            p.keys.confirm                 = KbName('7');
-            p.keys.increase                = KbName('8');
-            p.keys.decrease                = KbName('6');
+            p.keys.confirm                 = KbName('4$');
+            p.keys.increase                = KbName('1!');
+            p.keys.decrease                = KbName('3#');
+            p.keys.pulse                   = KbName('5%');
+            p.keys.v                       = KbName('v');
+            p.keys.c                       = KbName('c');
             p.keys.esc                     = KbName('esc');
+            p.keys.enter                   = KbName('return');
         else
             %All settings for laptop computer.
             p.keys.confirm                 = KbName('space');
@@ -458,7 +464,7 @@ cleanup;
         p.com.lpt.RampDown          = 16;
         p.com.lpt.RateOn            = 32;
         p.com.lpt.RateOff           = 64;
-        %p.com.lpt.CS_neg               = 128;
+        p.com.lpt.digitimer         = 8;
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %timing business
@@ -471,6 +477,9 @@ cleanup;
         p.duration.poststim                  = 1;
         p.duration.ISI                       = 1;
         p.duration.rate                      = 5;
+        
+        p.duration.shockpulse                = 5; ms
+        p.duration.intershockpulse           = 100; ms
         
         p.duration.tens                      = .7; %this is only for TensDEMO
         
@@ -516,7 +525,7 @@ cleanup;
         end
     end
     function SetArduino
-        s = serial('COM6','BaudRate',19200);
+        s = serial('COM1','BaudRate',19200);
         fopen(s);
         WaitSecs(1);
         serialcom(s,'T',p.presentation.basetemp);
@@ -524,6 +533,12 @@ cleanup;
         WaitSecs(.5);
         serialcom(s,'DIAG');
         WaitSecs(1);
+    end
+    function Buzz
+        outp(p.com.lpt.address, p.com.lpt.digitimer );
+        Wait(p.duration.shockpulse);
+        outp(p.com.lpt.address, 0);
+        Wait(p.duration.intershockpulse);
     end
     function Buzzduino(duration)
         arg = ['SHOCK;' num2str(duration)];
@@ -751,12 +766,12 @@ cleanup;
                 'Wir bestimmen nun Ihre individuelle Hitzeschmerzschwelle.\n'...
                 'Wir werden dazu die Temperatur schrittweise erhöhen.\n'...
                 'Bitte schauen Sie während des Vorgangs auf das kleine Kreuz.\n'...
-                'Ihre Aufgabe ist es, die Leertaste zu drücken, sobald Sie die Temperatur als schmerzhaft empfinden,\n'...
+                'Ihre Aufgabe ist es, die obere Taste zu drücken, sobald Sie die Temperatur als schmerzhaft empfinden,\n'...
                 'd.h. sobald zum Gefühl von Wärme ein unangenehmes Gefühl wie Brennen oder Stechen hinzukommt.\n'...
                 'Der Vorgang wird drei mal wiederholt.\n'...
                 '\n'...
                 'Falls Sie noch Fragen haben, wenden Sie sich bitte noch einmal an die Versuchsleiterin.\n'...
-                'Drücken Sie sonst bitte die Leertaste, um zu starten.\n'];
+                'Drücken Sie sonst bitte die obere Taste, um zu starten.\n'];
         elseif nInstruct == 2 %Instruction
             text = ['Im Folgenden möchten wir Ihre individuelle Schmerzwahrnehmung noch genauer bestimmen.\n' ...
                 'Dazu erhalten Sie Reize unterschiedlicher Temperaturen.\n' ...
@@ -764,18 +779,18 @@ cleanup;
                 'die von "kein Schmerz bis "maximaler Schmerz" reicht. Sie haben dazu 5 Sek Zeit.\n' ...
                 'Falsche Antworten gibt es bei dieser Aufgabe nicht, da individuelle Empfindungen sehr unterschiedlich sein können.\n' ...
                 'Nutzen Sie die Pfeiltasten zum Bewerten & bestätigen Sie Ihre Eingabe immer\n' ...
-                'mit der Leertaste. Bitte versuchen Sie sich auch auf kleinste Reizänderungen\n' ...
+                'mit der obere Taste. Bitte versuchen Sie sich auch auf kleinste Reizänderungen\n' ...
                 'zu konzentrieren & bewerten Sie diese so präzise wie möglich.\n'...
                 '\n'...
                 'Falls Sie noch Fragen haben, wenden Sie sich bitte noch einmal an die Versuchsleiterin.\n' ...
-                'Drücken Sie sonst bitte die Leertaste, um weiterzumachen.\n'];
+                'Drücken Sie sonst bitte die obere Taste, um weiterzumachen.\n'];
         elseif nInstruct == 22 %Instruction
             text = ['Wir werden nun die für Sie individuell ausgewählte Grundtemperatur\n' ...
                 'für die folgende Kalibration anbringen.\n' ...
                 'Diese kann sich etwas unangenehm anfühlen, sollte aber nicht wirklich schmerzhaft sein.\n' ...
                 'Wir fragen Sie zudem vor Beginn der Kalibration, ob diese Temperatur für Sie gut aushaltbar ist.\n' ...
                 '\n' ...
-                'Drücken Sie bitte die Leertaste, wenn Sie bereit sind zu starten.\n'];
+                'Drücken Sie bitte die obere Taste, wenn Sie bereit sind zu starten.\n'];
         elseif nInstruct == 9
             text = 'Temperatur wird angepasst...\n';
         elseif nInstruct == 3%short Digitimer stimulation
@@ -790,7 +805,7 @@ cleanup;
                 '\n'...
                 '\n'...
                 'Falls Sie noch Fragen haben, wenden Sie sich bitte noch einmal an die Versuchsleiterin.\n' ...
-                'Drücken Sie sonst bitte die Leertaste, um zu starten.\n'];
+                'Drücken Sie sonst bitte die obere Taste, um zu starten.\n'];
         elseif nInstruct == 200%short instruction for second run
             text = ['Wiederholung der Schwellenkalibrierung.\n'...
                 '\n'...
@@ -1073,6 +1088,7 @@ cleanup;
         for tr = 1:trialnum
             plot(x(tr),y(tr),'o','MarkerFaceColor',cols(tr,:));hold on;
         end
+%         plot(x,y,'bo','MarkerFaceColor','b');hold on;
         %%
         % set params
         target_vas = [70 50 30];
@@ -1111,18 +1127,11 @@ cleanup;
         fprintf(1,'%g : %2.1f °C \tlinear: %2.1f °C\n',target_vas(2),target_temp(2),est_lin(2));
         fprintf(1,'%g : %2.1f °C \tlinear: %2.1f °C\n',target_vas(3),target_temp(3),est_lin(3));
         
-%         SaveFigure([p.path.subject '\midlevel\calib.png'])
         p.presentation.calib_est = [est_sig; est_lin];
         p.presentation.calib_target_vas = target_vas;
+        
         fh = gcf;
-        try
-            
-        saveas(fh,[p.path.subject 'calib','png']);
-        saveas(fh,[p.path.subject 'calib'],'png');
-        print(fh,'-djpeg',[p.path.subject 'calib'])
-        catch
-            fprintf('Figure could not be saved.\n')
-        end
+        saveas(fh,[p.path.subject 'calib','png'])
         
         function xsigpred = sigreverse(bsig1,ytarget)
             v=.5; a1 = bsig1(1); b1 = bsig1(2); L1 = bsig1(3); U1 = bsig1(4);
@@ -1133,5 +1142,89 @@ cleanup;
             a1 = blin1(1); b1 = blin1(2);
             xlinpred = (ytarget - a1) / b1;
         end
+        
+    end
+    function [out] = serialcom(s,cmd,varargin)
+        % SERIALCOM allows talking to an Arduino via an established serial
+        % connection. Possible inputs for CMD are 'HELP','DIAG','START', without
+        % optional input, and 'T','RoR','SET' and 'MOVE' with corresponding
+        % temperature ('T','RoR','SET', in format [xx.xx]) or time ('MOVE', [ms]).
+        
+        % Examples for usage:
+        % serialcom(s,'HELP')
+        % serialcom(s,'DIAG')
+        % serialcom(s,'START')
+        % serialcom(s,'T',35.00)
+        % serialcom(s,'RoR',10.00)
+        % serialcom(s,'SET',38.50)
+        % serialcom(s,'MOVE',1000) to move up for 1000 ms
+        %
+        % While the first varargin is thus expected (if applicable) to be the
+        % input for setting temperatures and raise durations, a second input can be
+        % 'verbose', when response from Arduino is wanted as output e.g.:
+        % out = serialcom(s,'T',35,'verbose')
+        % out = serialcom(s,'HELP',[],'verbose')
+        out  = [];
+        buffer_warn  = 0;
+        suppress_out = 0; %suppress output even for DIAG and HELP
+        % mspb = 11/s.BaudRate; %muS per byte (comes from baudrate) (1/BaudRate * 11 bits per byte)
+        
+        
+        % clear buffer by reading out potential leftovers
+        while s.BytesAvailable ~= 0
+            fread(s,s.BytesAvailable);
+            if buffer_warn
+                warning('Detected and cleaned buffer leftovers...')
+            end
+        end
+        
+        % differentiate between command types, e.g. 'DIAG' vs 'T;32', what to send
+        % via the serial port.
+        if any(strcmp(cmd,{'HELP','DIAG','START'}))
+            fprintf(s,cmd);
+            if ~suppress_out
+                fprintf('Sending command %s. \n',cmd)
+            end
+        elseif any(strcmp(cmd,{'T','ROR','SET','MOVE'}))
+            cmdstr = [cmd ';' num2str(varargin{1})];
+            fprintf(s,cmdstr);
+            if ~suppress_out
+                fprintf('Sending command %s. \n',cmdstr)
+            end
+        end
+        
+        if any(strcmp(cmd,{'HELP','DIAG',}))
+            fprintf('Asked for %s, waiting %g seconds for Arduino response.\n',cmd,.5)
+            pause(.5)
+            if ~suppress_out
+                fprintf('%s \n',char(fread(s,s.BytesAvailable))')
+            end
+        end
+        % ensure to wait long enough to get back the Arduino's response (if wanted)
+        if length(varargin) == 2
+            ws = .2;
+            fprintf('Verbose wanted, waiting %g seconds for Arduino response.\n',ws)
+            pause(ws)
+            %read out Arduino's response from buffer
+            try
+                out = char(fread(s,s.BytesAvailable))'; %reads as many bytes as stored in buffer
+                if ~suppress_out
+                    fprintf('%s \n',out)
+                end
+            catch
+                % e.g. if buffer is empty
+                warning('Problem with s.BytesAvailable, reading buffer was not successful... \n')
+            end
+        end
+    end
+    function yhat = localsigfun(b0,x)
+        
+        a = b0(1);
+        b = b0(2);
+        L = b0(3);
+        U = b0(4);
+        v = 0.5;
+        
+        yhat = (L + ((U-L) ./ (1+v.*exp(-b.*(x-a))).^(1/v)));
     end
 end
