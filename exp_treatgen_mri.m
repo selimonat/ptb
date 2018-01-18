@@ -6,9 +6,9 @@ function [p]=exp_treatgen_mri(subject,run,csp,tonic,middletemp,lowtemp)
 %
 %
 mrt     = 1;
-debug   = 1;%debug mode
+debug   = 0;%debug mode
 laptop  = 0;
-arduino = 0;
+arduino = 1;
 %replace parallel port function with a dummy function
 if ismac
     %   outp = @(x,y) fprintf('[%i %i]\n',x,y);
@@ -61,12 +61,15 @@ fprintf('saving parameter file. \n');
 save(p.path.path_param,'p');
 if run == 0
     p.var.ExpPhase  = run;%set this after the calibration;
-%     ShowInstruction(1,1);
-%     ApplyAndRate;
-%     ShowInstruction(2,1);
-%     TENSdemo;
+    ShowInstruction(1,1);
+    ApplyAndRate;
+    ShowInstruction(2,1);
+    TENSdemo;
     ShowInstruction(3,1);
     PresentStimuli;
+    try
+        Summary;
+    end
     ShowInstruction(20,0,2);
 elseif run == 5
     p.var.ExpPhase  = run;
@@ -114,7 +117,7 @@ catch
 end
 %close everything down
 try
-    addpath('/USER/kampermann/Code/globalfunctions/ssh2_v2_m1_r6/ssh2_v2_m1_r6/')
+    addpath('/USER/onat/Code/globalfunctions/ssh2_v2_m1_r6/ssh2_v2_m1_r6/')
     p.path.tarname = [p.path.finalsubject(1:end-1) '.tar'];
     tar(p.path.tarname,p.path.finalsubject);
     [a b c] = fileparts( p.path.tarname);
@@ -164,7 +167,7 @@ cleanup;
         end
     end
     function [myrect]=angle2rect(A)
-        factor          = 1.9;%factor resize the images
+        factor          = 3.5;%factor resize the images
         [x y]           = pol2cart(A./180*pi,280);%randomly shift the circle
         left            = x+p.ptb.midpoint(1)-p.stim.width/2/factor;
         top             = y+p.ptb.midpoint(2)-p.stim.height/2/factor;
@@ -197,7 +200,7 @@ cleanup;
         %those pulses would have been not logged.
         %log the pulse timings.
         TimeEndStim     = secs(end)- p.ptb.slack;%take the first valid pulse as the end of the last stimulus.
-        for nTrial  = 2:3%:p.presentation.tTrial;
+        for nTrial  = 1:p.presentation.tTrial;
             
             %Get the variables that Trial function needs.
             stim_id      = p.presentation.stim_id(nTrial);
@@ -234,7 +237,19 @@ cleanup;
             %check if temperatures need to be adapted
             adaptTemp(nTrial,ucs);
         end
-       
+        
+        CoolDown;
+        RatePain(nTrial+1,p.presentation.pain.base);
+        [keycode, secs] = KbQueueDump;%this contains both the pulses and keypresses.
+        if mrt == 1
+            pulses = (keycode == p.keys.pulse);
+            if any(~pulses);%log keys presses if only there is one
+                Log(secs(~pulses),7,keycode(~pulses));
+            end
+            if any(pulses);%log pulses if only there is one
+                Log(secs(pulses),0,keycode(pulses));
+            end
+        end
         %wait 6 seconds for the BOLD signal to come back to the baseline...
         KbQueueStop(p.ptb.device);
         KbQueueRelease(p.ptb.device);
@@ -369,13 +384,41 @@ cleanup;
             end
         end
     end
+    function CoolDown
+        ShowInstruction(99,0,6);
+        rampdur = abs(p.presentation.pain.tonic(end)-p.presentation.pain.base)./p.presentation.pain.ror;
+        Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
+        Screen('FillRect',  p.ptb.w, p.stim.white, p.ptb.centralFixCross');%draw the prestimus cross atop        TimeCrossOn  = Screen('Flip',p.ptb.w,Fix1On,0);
+        Screen('DrawingFinished',p.ptb.w,0);
+        TimeCrossOn  = Screen('Flip',p.ptb.w,0);
+        Log(TimeCrossOn,2,p.ptb.centralFixCross);%cross onset.
+        if arduino
+            serialcom(s,'START');
+        end
+        fprintf('Ramping to %5.2f C in %.02f s.\n',p.presentation.pain.base,rampdur)
+        if arduino
+            serialcom(s,'SET',p.presentation.pain.base);
+        end
+        RampTime = GetSecs;
+        Log(RampTime,4,p.presentation.pain.base)
+        Log(RampTime+rampdur,19,p.presentation.pain.base)
+        WaitSecs(2.5);
+        Log(GetSecs,18,p.presentation.pain.base);
+        WaitSecs(30);
+        Log(GetSecs,99,NaN);
+        Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.rect); %always create a gray background
+        Screen('FillRect',  p.ptb.w, p.stim.white, p.ptb.centralFixCross');%draw the prestimus cross atop        TimeCrossOn  = Screen('Flip',p.ptb.w,Fix1On,0);
+        Screen('DrawingFinished',p.ptb.w,0);
+        Screen('Flip',p.ptb.w,0);
+        Log(GetSecs,2,NaN);
+    end
     function Summary
         fprintf('=================\n')
         fprintf('Rating results:\n')
         fprintf('single ratings for middle temp: %s\n',num2str(p.log.ratings.relief(logical(~p.presentation.ucs),3)'));
-        fprintf('Mean rating for middle temp:    %5.2f\n',nanmean(p.log.ratings.relief(logical(~p.presentation.ucs),3)'));
+        fprintf('Mean rating for middle temp:    %5.2f\n',mean(p.log.ratings.relief(logical(~p.presentation.ucs),3)'));
         fprintf('single ratings for UCS:         %s\n',num2str(p.log.ratings.relief(logical(p.presentation.ucs),3)'));
-        fprintf('Mean rating for UCS:            %5.2f\n',nanmean(p.log.ratings.relief(logical(p.presentation.ucs),3)));
+        fprintf('Mean rating for UCS:            %5.2f\n',mean(p.log.ratings.relief(logical(p.presentation.ucs),3)));
         fprintf('=================\nYour final temperatures were:\n')
         fprintf('Your final temperatures were: tonic:  %5.2f\n',p.presentation.pain.tonic(end))
         fprintf('                              middle: %5.2f\n',p.presentation.pain.middle(end))
@@ -395,8 +438,8 @@ cleanup;
 %         FixCross     = [fix(1)-p.ptb.fc_width,fix(2)-p.ptb.fc_size,fix(1)+p.ptb.fc_width,fix(2)+p.ptb.fc_size;...
 %             fix(1)-p.ptb.fc_size,fix(2)-p.ptb.fc_width,fix(1)+p.ptb.fc_size,fix(2)+p.ptb.fc_width]; %this is the fixcross before the face, not the central one
         %get all the times
-        jitterF     = rand(1).*.28; %jitter Fix
-        jitterR     = rand(1).*.28;   %jitter Ramp
+        jitterF     = p.presentation.jitterF(nTrial); %jitter extending fixcross before face
+        jitterR     = p.presentation.jitterR(nTrial); %jitter before ramping down after face
         OnsetTime   = GetSecs + .05; %allow to compute and draw and so on
         Fix1On      = OnsetTime;
         Fix2On      = OnsetTime + ISI;
@@ -580,7 +623,7 @@ cleanup;
         k = 0;
         while ~ or(k == KbName('v'),k == KbName('c'));
             pause(0.1);
-            fprintf('Mean VAS: CS- (%5.2f C) = %g, CS+ (%5.2f C) = %g...\n',demotemps(1),nanmean(p.log.ratings.tensdemo([1 3],3)),demotemps(2),nanmean(p.log.ratings.tensdemo([2 4],3)))
+            fprintf('Mean VAS: CS- (%5.2f C) = %g, CS+ (%5.2f C) = %g...\n',demotemps(1),mean(p.log.ratings.tensdemo([1 3],3)),demotemps(2),mean(p.log.ratings.tensdemo([2 4],3)))
             fprintf('Are you OK with these ratings? Press c to correct, or v to continue...\n')
             [~, k] = KbStrokeWait(p.ptb.device);
             k = find(k);
@@ -713,7 +756,7 @@ cleanup;
             p.path.baselocation       = 'C:\Users\Lea\Documents\Experiments\';
         end
         
-        p.path.experiment             = [p.path.baselocation 'TreatgenMRI\'];
+        p.path.experiment             = [p.path.baselocation 'Treatgen\'];
         p.path.stim              = [p.path.experiment 'Stimuli\'];
         p.path.stim24            = [p.path.stim '24bit' filesep];
         p.path.stim_cut          = [p.path.stim 'cut' filesep];
@@ -1275,7 +1318,7 @@ cleanup;
                 '\n'...
                 'Wir werden Ihnen nun als Erstes demonstrieren,\n'...
                 'wie sich die Schmerzreize während des Experiments anfühlen werden. \n'...
-                'Sie stellen gleich eine für Sie individuell angepasste konstante Temperatur ein, \n'...
+                'Wir stellen gleich eine für Sie individuell angepasste konstante Temperatur ein, \n'...
                 'um einen durchgängigen, aushaltbaren Schmerz zu erzeugen.\n'...
                 '\n'...
                 'Drücken Sie die obere Taste um fortzufahren.\n' ...
@@ -1309,7 +1352,7 @@ cleanup;
                 'Ganz zu Beginn bewerten Sie einmalig auf der Schmerzskala,\n' ...
                 'wie schmerzhaft die angebrachte Temperatur für Sie ist.\n' ...
                 'Anschließend folgt der erste Behandlungsdurchgang.\n' ...
-                'Bitte schauen Sie generell immer auf die Fixationskreuze, die Ihre Position hin und wieder ändern.\n' ...
+                'Bitte schauen Sie generell immer auf die Fixationskreuze, die Ihre Position immer wieder ändern.\n' ...
                 '\n' ...
                 'In jedem Durchgang wird Ihnen ein Gesicht präsentiert, das Sie aufmerksam betrachten sollen. \n' ...
                 'Direkt nach dem Gesicht folgt die TENS Behandlung,\n'...
@@ -1394,10 +1437,10 @@ cleanup;
                 ];
         elseif nInstruct == 9; % Rising Temp
             text = ['Temperatur wird angepasst... \n'];
-        elseif nInstruct == 14
-            text = ['Danke. Den aktiven Teil des Experiment haben Sie nun geschafft.\n'...
-                'Es folgt nun noch eine strukturelle Messung, die ca. 7 Minuten dauert.\n'...
-                'Sie können dabei ruhig die Augen schließen und sich entspannen.\n'];
+        elseif nInstruct == 99
+            text = ['Danke. Den aktiven Teil des Experiments haben Sie nun geschafft.\n'...
+                'Wir schalten nun die Thermode aus.\n'...
+                'Bitte bleiben Sie noch einen Moment ganz ruhig liegen und schauen Sie entspannt auf das Kreuz.\n'];
         else
             text = {''};
         end
