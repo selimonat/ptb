@@ -383,7 +383,7 @@ cleanup;
             error('Unknown PC found, please define it for folder structure.')
         end
         
-        p.path.experiment             = [p.path.baselocation 'Treatgen\'];
+        p.path.experiment             = [p.path.baselocation 'TreatgenMRI\Day1\'];
         p.path.stim                   = [p.path.experiment 'Stimuli\'];
         %
         p.subID                       = sprintf('sub%03d',subject);
@@ -516,7 +516,7 @@ cleanup;
         end
     end
     function SetArduino
-        s = serial('COM5','BaudRate',19200);
+        s = serial('COM6','BaudRate',19200);
         fopen(s);
         WaitSecs(1);
         serialcom(s,'T',p.presentation.basetemp);
@@ -751,12 +751,12 @@ cleanup;
                 'Wir bestimmen nun Ihre individuelle Hitzeschmerzschwelle.\n'...
                 'Wir werden dazu die Temperatur schrittweise erhöhen.\n'...
                 'Bitte schauen Sie während des Vorgangs auf das kleine Kreuz.\n'...
-                'Ihre Aufgabe ist es, die obere Taste zu drücken, sobald Sie die Temperatur als schmerzhaft empfinden,\n'...
+                'Ihre Aufgabe ist es, die Leertaste zu drücken, sobald Sie die Temperatur als schmerzhaft empfinden,\n'...
                 'd.h. sobald zum Gefühl von Wärme ein unangenehmes Gefühl wie Brennen oder Stechen hinzukommt.\n'...
                 'Der Vorgang wird drei mal wiederholt.\n'...
                 '\n'...
                 'Falls Sie noch Fragen haben, wenden Sie sich bitte noch einmal an die Versuchsleiterin.\n'...
-                'Drücken Sie sonst bitte die obere Taste, um zu starten.\n'];
+                'Drücken Sie sonst bitte die Leertaste, um zu starten.\n'];
         elseif nInstruct == 2 %Instruction
             text = ['Im Folgenden möchten wir Ihre individuelle Schmerzwahrnehmung noch genauer bestimmen.\n' ...
                 'Dazu erhalten Sie Reize unterschiedlicher Temperaturen.\n' ...
@@ -764,18 +764,18 @@ cleanup;
                 'die von "kein Schmerz bis "maximaler Schmerz" reicht. Sie haben dazu 5 Sek Zeit.\n' ...
                 'Falsche Antworten gibt es bei dieser Aufgabe nicht, da individuelle Empfindungen sehr unterschiedlich sein können.\n' ...
                 'Nutzen Sie die Pfeiltasten zum Bewerten & bestätigen Sie Ihre Eingabe immer\n' ...
-                'mit der obere Taste. Bitte versuchen Sie sich auch auf kleinste Reizänderungen\n' ...
+                'mit der Leertaste. Bitte versuchen Sie sich auch auf kleinste Reizänderungen\n' ...
                 'zu konzentrieren & bewerten Sie diese so präzise wie möglich.\n'...
                 '\n'...
                 'Falls Sie noch Fragen haben, wenden Sie sich bitte noch einmal an die Versuchsleiterin.\n' ...
-                'Drücken Sie sonst bitte die obere Taste, um weiterzumachen.\n'];
+                'Drücken Sie sonst bitte die Leertaste, um weiterzumachen.\n'];
         elseif nInstruct == 22 %Instruction
             text = ['Wir werden nun die für Sie individuell ausgewählte Grundtemperatur\n' ...
                 'für die folgende Kalibration anbringen.\n' ...
                 'Diese kann sich etwas unangenehm anfühlen, sollte aber nicht wirklich schmerzhaft sein.\n' ...
                 'Wir fragen Sie zudem vor Beginn der Kalibration, ob diese Temperatur für Sie gut aushaltbar ist.\n' ...
                 '\n' ...
-                'Drücken Sie bitte die obere Taste, wenn Sie bereit sind zu starten.\n'];
+                'Drücken Sie bitte die Leertaste, wenn Sie bereit sind zu starten.\n'];
         elseif nInstruct == 9
             text = 'Temperatur wird angepasst...\n';
         elseif nInstruct == 3%short Digitimer stimulation
@@ -790,7 +790,7 @@ cleanup;
                 '\n'...
                 '\n'...
                 'Falls Sie noch Fragen haben, wenden Sie sich bitte noch einmal an die Versuchsleiterin.\n' ...
-                'Drücken Sie sonst bitte die obere Taste, um zu starten.\n'];
+                'Drücken Sie sonst bitte die Leertaste, um zu starten.\n'];
         elseif nInstruct == 200%short instruction for second run
             text = ['Wiederholung der Schwellenkalibrierung.\n'...
                 '\n'...
@@ -1069,8 +1069,10 @@ cleanup;
         
         trialnum = length(y);
         fprintf('Identified %g valid trials. \n',trialnum)
-        
-        plot(x,y,'bo','MarkerFaceColor','b');hold on;
+        cols = [ones(trialnum,2) sort(linspace(0,1,trialnum)','descend')];  
+        for tr = 1:trialnum
+            plot(x(tr),y(tr),'o','MarkerFaceColor',cols(tr,:));hold on;
+        end
         %%
         % set params
         target_vas = [70 50 30];
@@ -1109,8 +1111,19 @@ cleanup;
         fprintf(1,'%g : %2.1f °C \tlinear: %2.1f °C\n',target_vas(2),target_temp(2),est_lin(2));
         fprintf(1,'%g : %2.1f °C \tlinear: %2.1f °C\n',target_vas(3),target_temp(3),est_lin(3));
         
+%         SaveFigure([p.path.subject '\midlevel\calib.png'])
         p.presentation.calib_est = [est_sig; est_lin];
         p.presentation.calib_target_vas = target_vas;
+        fh = gcf;
+        try
+            
+        saveas(fh,[p.path.subject 'calib','png']);
+        saveas(fh,[p.path.subject 'calib'],'png');
+        print(fh,'-djpeg',[p.path.subject 'calib'])
+        catch
+            fprintf('Figure could not be saved.\n')
+        end
+        
         function xsigpred = sigreverse(bsig1,ytarget)
             v=.5; a1 = bsig1(1); b1 = bsig1(2); L1 = bsig1(3); U1 = bsig1(4);
             xsigpred = a1 + 1/-b1 * log((((U1-L1)/(ytarget-L1))^v-1)./v);
