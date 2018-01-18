@@ -1,7 +1,7 @@
 function [p]=exp_ChangeBlindness(subject)
 
 phase   = 1;
-debug   = 1;%debug mode => 1: transparent window enabling viewing the background.
+debug   = 0;%debug mode => 1: transparent window enabling viewing the background.
 EyelinkWanted = 1;%is Eyelink wanted?
 %replace parallel port function with a dummy function
 if ~IsWindows
@@ -84,8 +84,10 @@ p.out.log      = p.out.log;%copy it to the output variable.
 save(p.path.path_param,'p');
 %
 %move the file to its final location.
-%rename the edf file to data.edf
-movefile([p.path.path_edf p.path.edf],[p.path.path_edf 'data.edf'],'f')
+if EyelinkWanted
+    %rename the edf file to data.edf
+    movefile([p.path.path_edf p.path.edf],[p.path.path_edf 'data.edf'],'f');
+end
 movefile(p.path.subject,p.path.finalsubject);
 %close everything down
 cleanup;
@@ -199,7 +201,7 @@ cleanup;
                     image_id = stim_id;
                 else
                     image_id = stim_id+1;
-                end
+                end                
                 Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(image_id));
                 %% STIMULUS ONSET
                 ActualOnset  = Screen('Flip',p.ptb.w,TimeStimOnset(nnTrial),0);%asap and dont clear
@@ -217,10 +219,10 @@ cleanup;
                 %% flip to blank
                 FlipOnset = Screen('Flip',p.ptb.w,TimeFlip(nnTrial),0);
                 Log(FlipOnset,16,image_id);%log the stimulus offset
-                if  KbQueueCheck(p.ptb.device)
-                    TimeTrackerOff = GetSecs + p.duration.keep_recording;
-                    break
-                end
+%                 if  KbQueueCheck(p.ptb.device)
+%                     TimeTrackerOff = GetSecs + p.duration.keep_recording;
+%                     break
+%                 end
         end
         %% STIM OFF immediately
         TimeEndStim = Screen('Flip',p.ptb.w);
@@ -301,7 +303,7 @@ cleanup;
         p.stim.white                   = [0 0 0];
         %% font size and background gray level
         p.text.fontname                = 'Times New Roman';
-        p.text.fontsize                = 30;
+        p.text.fontsize                = 45;
         p.text.fixsize                 = 60;
         %rating business, how many ticks
         p.rating.division              = 10;%number of divisions for the rating slider
@@ -356,7 +358,7 @@ cleanup;
         p.duration.crossmoves          = p.duration.stim./2;
         p.duration.keep_recording      = 0.25;%this is the time we will keep recording (eye data) after stim offset.
         p.duration.prestim             = .85;
-        p.duration.nChanges            = 20; %number of blanks during trial, i.e. changing from iamge A to B
+        p.duration.nChanges            = 40; %number of blanks during trial, i.e. changing from iamge A to B
         %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %stimulus sequence: Explanation of the fields:
         %Explanation of the fields:
@@ -683,16 +685,13 @@ cleanup;
             %draw the image on the screen but also the two crosses
             if nStim>0                
                 Eyelink('ImageTransfer',p.stim.files24(nStim,:),p.ptb.imrect(1),p.ptb.imrect(2),p.stim.width,p.stim.height,p.ptb.imrect(1),p.ptb.imrect(2),0);
-            end
-            Eyelink('Command', 'draw_cross %d %d 15',fix(1),fix(2));
-            Eyelink('Command', 'draw_cross %d %d 15',fix(1),fix(2)+diff(p.ptb.cross_shift));
-            
+            end            
             %
             %drift correction
             %EyelinkDoDriftCorrection(el,crosspositionx,crosspositiony,0,0);
             %start recording following mode transition and a short pause.
             Eyelink('Command', 'set_idle_mode');
-            WaitSecs(0.01);
+            WaitSecs(0.25);
             Eyelink('StartRecording');
             t = GetSecs;
             Log(t,2,NaN);
