@@ -1,5 +1,5 @@
-function [p]=exp_FearGen_ForAll(subject,Nseq,phase,csp,PainThreshold)
-%[p]=exp_FearGen_ForAll(subject,phase,csp,PainThreshold)
+function [p]=exp_FearGen_IC(subject,Nseq,phase,csp,PainThreshold)
+%[p]=exp_FearGen_IC(subject,phase,csp,PainThreshold)
 
 %
 %
@@ -71,7 +71,7 @@ function [p]=exp_FearGen_ForAll(subject,Nseq,phase,csp,PainThreshold)
 %
 %   Selim Onat
 
-debug   = 1;%debug mode => 1: transparent window enabling viewing the background.
+debug         = 1;%debug mode => 1: transparent window enabling viewing the background.
 EyelinkWanted = 0;%is Eyelink wanted?
 %replace parallel port function with a dummy function
 if ~IsWindows
@@ -108,6 +108,9 @@ WaitSecs(0.001);
 el        = [];%eye-tracker variable
 p         = [];%parameter structure that contains all info about the experiment.
 s         = [];
+try
+SetArduino
+end
 SetParams;%set parameters of the experiment
 SetPTB;%set visualization parameters.
 %
@@ -285,9 +288,9 @@ cleanup;
             Buzz;
         end
         %
-        message   = 'Bewege den "Zeiger" mit der rechten und linken Pfeiltaste\n und best�tige deine Einsch�tzung mit der mit der oberen Pfeiltaste.';
+        message   = 'Bewege den "Zeiger" mit der rechten und linken Pfeiltaste\n und best???tige deine Einsch???tzung mit der mit der oberen Pfeiltaste.';
         rect        = [p.ptb.width*0.2  p.ptb.midpoint(2) p.ptb.width*0.6 100];
-        response = RatingSlider(rect,2,1,p.keys.increase,p.keys.decrease,p.keys.confirm,{ 'nicht\nertr�glich' 'ertr�glich'},message,0);
+        response = RatingSlider(rect,2,1,p.keys.increase,p.keys.decrease,p.keys.confirm,{ 'nicht\nertr???glich' 'ertr???glich'},message,0);
         if response == 2
             fprintf('All is fine :)\n');
             fprintf('Subject confirmed the shock intensity inside the scanner...\n');
@@ -317,7 +320,7 @@ cleanup;
         %log the pulse timings.
         mblock_jumps    = logical([1 diff(p.presentation.mblock)]);
         TimeEndStim     = secs(end)- p.ptb.slack;%take the first valid pulse as the end of the last stimulus.
-        for nTrial  = 1:p.presentation.tTrial;
+        for nTrial  = p.presentation.tTrial-1:p.presentation.tTrial;
             
             %Get the variables that Trial function needs.
             stim_id      = p.presentation.stim_id(nTrial);
@@ -361,10 +364,10 @@ cleanup;
         KbQueueStop(p.ptb.device);
         KbQueueRelease(p.ptb.device);
         
-        if p.var.ExpPhase > 0
-            WaitPulse(p.keys.pulse,p.mrt.dummy_scan);%
-            fprintf('OK!! Stop the Scanner\n');
-        end
+%         if p.var.ExpPhase > 0
+%             WaitPulse(p.keys.pulse,p.mrt.dummy_scan);%
+%             fprintf('OK!! Stop the Scanner\n');
+%         end
         %dump the final events
         [keycode, secs] = KbQueueDump;%this contains both the pulses and keypresses.
         %log everything but "pulse keys" as pulses, not as keypresses.
@@ -406,10 +409,10 @@ cleanup;
         Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');
         %add freckles to the face if oddball
         if oddball
-            x = randn(1,100)*35;
-            y = randn(1,100)*10;
-            s = rand(1,100);%[0 1]
-            Screen('DrawDots',p.ptb.w,[x;y],1+s.*1.5,[180 0 0 160],p.ptb.midpoint,1);        
+            dot_x = randn(1,100)*35;
+            dot_y = randn(1,100)*10;
+            dot_s = rand(1,100);%[0 1]
+            Screen('DrawDots',p.ptb.w,[dot_x;dot_y],1+dot_s,[50 0 0 40],p.ptb.midpoint,1);        
         end
         Screen('DrawingFinished',p.ptb.w,0);
         %% STIMULUS ONSET
@@ -440,7 +443,7 @@ cleanup;
             Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(stim_id));
         end
         if oddball           
-            Screen('DrawDots',p.ptb.w,[x;y],1+s.*1.5,[180 0 0 160],p.ptb.midpoint,1);        
+            Screen('DrawDots',p.ptb.w,[dot_x;dot_y],1+dot_s,[50 0 0 50],p.ptb.midpoint,1);        
         end
         fix          = [p.ptb.CrossPosition_x p.ptb.CrossPosition_y(setdiff(1:2,fix_i))];%take the other position
         %draw also the fixation cross
@@ -497,7 +500,7 @@ cleanup;
         %Path Business.
         [~, hostname]                 = system('hostname');
         p.hostname                    = deblank(hostname);
-        p.path.baselocation           = 'C:\Users\...\Documents\Experiments\FearGen';
+        p.path.baselocation           = '/Users/onat/Documents/Experiments/FearGen_IC/';        
         %create the base folder if not yet there.
         if exist(p.path.baselocation) == 0
             mkdir(p.path.baselocation);
@@ -546,7 +549,7 @@ cleanup;
         p.stim.white                   = [255 255 255];
         %% font size and background gray level
         p.text.fontname                = 'Times New Roman';
-        p.text.fontsize                = 18;%30;
+        p.text.fontsize                = 30;
         p.text.fixsize                 = 60;
         %rating business, how many ticks
         p.rating.division              = 10;%number of divisions for the rating slider
@@ -617,13 +620,13 @@ cleanup;
         
 
         tTrial                                     = length(s(Nseq,csp).phase(phase).presentation.cond_id);%Total Trials
-        s(Nseq,csp).phase(phase).presentation.isi  = randn(1,tTrial)*.3+2;        
+        s(Nseq,csp).phase(phase).presentation.isi  = randn(1,tTrial)*.3+3;
         
-        %pair randomly 29 presnetation with noise
-        ucs                                                                               = zeros(1,length(s(Nseq,csp).phase(phase).presentation.stim_id));
-        ucs( randsample(find(s(Nseq,csp).phase(phase).presentation.stim_id == csp),29) )  = 1
+        %pair randomly 29 presentation with noise
+%         ucs                                                                               = zeros(1,length(s(Nseq,csp).phase(phase).presentation.stim_id));
+%         ucs( randsample(find(s(Nseq,csp).phase(phase).presentation.stim_id == csp),29) )  = 1
         
-        s(Nseq,csp).phase(phase).presentation.ucs = ucs;
+        s(Nseq,csp).phase(phase).presentation.ucs = s(Nseq,csp).phase(phase).presentation.ucs;
         p.presentation                 = s(Nseq,csp).phase(phase).presentation;
         p.presentation.tTrial          = length(p.presentation.cond_id);%Total Trials
         p.presentation.mblock          = ones(1,p.presentation.tTrial);%irrelevant for the FearGen experiment but keeping it.
@@ -836,96 +839,96 @@ cleanup;
         if nInstruct == 0%Eyetracking calibration
             
             text = ['Wir kalibrieren jetzt den Eye-Tracker.\n\n' ...
-                'Bitte fixieren Sie die nun folgenden wei�en Kreise und \n' ...
+                'Bitte fixieren Sie die nun folgenden wei???en Kreise und \n' ...
                 'bleiben so lange darauf, wie sie zu sehen sind.\n\n' ...
-                'Nach der Kalibrierung d�rfen Sie Ihren Kopf nicht mehr bewegen.\n'...
-                'Sollten Sie Ihre Position noch ver�ndern m�ssen, tun Sie dies jetzt.\n'...
+                'Nach der Kalibrierung d???rfen Sie Ihren Kopf nicht mehr bewegen.\n'...
+                'Sollten Sie Ihre Position noch ver???ndern m???ssen, tun Sie dies jetzt.\n'...
                 'Die beste Position ist meist die bequemste.\n\n'...
-                'Bitte dr�cken Sie jetzt den oberen Knopf, \n' ...
+                'Bitte dr???cken Sie jetzt den oberen Knopf, \n' ...
                 'um mit der Kalibrierung weiterzumachen.\n' ...
                 ];
             
         elseif nInstruct == 1%first Instr. of the training phase.
-            text = ['Wir werden nun als erstes einen �bungsdurchgang machen,\n' ...
-                'damit Sie sich an Ihre Aufgabe gew�hnen k�nnen.\n' ...
-                'In diesem Durchgang k�nnen Sie sich vollkommen sicher f�hlen,\n' ...
+            text = ['Wir werden nun als erstes einen ???bungsdurchgang machen,\n' ...
+                'damit Sie sich an Ihre Aufgabe gew???hnen k???nnen.\n' ...
+                'In diesem Durchgang k???nnen Sie sich vollkommen sicher f???hlen,\n' ...
                 'es werden keine elektrischen Reize verabreicht.\n' ...
-                'Eine wichtige grunds�tzliche Regel ist, dass Sie das Fixationskreuz (das +)\n' ...
+                'Eine wichtige grunds???tzliche Regel ist, dass Sie das Fixationskreuz (das +)\n' ...
                 'wenn es zu sehen ist, mit Ihren Augen fixieren. \n' ...
                 '\n'...
-                'Dr�cken Sie die obere Taste um fortzufahren.\n' ...
+                'Dr???cken Sie die obere Taste um fortzufahren.\n' ...
                 ];
         elseif nInstruct == 2%second Instr. of the training phase.
             text = ['Ein paar Bemerkungen zu den Zielreizen: \n' ...
                 'Zur Erinnerung: Zielreize sind die verschwommenen Gesichter.\n' ...
                 'Sobald ein solcher Zielreiz erscheint, \n' ...
-                'sollen Sie schnellstm�glich die obere Taste dr�cken, \n' ...
+                'sollen Sie schnellstm???glich die obere Taste dr???cken, \n' ...
                 'und zwar bevor der Zielreiz wieder verschwunden ist \n' ...
-                '(Sie m�ssen also sehr schnell und aufmerksam sein).\n\n' ...
-                'Dr�cken Sie die obere Taste um fortzufahren.\n' ...
+                '(Sie m???ssen also sehr schnell und aufmerksam sein).\n\n' ...
+                'Dr???cken Sie die obere Taste um fortzufahren.\n' ...
                 ];
         elseif nInstruct == 299%short instruction before localizer
             text = ['Die Kalibrierung war erfolgreich.\n'...
-                'Es startet nun eine kurze Vormessung (~2 min), w�hrend der Sie nichts tun m�ssen.\n\n'...
+                'Es startet nun eine kurze Vormessung (~2 min), w???hrend der Sie nichts tun m???ssen.\n\n'...
                 ];
         elseif nInstruct == 3%third Instr. of the training phase.
             text = ['Wir sind jetzt kurz vor Beginn des Experiments.\n'...
-                'Wir m�chten Sie nun noch einmal an die wichtigsten Punkte erinnern.\n\n'...
-                'Dr�cken Sie jeweils die obere Taste um fortzufahren.\n' ...
+                'Wir m???chten Sie nun noch einmal an die wichtigsten Punkte erinnern.\n\n'...
+                'Dr???cken Sie jeweils die obere Taste um fortzufahren.\n' ...
                 ];
         elseif nInstruct == 301%third Instr. of the training phase.
             text = ['1/ Folgen Sie immer streng den Fixationskreuzen.\n'...
                 ];
         elseif nInstruct == 302%third Instr. of the training phase.
-            text = ['2/ Dr�cken Sie die Taste, sobald Sie den Zielreiz entdecken.\n'...
+            text = ['2/ Dr???cken Sie die Taste, sobald Sie den Zielreiz entdecken.\n'...
                 ];
         elseif nInstruct == 303%third Instr. of the training phase.
             text = ['3/ Bewegen Sie sich nicht.\n'...
                 ];
         elseif nInstruct == 304%third Instr. of the training phase.
-            text = ['4/ Lassen Sie sich vom Scannergeschehen nicht st�ren.\n'...
+            text = ['4/ Lassen Sie sich vom Scannergeschehen nicht st???ren.\n'...
                 ];
         elseif nInstruct == 305%third Instr. of the training phase.
             text = ['5/ Nur eines der Gesichter wird mit elektrischen Reizen gepaart.\n'...
                 ];
         elseif nInstruct == 306%third Instr. of the training phase.
-            text = ['Dr�cken Sie jetzt die obere Taste, das Experiment startet dann in wenigen Sekunden.\n' ...
+            text = ['Dr???cken Sie jetzt die obere Taste, das Experiment startet dann in wenigen Sekunden.\n' ...
                 ];
             
             
         elseif nInstruct == 4%third Instr. of the training phase.
             text = ['Vor dem Experiment legen wir nun \n' ...
-                'die Schockintensit�t f�r den Rest des Experiments fest. \n' ...
-                'Dr�cken Sie die obere Taste um fortzufahren.\n' ...
+                'die Schockintensit???t f???r den Rest des Experiments fest. \n' ...
+                'Dr???cken Sie die obere Taste um fortzufahren.\n' ...
                 ];
             
         elseif nInstruct == 7;%rating
-            text = ['In dieser Phase h�tten wir gerne, dass Sie die Gesichter\n'...
+            text = ['In dieser Phase h???tten wir gerne, dass Sie die Gesichter\n'...
                 'im Hinblick auf folgende Frage bewerten:\n'...
                 '"Wie wahrscheinlich ist es, bei dem gerade gesehenen Gesicht \n'...
                 'einen elektrischen Schock zu erhalten?"\n'...
                 'Bewegen Sie den Zeiger mit der rechten und linken Taste\n'...
-                'und best�tigen Sie Ihre Einsch�tzung mit der oberen Taste.\n'...
+                'und best???tigen Sie Ihre Einsch???tzung mit der oberen Taste.\n'...
                 ];
         elseif nInstruct == 8;%AskDetectionSelectable
-            text = ['Sie sehen nun noch einmal eine �bersicht der verschiedenen Gesichter.\n'...
+            text = ['Sie sehen nun noch einmal eine ???bersicht der verschiedenen Gesichter.\n'...
                 'Bitte geben Sie an, welches der Gesichter Ihrer Meinung nach\n mit dem Schock gepaart wurde.\n\n'...
                 'Nutzen Sie die linke und rechte Taste, um die Markierung\n zum richtigen Gesicht zu navigieren,\n'...
-                'und dr�cken Sie die obere Taste zum Best�tigen.\n\n'...
-                'Bitte zum Starten die obere Taste dr�cken.\n'...
+                'und dr???cken Sie die obere Taste zum Best???tigen.\n\n'...
+                'Bitte zum Starten die obere Taste dr???cken.\n'...
                 ];
         elseif nInstruct == 801;%AskDetectionSelectable
-            text = ['Sie sehen nun eine �bersicht der verschiedenen Gesichter.\n'...
+            text = ['Sie sehen nun eine ???bersicht der verschiedenen Gesichter.\n'...
                 'Bitte schauen Sie sich die Gesichter aufmerksam an.\n'...
-                'Bitte dr�cken Sie zum Start die obere Taste und\n' ...
-                'fixieren Sie das anschlie�end erscheinende Fixationskreuz.\n'...
+                'Bitte dr???cken Sie zum Start die obere Taste und\n' ...
+                'fixieren Sie das anschlie???end erscheinende Fixationskreuz.\n'...
                 ];
             
         elseif nInstruct == 9%
             %=================================================================================================================%
-            text = ['Bitte geben Sie an, ob die Reizst�rke des folgenden Schocks\n f�r Sie ertr�glich ist.\n'...
+            text = ['Bitte geben Sie an, ob die Reizst???rke des folgenden Schocks\n f???r Sie ertr???glich ist.\n'...
                 '\n'...
-                'Dr�cken Sie bitte die obere Taste um den Reiz zu bekommen.\n'...
+                'Dr???cken Sie bitte die obere Taste um den Reiz zu bekommen.\n'...
                 ];
             
         elseif nInstruct == 10%just before the shock
@@ -934,16 +937,16 @@ cleanup;
             text = ['Wie wahrscheinlich ist es, bei dem gerade gesehenen Gesicht \n'...
                 'einen elektrischen Schock zu erhalten?\n' ...
                 'Bewegen Sie den "Zeiger" mit der rechten und linken Taste\n' ...
-                'und best�tigen Sie Ihre Einsch�tzung mit der mit der oberen Taste'...
+                'und best???tigen Sie Ihre Einsch???tzung mit der mit der oberen Taste'...
                 ];
         elseif nInstruct == 12 %These two below are the possible responses to the question in 11
             text = {'Sehr\nwahrscheinlich'};
         elseif nInstruct == 13
-            text = {'�berhaupt\nnicht\nwahrscheinlich'};
+            text = {'???berhaupt\nnicht\nwahrscheinlich'};
         elseif nInstruct == 14
             text = ['Danke. Den aktiven Teil des Experiment haben Sie nun geschafft.\n'...
                 'Es folgt nun noch eine strukturelle Messung, die ca. 7 Minuten dauert.\n'...
-                'Sie k�nnen dabei ruhig die Augen schlie�en und sich entspannen.\n'];
+                'Sie k???nnen dabei ruhig die Augen schlie???en und sich entspannen.\n'];
         else
             text = {''};
         end
@@ -1155,11 +1158,13 @@ cleanup;
         shuffled        = shuffled(:);
     end
     function Buzz(ucs)
-        if ucs
-            Y = demean(rand(1,21024*2)).*ones(1,21024*2)*randn(1)*.1+0.8;
-            sound(Y,21024)
-        else
-            Y = demean(rand(1,21024*2)).*ones(1,21024*2)*abs(randn(1)*.1+0.05);
+        
+        if ucs           
+            FS           = 44000;
+            total_length = FS*3;
+            D            = 8;
+            Y            = demean(rand(1,total_length)).*repmat([ones(1,total_length/D/2)*PainThreshold ones(1,total_length/D/2)*.01],1,D);
+            sound(Y,FS)                                
         end        
         
 %         outp(p.com.lpt.address, p.com.lpt.digitimer );
@@ -1169,9 +1174,13 @@ cleanup;
     end
     function MarkCED(socket,port)
         %send pulse to SCR#
-        outp(socket,port);
-        WaitSecs(0.01);
-        outp(socket,0);
+        
+%         serialcom([serialobject],'START')
+        
+        
+%         outp(socket,port);
+%         WaitSecs(0.01);
+%         outp(socket,0);
     end
     function InitEyeLink
         if EyelinkWanted
@@ -1378,4 +1387,85 @@ cleanup;
             a(abs(a) == 180) = 180;
         end
     end
+
+    function SetArduino
+        fprintf('setting arduino.\n');
+        s = serial('/dev/tty.usbmodem1421','BaudRate',19200);
+        fopen(s);
+        WaitSecs(1);              
+    end
+    function [out] = serialcom(s,cmd,varargin)
+        % SERIALCOM allows talking to an Arduino via an established serial
+        % connection. Possible inputs for CMD are 'HELP','DIAG','START', without
+        % optional input, and 'T','RoR','SET' and 'MOVE' with corresponding
+        % temperature ('T','RoR','SET', in format [xx.xx]) or time ('MOVE', [ms]).
+        
+        % Examples for usage:
+        % serialcom(s,'HELP')
+        % serialcom(s,'DIAG')
+        % serialcom(s,'START')
+        % serialcom(s,'T',35.00)
+        % serialcom(s,'RoR',10.00)
+        % serialcom(s,'SET',38.50)
+        % serialcom(s,'MOVE',1000) to move up for 1000 ms
+        %
+        % While the first varargin is thus expected (if applicable) to be the
+        % input for setting temperatures and raise durations, a second input can be
+        % 'verbose', when response from Arduino is wanted as output e.g.:
+        % out = serialcom(s,'T',35,'verbose')
+        % out = serialcom(s,'HELP',[],'verbose')
+        out  = [];
+        buffer_warn  = 0;
+        suppress_out = 0; %suppress output even for DIAG and HELP
+        % mspb = 11/s.BaudRate; %muS per byte (comes from baudrate) (1/BaudRate * 11 bits per byte)
+        
+        
+        % clear buffer by reading out potential leftovers
+        while s.BytesAvailable ~= 0
+            fread(s,s.BytesAvailable);
+            if buffer_warn
+                warning('Detected and cleaned buffer leftovers...')
+            end
+        end
+        
+        % differentiate between command types, e.g. 'DIAG' vs 'T;32', what to send
+        % via the serial port.
+        if any(strcmp(cmd,{'HELP','DIAG','START'}))
+            fprintf(s,cmd);
+            if ~suppress_out
+                fprintf('Sending command %s. \n',cmd)
+            end
+        elseif any(strcmp(cmd,{'T','ROR','SET','MOVE'}))
+            cmdstr = [cmd ';' num2str(varargin{1})];
+            fprintf(s,cmdstr);
+            if ~suppress_out
+                fprintf('Sending command %s. \n',cmdstr)
+            end
+        end
+        
+        if any(strcmp(cmd,{'HELP','DIAG',}))
+            fprintf('Asked for %s, waiting %g seconds for Arduino response.\n',cmd,.5)
+            pause(.5)
+            if ~suppress_out
+                fprintf('%s \n',char(fread(s,s.BytesAvailable))')
+            end
+        end
+        % ensure to wait long enough to get back the Arduino's response (if wanted)
+        if length(varargin) == 2
+            ws = .2;
+            fprintf('Verbose wanted, waiting %g seconds for Arduino response.\n',ws)
+            pause(ws)
+            %read out Arduino's response from buffer
+            try
+                out = char(fread(s,s.BytesAvailable))'; %reads as many bytes as stored in buffer
+                if ~suppress_out
+                    fprintf('%s \n',out)
+                end
+            catch
+                % e.g. if buffer is empty
+                warning('Problem with s.BytesAvailable, reading buffer was not successful... \n')
+            end
+        end
+    end
+
 end

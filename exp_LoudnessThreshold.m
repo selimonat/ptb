@@ -35,8 +35,8 @@ GetThreshold;
 save(p.path.filename,'p');
 %%now give the subject a final shock with the "tobeused level" and ask
 %%whether it is bearable.
-%factor = input('Enter the desired factor (for example 1.4). Start with the highest :).\n');
-%ConfirmIntensity(factor);
+factor = input('Enter the desired factor (for example 1.4). Start with the highest :).\n');
+ConfirmIntensity(factor);
 save(p.path.filename,'p');
 %
 ShowInstruction(6);
@@ -47,7 +47,7 @@ cleanup;
 
 
     function GetThreshold        
-        %%
+        %%base
         %message to show on the rating screen.
         message = 'War der Reiz schmerzhaft oder nicht?\nBewege den "Zeiger" mit der rechten und linken Pfeiltaste\n und best?tige deine Einsch?tzung mit der mit der oberen Pfeiltaste.';
         %
@@ -121,11 +121,9 @@ cleanup;
     end
     function ConfirmIntensity(factor)
         %
-        if log_threshold > 0
-            I = exp(log_threshold*factor);
-        else
-            I = exp(log_threshold*(1-factor));
-        end
+        
+        I = 10.^(log_threshold*factor);
+        
         %
         ShowInstruction(1);
         %
@@ -167,13 +165,13 @@ cleanup;
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %relative path to stim and experiments
         %Path Business.
-        p.path.baselocation  = 'C:\Users\onat\Documents\Experiments\';
-        p.path.experiment    = [p.path.baselocation 'PainThreshold\'];
+        p.path.baselocation  = '/Users/onat/Documents/Experiments/';
+        p.path.experiment    = [p.path.baselocation 'LoudnessThreshold/'];
         %
         p.name              = subject;
         timestamp           = datestr(now,30);
-        p.path.subject      = [p.path.experiment 'data\tmp\' p.name '_' timestamp '\'];
-        p.path.finalsubject = [p.path.experiment 'data\' p.name '_' timestamp ];
+        p.path.subject      = [p.path.experiment 'data/tmp/' p.name '_' timestamp '/'];
+        p.path.finalsubject = [p.path.experiment 'data/' p.name '_' timestamp ];
         mkdir(p.path.subject);
         p.path.filename          = [regexprep(p.path.subject,'\\','\\\') 'param.mat' ];
         %font size and background gray level
