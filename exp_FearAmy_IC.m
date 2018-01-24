@@ -75,11 +75,11 @@ elseif phase == 1
     PresentStimuli;
     WaitSecs(2.5);
     AskStimRating;%make sure that scanner doesnt stop prematurely asa the stim offset
-    if EyelinkWanted
-        CalibrateEL;
-    end
-    AskDetection;    
-    AskDetectionSelectable;    
+%     if EyelinkWanted
+%         CalibrateEL;
+%     end
+%     AskDetection;    
+%     AskDetectionSelectable;    
 end
 
 %get the eyelink file back to this computer
@@ -94,17 +94,17 @@ save(p.path.path_param,'p');
 %move the file to its final location.
 movefile(p.path.subject,p.path.finalsubject);
 %close everything down
-try
-    addpath('/USER/onat/Code/globalfunctions/ssh2_v2_m1_r6/ssh2_v2_m1_r6/')
-    p.path.tarname = [p.path.finalsubject(1:end-1) '.tar'];
-    tar(p.path.tarname,p.path.finalsubject);
-    [a b c] = fileparts( p.path.tarname);
-    cd(a)
-    scp_simple_put('sanportal','onat','',[b c]);
-    fprintf('Copying to neuronass succesfull...\n');
-catch
-    fprintf('Copying to neuronass failed...\n');
-end
+% try
+%     addpath('/USER/onat/Code/globalfunctions/ssh2_v2_m1_r6/ssh2_v2_m1_r6/')
+%     p.path.tarname = [p.path.finalsubject(1:end-1) '.tar'];
+%     tar(p.path.tarname,p.path.finalsubject);
+%     [a b c] = fileparts( p.path.tarname);
+%     cd(a)
+%     scp_simple_put('sanportal','onat','',[b c]);
+%     fprintf('Copying to neuronass succesfull...\n');
+% catch
+%     fprintf('Copying to neuronass failed...\n');
+% end
 cleanup;
 
     function AskDetectionSelectable
@@ -478,9 +478,9 @@ cleanup;
         %3, 8 ==> Down
         %4, 9 ==> Up (confirm)
         %5    ==> Pulse from the scanner
-        p.keys.confirm                 = KbName('4$');
-        p.keys.increase                = KbName('1!');
-        p.keys.decrease                = KbName('3#');
+        p.keys.confirm                 = KbName('UpArrow');
+        p.keys.increase                = KbName('RightArrow');
+        p.keys.decrease                = KbName('LeftArrow');
         p.keys.pulse                   = KbName('5%');
         p.keys.el_calib                = KbName('v');
         p.keys.el_valid                = KbName('c');
@@ -1055,10 +1055,12 @@ cleanup;
         shuffled        = shuffled(:);
     end
     function Buzz
-        outp(p.com.lpt.address, p.com.lpt.digitimer );
-        WaitSecs(p.duration.shockpulse);
-        outp(p.com.lpt.address, 0);
-        WaitSecs(p.duration.intershockpulse);
+                
+        FS           = 44000;
+        total_length = FS*3;
+        D            = 8;
+        Y            = demean(rand(1,total_length)).*repmat([ones(1,total_length/D/2)*PainThreshold ones(1,total_length/D/2)*.01],1,D);
+        sound(Y,FS)        
     end
     function MarkCED(socket,port)
         %send pulse to SCR#
