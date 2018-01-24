@@ -54,7 +54,7 @@ cleanup;
         p.threshold.init.alphas        = linspace(-1,0,100);
         p.threshold.init.prior         = PAL_pdfNormal(p.threshold.init.alphas, log10(.6), .1);
         p.threshold.init.stopcriterion = 'trials';
-        p.threshold.init.stoprule      = 12;
+        p.threshold.init.stoprule      = 1;
         p.threshold.init.PFfit         = @PAL_CumulativeNormal;
         p.threshold.init.beta          = 3.5;
         p.threshold.init.lambda        = 0;
@@ -80,14 +80,12 @@ cleanup;
         close all;
         while ~p.threshold.RF.stop
             %
-            counter = counter + 1;
+            counter         = counter + 1;
             amplitude       = 10.^p.threshold.RF.xCurrent;
             %
             fprintf([repmat('=',1,50) '\n']);
-            fprintf('SHOCK No: %d of %d.\n',counter,p.threshold.init.stoprule);
-            fprintf('!!! ADJUST THE SHOCK INTENSITY ON THE DIGITIMER !!!\n');
-            fprintf('    The intensity is now: %g\n',10.^p.threshold.RF.xCurrent);
-            fprintf('    Experimenter: Press any key to deliver a shock.\n');
+            fprintf('SHOCK No: %d of %d.\n',counter,p.threshold.init.stoprule);            
+            fprintf('    The intensity is now: %g\n',10.^p.threshold.RF.xCurrent);            
             fprintf('    Or escape to quit prematurely.\n');
             %                        
             ShowInstruction(5);%shock is coming message, stays ~2 sec...
@@ -112,46 +110,40 @@ cleanup;
         p.threshold.final.estimated       = 10.^log_threshold;
         
         fprintf('\n\n\nRESULT:\n');
-        fprintf('The estimated pain threshold : %g mA\n',10.^p.threshold.final.estimated);
+        fprintf('The estimated loudness threshold: %g\n',p.threshold.final.estimated);
         fprintf('Choose an intensity:\n');
-        fprintf('Intensity to be used for factor x 1.2): %g mA\n',10.^p.threshold.final.factor(1));
-        fprintf('Intensity to be used for factor x 1.3): %g mA\n',10.^p.threshold.final.factor(2));
-        fprintf('Intensity to be used for factor x 1.4): %g mA\n',10.^p.threshold.final.factor(3));
+        fprintf('Intensity to be used for factor x 1.2): %g mA\n',10.^(log_threshold/1.2));
+        fprintf('Intensity to be used for factor x 1.3): %g mA\n',10.^(log_threshold/1.3));
+        fprintf('Intensity to be used for factor x 1.4): %g mA\n',10.^(log_threshold/1.4));
         fprintf('We will now ask whether this is bearable...\n');                
     end
     function ConfirmIntensity(factor)
-        %
-        
-        I = 10.^(log_threshold*factor);
-        
+        %        
+        I = 10.^(log_threshold/factor);        
         %
         ShowInstruction(1);
         %
         fprintf([repmat('=',1,50) '\n']);
-        fprintf('TEST SHOCK:\n');
-        fprintf('!!! ADJUST THE SHOCK INTENSITY ON THE DIGITIMER !!!\n');
-        fprintf('    The intensity is now: %g mA\n',I);
-        fprintf('    Experimenter: Press any key to deliver a shock.\n');
+        fprintf('TEST PULSE:\n');        
+        fprintf('    The intensity is now: %g\n',I);        
         fprintf([repmat('=',1,50) '\n']);
         %
-        [secs, keyCode, deltaSecs] = KbStrokeWait;
+%         [secs, keyCode, deltaSecs] = KbStrokeWait;
         ShowInstruction(5);%shock is coming message...
         MarkCED(p.lpt.address,p.lpt.ShockOnset)
-        t = GetSecs + p.duration.shock;
-        
-        Buzz(amp);
-        
+        t         = GetSecs + p.duration.shock;        
+        Buzz(I);        
         %
         message   = 'Bewege den "Zeiger" mit der rechten und linken Pfeiltaste\n und best?tige deine Einsch?tzung mit der mit der oberen Pfeiltaste.';
         [p.threshold.confirmation.response] = RatingSlider(p.ptb.rect,2,1,p.keys.increase,p.keys.decrease,p.keys.confirm,{ 'nicht\nertr?glich' 'ertr?glich'},message,0);
         if p.threshold.confirmation.response == 1
             fprintf('All is fine :)\n');
             fprintf('Subject confirmed the shock intensity...\n')
-            fprintf('INTENSITY TO BE USED FOR THE MAIN EXPERIMENT: %g mA\n',I);
+            cprintf([0 1 0],'INTENSITY TO BE USED FOR THE MAIN EXPERIMENT: %g mA\n',I);
             p.threshold.final.tobeused = I;
             return;
         elseif p.threshold.confirmation.response == 2
-            fprintf('Shit... :(, %g is too much for the subject\n',I);
+            cprintf([1 0 0],'Shit... :(, %g is too much for the subject\n',I);
             fprintf('We will try a little milder intensity.\n');
             factor = factor - 0.05;
             ConfirmIntensity(factor);
