@@ -314,31 +314,30 @@ cleanup;
         KbQueueStart(p.ptb.device);%this means that from now on we are going to log pulses.
         %If the scanner by mistake had been started prior to this point
         %those pulses would have been not logged.
-        %log the pulse timings.
-        mblock_jumps    = logical([1 diff(p.presentation.mblock)]);
-        TimeEndStim     = secs(end)- p.ptb.slack;%take the first valid pulse as the end of the last stimulus.
+        %log the pulse timings.        
+        ZeroPoint     = secs(end)- p.ptb.slack;%take the first valid pulse as the end of the last stimulus.
         for nTrial  = 1:p.presentation.tTrial;
             
             %Get the variables that Trial function needs.
             stim_id      = p.presentation.stim_id(nTrial);
             fix_y        = p.presentation.cross_position(nTrial);
-            ISI          = (p.presentation.isi(nTrial)+1)*2;
+            ISI          = 2;%(p.presentation.isi(nTrial)+1);%[1 2 3] more or less equally
             ucs          = p.presentation.ucs(nTrial);
             oddball      = p.presentation.oddball(nTrial);
             prestimdur   = p.duration.prestim+rand(1)*.25;
             dist         = p.presentation.dist(nTrial);
-            mblock_jump  = mblock_jumps(nTrial);
-            block_id     = p.presentation.mblock(nTrial);
             %prestimdur   = p_presentation_prestim_dur(nTrial);
             %
-            OnsetTime     = TimeEndStim + ISI-p.duration.stim - p.ptb.slack;
+            OnsetTime    = ZeroPoint + ISI-p.duration.stim - p.ptb.slack;
+            time2rating  = randsample([1],1);
+            
             fprintf('%03d of %03d, S: %d, ISI: %d, UCS: %d, ODD: %d, OnsetTime: %f secs, ',nTrial,p.presentation.tTrial,stim_id,ISI,ucs,oddball, OnsetTime);
             
             %Start with the trial, here is time-wise sensitive must be
             %optimal
-            [TimeEndStim] = Trial(nTrial,OnsetTime, prestimdur, stim_id , ucs  , fix_y,  oddball,dist,mblock_jump,block_id);
+            [ZeroPoint] = Trial(nTrial,OnsetTime, prestimdur, stim_id , ucs  , fix_y,  oddball, dist, time2rating);
             %(nTrial,TimeStimOnset , prestimdur, stim_id , ucs  , fix_i, oddball, dist )
-            fprintf('OffsetTime: %f secs, Difference of %f secs\n',TimeEndStim,TimeEndStim-OnsetTime-p.duration.stim);
+            fprintf('OffsetTime: %f secs, Difference of %f secs\n',ZeroPoint,ZeroPoint-OnsetTime-p.duration.stim);
             %
             %dump it
             [keycode, secs] = KbQueueDump;%this contains both the pulses and keypresses.
@@ -352,10 +351,10 @@ cleanup;
             end
             %now we have to detect if the subject has pressed the CONFIRM
             %key while the ODDBALL stimulus was on the screen.
-            if any((keycode == p.keys.confirm) & (secs > OnsetTime) & (secs <= TimeEndStim))
-                p.out.response(nTrial) = 1;
-                fprintf('Subject Pressed the Hit Key!!\n');
-            end
+%             if any((keycode == p.keys.confirm) & (secs > OnsetTime) & (secs <= TimeEndStim))
+%                 p.out.response(nTrial) = 1;
+%                 fprintf('Subject Pressed the Hit Key!!\n');
+%             end
         end
         %wait 6 seconds for the BOLD signal to come back to the baseline...
         KbQueueStop(p.ptb.device);
@@ -380,23 +379,22 @@ cleanup;
         KbQueueRelease(p.ptb.device);
         WaitSecs(10);
     end
-    function [TimeEndStim]=Trial(nTrial,TimeStimOnset , prestimdur, stim_id , ucs  , fix_i, oddball, dist,microblock_jump,mblock_id)        
-        
+    function [TimeEndStim]=Trial(nTrial, TimeStimOnset , prestimdur, stim_id , ucs  , fix_i, oddball, dist, time2rating)        
+        mblock_id = 0;        
         %% Fixation Onset
         fix          = [p.ptb.CrossPosition_x p.ptb.CrossPosition_y(fix_i)];
         FixCross     = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];
         Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.imrect ); %always create a gray background
         %% Show instruction to the participant
-        KeyPressed = ShowInstruction(100,1);
+%         KeyPressed = ShowInstruction(100,1);
         %%
         %get all the times
-        TimeStimOnset      = KeyPressed     + randn(1)*5+3;
         TimeCrossOnset     = TimeStimOnset  - prestimdur;
         TimeCrossJump      = TimeStimOnset  + p.duration.stim/2;
-        TimeEndStim        = TimeStimOnset  + p.duration.stim- p.ptb.slack;
-        TimeStartShock     = TimeStimOnset  + p.duration.onset2shock;
-        TimeTrackerOff     = TimeStimOnset  + p.duration.keep_recording;
-        %%
+        TimeEndStim        = TimeStimOnset  + p.duration.stim- p.ptb.slack;        
+        TimeTrackerOff     = TimeEndStim    + p.duration.keep_recording;
+        TimeRatingOnset    = TimeEndStim    + time2rating;        
+        %% Prestimulus cross
         Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');%draw the prestimus cross atop                
         Screen('DrawingFinished',p.ptb.w,0);
         TimeCrossOn  = Screen('Flip',p.ptb.w,TimeCrossOnset,0);
@@ -408,8 +406,7 @@ cleanup;
             Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(stim_id));
         end
         %draw also the fixation cross
-        Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');        
-        
+        Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');
         %% STIMULUS ONSET
         TimeStimOnset  = Screen('Flip',p.ptb.w,TimeStimOnset,0);%asap and dont clear
         %send eyelink and ced a marker asap
@@ -420,26 +417,15 @@ cleanup;
         MarkCED( p.com.lpt.address, p.com.lpt.StimOnset );%this actually didn't really work nicely.
         %the first stim onset pulse is always missing. This could be due to
         %the fact that the state of the port was already 1 and thus CED
-        %didn't realize this command.
-        if oddball
-            MarkCED( p.com.lpt.address, p.com.lpt.oddball );
-        end
+        %didn't realize this command.        
         if ucs
             MarkCED(p.com.lpt.address, p.com.lpt.ucs);
-        end
-        if microblock_jump
-            MarkCED( p.com.lpt.address, p.com.lpt.mBlock );
-            Log(TimeStimOnset,9,mblock_id)
-        end
-        Log(TimeStimOnset,3,dist);%log the stimulus onset
-        
+        end        
+        Log(TimeStimOnset,3,dist);%log the stimulus onset        
         %% CROSS JUMPS (same as before but with a different fix position)
         if ~stim_id==0
             Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(stim_id));
-        end
-        if oddball           
-            Screen('DrawDots',p.ptb.w,[x;y],1+s.*1.5,[180 0 0 160],p.ptb.midpoint,1);        
-        end
+        end        
         fix          = [p.ptb.CrossPosition_x p.ptb.CrossPosition_y(setdiff(1:2,fix_i))];%take the other position
         %draw also the fixation cross
         FixCross     = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];
@@ -450,45 +436,40 @@ cleanup;
         %% STIM OFF immediately
         TimeEndStim = Screen('Flip',p.ptb.w,TimeEndStim,0);
         %send eyelink and ced a marker
-        Log(TimeEndStim,6,stim_id);%log the stimulus offset
-        WaitSecs(5)
-        %%
-%         ShowInstruction(101,1);
-%         WaitSecs(randn(1)*1+3);
-        rect             = [p.ptb.width*0.2  p.ptb.midpoint(2) p.ptb.width*0.6 100];
-        RatingSlider(rect, 2, Shuffle(1:2,1), p.keys.increase, p.keys.decrease, p.keys.confirm, [GetText(122) GetText(133)],GetText(111),1)        
-        %%
+        Log(TimeEndStim,6,stim_id);%log the stimulus offset                
+        %% Ask for ratings
+        rect                   = [p.ptb.width*0.2  p.ptb.midpoint(2) p.ptb.width*0.6 100];
+        TimeRatingOnset        = WaitSecs('UntilTime', TimeRatingOnset);
+        [rating,TimeEndRating] = RatingSlider(rect, 2, Shuffle(1:2,1), p.keys.increase, p.keys.decrease, p.keys.confirm, [GetText(122) GetText(133)],GetText(111),1);        
+        %% DELIVER UCS                         
+        TimeStartShock     = TimeEndRating  + time2rating/2;
+        TimeEndShock       = TimeStartShock + p.duration.shock;    
+        
         if ucs == 1
             %%%%%%%%%%%%%%%%%%%%%%%
             %Deliver shock and stim off immediately
             TimeStartShock = WaitSecs('UntilTime',TimeStartShock);
             if EyelinkWanted
                 Eyelink('Message', 'UCS Onset');
-            end
-            
-            while GetSecs < TimeEndStim;
+            end            
+            while GetSecs < TimeEndShock;
                 Buzz;%this is anyway sent to CED.
-            end
+            end        
+            Log(TimeStartShock,5,NaN);%UCS delivery...This is done here to not waste time there        
+        else
+            message = 'Your earnings are dadadada';
+            DrawFormattedText(p.ptb.w,message, 'center', p.ptb.midpoint(2)*0.2,  p.stim.white,[],[],[],2);
+%             Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(end));            
+            WaitSecs(2)
         end
-        
-        
+        ZeroPoint = TimeEndRating;
         %% record some more eye data after stimulus offset.
         WaitSecs('UntilTime',TimeTrackerOff);
         if EyelinkWanted
             Eyelink('Message', 'Stim Offset');
             Eyelink('Message', 'BLANK_SCREEN');
         end
-        TimeTrackerOff    = StopEyelinkRecording;
-        
-        
-        if oddball == 1
-            fprintf('This was an oddball trial!');
-        end
-        if ucs == 1
-            fprintf('This was a UCS trial!');
-            Log(TimeStartShock,5,NaN);%UCS delivery...This is done here to not waste time there
-        end
-        
+        TimeTrackerOff    = StopEyelinkRecording;                  
     end
 
     function SetParams
@@ -511,7 +492,7 @@ cleanup;
         end
         
         p.path.experiment             = [p.path.baselocation  filesep];
-        p.path.stim                   = [fileparts(which('exp_FearGen_ForAll.m')) filesep 'bin' filesep 'FearGen_Stimuli' filesep];
+        p.path.stim                   = [fileparts(which('exp_FearGen_ForAll.m')) filesep 'bin' filesep 'FearGen_DM_Stimuli' filesep];
         p.path.stim24                 = [p.path.stim '24bit' filesep];%location of 24bit stimuli, useful only to send it to the eyelink system
         p.path.stim_cut               = [p.path.stim 'cut' filesep];%stimuli without borders, necessary for the facecircle
         %
@@ -592,7 +573,8 @@ cleanup;
         p.com.lpt.StimOnset = 64;
         p.com.lpt.oddball   = 32;
         p.com.lpt.ucs       = 16;
-        
+        %%reset the sockets
+        outp(p.com.lpt.address,0);
         %
         %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %timing business
@@ -629,6 +611,11 @@ cleanup;
         p.presentation.dist(p.presentation.cond_id == 9)  = 1001;
         p.presentation.dist(p.presentation.cond_id == 10) = 1002;
         clear s;
+        %% remove all the oddball trials
+        i_odd = p.presentation.oddball == 1;
+        for nf = fieldnames(p.presentation)
+            p.presentation.(nf{1})(i_odd) = [];
+        end
         %% create the randomized design
         p.stim.cs_plus                 = csp;%index of cs stimulus, this is the one paired to shock
         p.stim.cs_neg                  = csn;
@@ -733,7 +720,7 @@ cleanup;
         %
         save(p.path.path_param,'p');
     end
-    function [rating] = RatingSlider(rect,tSection,position,up,down,confirm,labels,message,numbersOn)
+    function [rating,time_RatingOff] = RatingSlider(rect,tSection,position,up,down,confirm,labels,message,numbersOn)
         %
         %Detect the bounding boxes of the labels.
         for nlab = 1:2
@@ -761,7 +748,7 @@ cleanup;
                     WaitSecs(0.1);
                     ok = 0;
                     Screen('FillRect',p.ptb.w,p.var.current_bg);
-                    t=Screen('Flip',p.ptb.w);
+                    time_RatingOff=Screen('Flip',p.ptb.w);
                 end
             end
         end
@@ -975,11 +962,12 @@ cleanup;
         %Make everything transparent for debugging purposes.
         if debug
             commandwindow;
-            PsychDebugWindowConfiguration;
+            PsychDebugWindowConfiguration(0,0.5);
+%;
         end
         %set the resolution correctly
         res = Screen('resolution',p.ptb.screenNumber);
-        HideCursor(p.ptb.screenNumber);%make sure that the mouse is not shown at the participant's monitor
+%         HideCursor(p.ptb.screenNumber);%make sure that the mouse is not shown at the participant's monitor
         %spit out the resolution,
         fprintf('Resolution of the screen is %dx%d...\n',res.width,res.height);
         
@@ -1163,7 +1151,7 @@ cleanup;
         shuffled        = vector(idx(1:N));
         shuffled        = shuffled(:);
     end
-    function Buzz
+    function Buzz    
         outp(p.com.lpt.address, p.com.lpt.digitimer );
         WaitSecs(p.duration.shockpulse);
         outp(p.com.lpt.address, 0);
