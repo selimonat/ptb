@@ -142,7 +142,7 @@ if fig
     subplot(nr,nc,4);
     imagesc(n);
     colormap jet
-    thincolorbar('vertical');
+%     thincolorbar('vertical');
     title(sprintf('2nd order Transition Matrix (%g)',sopt));
     set(gca,'ytick',1:tstimcond+1,'yticklabel',{'N' '1' '2' '3' '4' '5' '6' '7' '8' 'UCS' 'ODD'})
     set(gca,'xtick',1:tstimcond+1,'xticklabel',{'N' '1' '2' '3' '4' '5' '6' '7' '8' 'U' 'O'})
@@ -191,7 +191,7 @@ if fig
     %
     subplot(nr,nc,9)
     imagesc(cov(X));
-    thincolorbar('vertical');
+%     thincolorbar('vertical');
     title(sprintf('covariance (rank: %g (%g))',rank(cov(X)),size(X,2)));axis off;
     %
     try
