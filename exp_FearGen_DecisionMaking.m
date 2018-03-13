@@ -135,11 +135,11 @@ if phase == 1
     p.mrt.dummy_scan = 0;%for the training we don't want any pulses
     p.var.ExpPhase = phase;
     %UCS check
-    ShowInstruction(4,1);
-    ConfirmIntensity;
+%     ShowInstruction(4,1);
+%     ConfirmIntensity;
     %test
-    ShowInstruction(1,1);
-    ShowInstruction(2,1);
+%     ShowInstruction(1,1);
+%     ShowInstruction(2,1);
     PresentStimuli;
     
 elseif phase > 1%baseline, conditioning and test phases
@@ -384,9 +384,8 @@ cleanup;
     end
     function [ZeroPoint]=Trial(nTrial, TimeStimOnset , prestimdur, stim_id , ucs  , fix_i, oddball, dist, time2rating,time2reward)        
         mblock_id = 0;        
+        %        
         %% Fixation Onset
-        fix          = [p.ptb.CrossPosition_x p.ptb.CrossPosition_y(fix_i)];
-        FixCross     = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];
         Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.imrect ); %always create a gray background
         %% Show instruction to the participant
 %         KeyPressed = ShowInstruction(100,1);
@@ -398,20 +397,30 @@ cleanup;
         TimeTrackerOff     = TimeEndStim    + p.duration.keep_recording;
         TimeRatingOnset    = TimeEndStim    + time2rating;        
         %% Prestimulus cross
-        Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');%draw the prestimus cross atop                
+        Screen('FillRect',  p.ptb.w, [255,255,255], p.ptb.FixCross{fix_i}');%draw the prestimus cross atop                
         Screen('DrawingFinished',p.ptb.w,0);
         TimeCrossOn  = Screen('Flip',p.ptb.w,TimeCrossOnset,0);
         Log(TimeCrossOn,1,fix_i);%cross onset.
-        %turn the eye tracker on
-        StartEyelinkRecording(nTrial,stim_id,p.var.ExpPhase,dist,oddball,ucs,fix,mblock_id);%I would be cautious here, the first trial is never recorded in the EDF file, reason yet unknown.        
+        %turn the eye tracker on        
+        StartEyelinkRecording(nTrial,stim_id,p.var.ExpPhase,dist,oddball,ucs,fix_i,mblock_id);%I would be cautious here, the first trial is never recorded in the EDF file, reason yet unknown.        
         %% Draw the stimulus to the buffer
         if ~stim_id==0
-            Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(stim_id));
+            %draw all images
+            Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(stim_id),[],p.ptb.imrect);
+            Screen('DrawTexture', p.ptb.w, p.ptb.valley_sprites(1),[],p.ptb.rightrect);
+            Screen('DrawTexture', p.ptb.w, p.ptb.valley_sprites(2),[],p.ptb.leftrect);
+            %draw arrows
+            Screen('DrawLine',p.ptb.w,[],p.ptb.leftrect(3),p.ptb.leftrect(2),p.ptb.leftrect(3)-200,p.ptb.leftrect(2)+200,10);
+            Screen('DrawLine',p.ptb.w,[],p.ptb.leftrect(3)-200,p.ptb.leftrect(2)+200,p.ptb.leftrect(3),p.ptb.leftrect(4),10);
+            %
+            Screen('DrawLine',p.ptb.w,[],p.ptb.rightrect(1),p.ptb.rightrect(2),p.ptb.rightrect(3)-200,p.ptb.rightrect(2)+200,10);
+            Screen('DrawLine',p.ptb.w,[],p.ptb.rightrect(3)-200,p.ptb.rightrect(2)+200,p.ptb.rightrect(1),p.ptb.rightrect(4),10);
         end
         %draw also the fixation cross
-        Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');
-        %% STIMULUS ONSET
+        Screen('FillRect',  p.ptb.w, [255,255,255], p.ptb.FixCross{fix_i}');
+        % STIMULUS ONSET
         TimeStimOnset  = Screen('Flip',p.ptb.w,TimeStimOnset,0);%asap and dont clear
+        %
         %send eyelink and ced a marker asap
         if EyelinkWanted
             Eyelink('Message', 'Stim Onset');
@@ -427,16 +436,22 @@ cleanup;
         Log(TimeStimOnset,3,dist);%log the stimulus onset        
         %% CROSS JUMPS (same as before but with a different fix position)
         if ~stim_id==0
-            Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(stim_id));
-        end        
-        fix          = [p.ptb.CrossPosition_x p.ptb.CrossPosition_y(setdiff(1:2,fix_i))];%take the other position
-        %draw also the fixation cross
-        FixCross     = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];
-        Screen('FillRect',  p.ptb.w, [255,255,255], FixCross');
+            %draw all images
+            Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(stim_id),[],p.ptb.imrect);
+            Screen('DrawTexture', p.ptb.w, p.ptb.valley_sprites(1),[],p.ptb.rightrect);
+            Screen('DrawTexture', p.ptb.w, p.ptb.valley_sprites(2),[],p.ptb.leftrect);
+            %draw arrows
+            Screen('DrawLine',p.ptb.w,[],p.ptb.leftrect(3),p.ptb.leftrect(2),p.ptb.leftrect(3)-200,p.ptb.leftrect(2)+200,10);
+            Screen('DrawLine',p.ptb.w,[],p.ptb.leftrect(3)-200,p.ptb.leftrect(2)+200,p.ptb.leftrect(3),p.ptb.leftrect(4),10);
+            %
+            Screen('DrawLine',p.ptb.w,[],p.ptb.rightrect(1),p.ptb.rightrect(2),p.ptb.rightrect(3)-200,p.ptb.rightrect(2)+200,10);
+            Screen('DrawLine',p.ptb.w,[],p.ptb.rightrect(3)-200,p.ptb.rightrect(2)+200,p.ptb.rightrect(1),p.ptb.rightrect(4),10);
+        end                
+        Screen('FillRect',  p.ptb.w, [255,255,255], p.ptb.FixCross{setdiff([1 2],fix_i)}');
         Screen('DrawingFinished',p.ptb.w,0);
         TimeCrossJump  = Screen('Flip',p.ptb.w,TimeCrossJump,0);%asap and dont clear
         Log(TimeCrossJump,4,0);%log the stimulus onset
-        %% STIM OFF immediately
+        %% STIM OFF immediately after response acquisition;
         TimeEndStim = Screen('Flip',p.ptb.w,TimeEndStim,0);
         %send eyelink and ced a marker
         Log(TimeEndStim,6,stim_id);%log the stimulus offset                
@@ -539,14 +554,15 @@ cleanup;
         %Path Business.
         [~, hostname]                 = system('hostname');
         p.hostname                    = deblank(hostname);
-        p.path.baselocation           = '/Users/onat/Documents/Experiments/FearGen_DecisionMaking/';
+        p.path.baselocation           = sprintf('%s/Documents/Experiments/FearGen_DecisionMaking/',homedir);
         %create the base folder if not yet there.
         if exist(p.path.baselocation) == 0
             mkdir(p.path.baselocation);
         end
         
         p.path.experiment             = [p.path.baselocation  filesep];
-        p.path.stim                   = [fileparts(which('exp_FearGen_ForAll.m')) filesep 'bin' filesep 'FearGen_DM_Stimuli' filesep];
+%         p.path.stim                   = [fileparts(which('exp_FearGen_ForAll.m')) filesep 'bin' filesep 'FearGen_DM_Stimuli' filesep];
+        p.path.stim                   = [fileparts(which('exp_FearGen_ForAll.m')) filesep 'bin' filesep 'FearGen_Stimuli' filesep];
         p.path.stim24                 = [p.path.stim '24bit' filesep];%location of 24bit stimuli, useful only to send it to the eyelink system
         p.path.stim_cut               = [p.path.stim 'cut' filesep];%stimuli without borders, necessary for the facecircle
         %
@@ -1030,17 +1046,19 @@ cleanup;
         fprintf('Resolution of the screen is %dx%d...\n',res.width,res.height);
         
         %Open a graphics window using PTB
-        [p.ptb.w p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, p.var.current_bg);
+        [p.ptb.w p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, p.var.current_bg,[3840/2 0 3840 1200]);
         %Screen('BlendFunction', p.ptb.w, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         Screen('Flip',p.ptb.w);%make the bg
         p.ptb.slack                 = Screen('GetFlipInterval',p.ptb.w)./2;
         [p.ptb.width, p.ptb.height] = Screen('WindowSize', p.ptb.screenNumber);
         
-        %find the mid position on the screen.
-        p.ptb.midpoint              = [ p.ptb.width./2 p.ptb.height./2];
+        %find the mid position on the rect.
+        p.ptb.midpoint              = [ (p.ptb.rect(3)-p.ptb.rect(1))./2 (p.ptb.rect(4)-p.ptb.rect(2))./2];
         %NOTE about RECT:
         %RectLeft=1, RectTop=2, RectRight=3, RectBottom=4.
         p.ptb.imrect                = [ p.ptb.midpoint(1)-p.stim.width/2 p.ptb.midpoint(2)-p.stim.height/2 p.ptb.midpoint(1)-p.stim.width/2+p.stim.width p.ptb.midpoint(2)-p.stim.height/2+p.stim.height];
+        p.ptb.leftrect              = p.ptb.imrect-[p.stim.width 0 p.stim.width 0 ]*1.5;
+        p.ptb.rightrect             = p.ptb.imrect+[p.stim.width 0 p.stim.width 0 ]*1.5;
         p.ptb.cross_shift           = [180 -120]./2.5;%incremental upper and lower cross positions
         p.ptb.CrossPosition_x       = p.ptb.midpoint(1);%bb(1);%always the same
         p.ptb.CrossPosition_y       = p.ptb.midpoint(2)+p.ptb.cross_shift;%bb(1);%always the same
@@ -1048,6 +1066,11 @@ cleanup;
         p.ptb.CrossPositionET_x     = [p.ptb.midpoint(1) p.ptb.midpoint(1)];
         p.ptb.CrossPositionET_y     = [p.ptb.midpoint(2)-p.ptb.cross_shift(2) p.ptb.midpoint(2)+p.ptb.cross_shift(2)];
         p.ptb.fc_size               = 10;
+        %
+        fix                         = [p.ptb.CrossPosition_x p.ptb.CrossPosition_y(1)];
+        p.ptb.FixCross{1}           = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];
+        fix                         = [p.ptb.CrossPosition_x p.ptb.CrossPosition_y(2)];%take the other position        
+        p.ptb.FixCross{2}           = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];
         %
         %%
         %priorityLevel=MaxPriority(['GetSecs'],['KbCheck'],['KbWait'],['GetClicks']);
@@ -1106,7 +1129,7 @@ cleanup;
         %%
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
         %load the pictures to the video memory.
-        p.ptb.stim_sprites     = CreateStimSprites(p.stim.files);%        
+        [p.ptb.stim_sprites p.ptb.valley_sprites] = CreateStimSprites(p.stim.files);%        
         %% take care of the circle presentation
         %order of faces on the circle that will be shown at the end.
         if phase == 4
@@ -1129,13 +1152,17 @@ cleanup;
         end
         
         %%
-        function [out]=CreateStimSprites(files)
+        function [out out2]=CreateStimSprites(files)
             %loads all the stims to video memory
             for nStim = 1:size(files,1)
                 filename       = files(nStim,:);
                 [im , ~, ~]    = imread(filename);
                 out(nStim)     = Screen('MakeTexture', p.ptb.w, im );
             end
+            [im , ~, ~]    = imread('/home/onat/Dropbox/InhabitedValley.jpg');
+            out2(1)        = Screen('MakeTexture', p.ptb.w, im );
+            [im , ~, ~]    = imread('/home/onat/Dropbox/DesertedValley.jpg');
+            out2(2)        = Screen('MakeTexture', p.ptb.w, im );
         end
     end
     function [t]=StopEyelinkRecording
@@ -1164,8 +1191,10 @@ cleanup;
                 dist=3000;
             end
             nStim = double(nStim);
-            Eyelink('Message', 'TRIALID: %04d, PHASE: %04d, FILE: %04d, DELTACSP: %04d, ODDBALL: %04d, UCS: %04d, FIXX: %04d, FIXY %04d, MBLOCK %04d', nTrial, phase, nStim, dist, double(oddball), double(ucs),fix(1),fix(2),block_id);
-            Eyelink('Message', 'FX Onset at %d %d',fix(1),fix(2));
+            fix_x = p.ptb.CrossPosition_x;
+            fix_y = p.ptb.CrossPosition_y(fix);
+            Eyelink('Message', 'TRIALID: %04d, PHASE: %04d, FILE: %04d, DELTACSP: %04d, ODDBALL: %04d, UCS: %04d, FIXX: %04d, FIXY %04d, MBLOCK %04d', nTrial, phase, nStim, dist, double(oddball), double(ucs),fix_x,fix_y,block_id);
+            Eyelink('Message', 'FX Onset at %d %d',fix_x,fix_y);
             % an integration message so that an image can be loaded as
             % overlay background when performing Data Viewer analysis.
             WaitSecs(0.01);
@@ -1185,8 +1214,8 @@ cleanup;
             if (nStim <= 16 && nStim>0)
                 Eyelink('ImageTransfer',p.stim.files24(nStim,:),p.ptb.imrect(1),p.ptb.imrect(2),p.stim.width,p.stim.height,p.ptb.imrect(1),p.ptb.imrect(2),0);
             end
-            Eyelink('Command', 'draw_cross %d %d 15',fix(1),fix(2));
-            Eyelink('Command', 'draw_cross %d %d 15',fix(1),fix(2)+diff(p.ptb.cross_shift));
+            Eyelink('Command', 'draw_cross %d %d 15',fix_x,fix_y);
+%             Eyelink('Command', 'draw_cross %d %d 15',fix_x,fix(2)+diff(p.ptb.cross_shift));%not clear to me why this always works
             
             %
             %drift correction
