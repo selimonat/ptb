@@ -1,74 +1,13 @@
-function [p]=exp_FearGen_ForAll(subject,Nseq,phase,csp,PainThreshold,CurrentGains)
-%[p]=exp_FearGen_ForAll(subject,phase,csp,PainThreshold,CurrentGains)
+function [p]=exp_FearGen_DecisionMaking(subject,Nseq,phase,csp,PainThreshold,CurrentGains)
+%[p]=exp_FearGen_DecisionMaking(subject,phase,csp,PainThreshold,CurrentGains)
 %
-%
-%   This code is based on the exp_FearAmy.m, adapted to run the initial FearGen
-%   experiment (Onat & Buechel, 2015).
-%
-%   When the experiment starts as experimenter you will have to pass through
-%   few sanity checks (press (V)alidate to continue). Once these are
-%   passed, some text will be shown to the participant. You can also pass
-%   these stages by pressing V (normally the subject has to read them and
-%   press confirm key). These instructions for participants are shown using
-%   the ShowInstruction function, where you precise instructions by their
-%   id number. All instructions are stored in the GetText function by these
-%   ids. So if you would like to change instructions you will need to
-%   modify that function.
-%
-%   The experiment starts with PHASE = 1. Here I set the shock intensity
-%   while the participant is in the scanner. The shock threshold is
-%   measured outside the scanner. This is here just to validate the shock
-%   intensity that will be used during the experiment, it is obtained by
-%   the PAINTHRESHOLD (given as input) times P.OUT.SHOCKFACTOR (defined
-%   below). PAINTHRESHOLD is only painful half of the time by definition,
-%   and we would like to give a shock which is more painful but still
-%   bearable by the participant. That is, I ask the participant to confirm
-%   the shock is PAINFUL and BEARABLE. If the shock is not bearable the
-%   program will propose a lower amplitude and the same question will be
-%   repeated until these two conditions are fulfilled. It is always good to
-%   stay in oral communication with the participant though. The phase = 1 
-%   continues with a short presentation of faces, where I evaluate whether
-%   they 1/ follow the fixation cross as instructed and 2/ detect the
-%   oddball target. If they fail in any of these, phase 1 is repeated. This
-%   phase also helps people to familiarize with the faces if no other task
-%   has yet been carried out befo
-%
-%   The phase 2 is baseline. All faces are shown, but non predicts the
-%   shock. Instead shocks are delivered after a shock symbol. This phase
-%   ends with ratings.
-%
-%   Phase 3 is conditioning. Only CS+ and CS- are shown and CS+ is shocked
-%   at about 30% of the cases.
-%
-%   Phase 4 is similar to baseline, all faces are shown, but shock follows
-%   the CS+ face to avoid extinction. Following this phase, there is the
-%   detection task.
-%
-%   
-%   The current experiment can fully work with the Eyelink
-%   eye-tracker. This is however now disabled. If you intent to record
-%   eye-movements turn the EyelinkWanted flag to 1.
-%
-%   The parallel communication currently relies on the cogent's OUTP
-%   function. It is used to deliver shocks and to send event pulses to the
-%   physio computer. If you intend to use a Windows systems you can install
-%   cogent and outp function, then you would be able to directly use this
-%   code. Or take the extra mile and code the outp equivalent in PTB (that
-%   would be nice).
-%
-%   To do before you start:
-%   Set the baselocation for the experiment in SetParams around line 420:
-%   p.path.baselocation variable. this location will be used to save
-%   the experiment-related data for the current subject.
-%
-%   
-%   Example usage:
-%   exp_FearGen_ForAll(12,3,4,1,8.43); runs the Conditioning paradigm (3) for
-%   participant 12, using the stimulus sequence 4 where the CS+ face is
-%   face number 1 for a participant who has a shock intensity of 8.43.
-%
-%
-%   Selim Onat
+% !!! ISSUES TO SOLVE: first trial in eyelink and first pulse in CED are
+% not recorded/
+% Move StartTrial to the begninng of the experiment.
+% preload kbcheck kbwait
+
+
+
 
 debug   = 1;%debug mode => 1: transparent window enabling viewing the background.
 EyelinkWanted = 0;%is Eyelink wanted?
@@ -254,14 +193,14 @@ cleanup;
         %Stimulus onset
         Screen('Flip',p.ptb.w);
         if EyelinkWanted
-            Eyelink('Message', 'Stim Onset');
+            Eyelink('Message', 'STIM_ONSET');
             Eyelink('Message', 'SYNCTIME');
         end
         %%
         WaitSecs(30);
         Screen('Flip',p.ptb.w);
         if EyelinkWanted
-            Eyelink('Message', 'Stim Offset');
+            Eyelink('Message', 'STIM_OFFSET');
             Eyelink('Message', 'BLANK_SCREEN');
         end
         StopEyelinkRecording;
@@ -312,13 +251,13 @@ cleanup;
         [secs] = WaitPulse(p.keys.pulse,p.mrt.dummy_scan);%will log it
         KbQueueStop(p.ptb.device);
         WaitSecs(.05);
-        KbQueueCreate(p.ptb.device);
+        KbQueueCreate(p.ptb.device,p.ptb.keysToMonitor);
         KbQueueStart(p.ptb.device);%this means that from now on we are going to log pulses.
         %If the scanner by mistake had been started prior to this point
         %those pulses would have been not logged.
         %log the pulse timings.        
         ZeroPoint     = secs(end)- p.ptb.slack;%take the first valid pulse as the end of the last stimulus.
-        for nTrial  = 1:p.presentation.tTrial;
+        for nTrial  = 1:2%p.presentation.tTrial;
             
             %Get the variables that Trial function needs.
             stim_id      = p.presentation.stim_id(nTrial);
@@ -383,77 +322,86 @@ cleanup;
         WaitSecs(10);
     end
     function [ZeroPoint]=Trial(nTrial, TimeStimOnset , prestimdur, stim_id , ucs  , fix_i, oddball, dist, time2rating,time2reward)        
-        mblock_id = 0;        
-        %        
-        %% Fixation Onset
-        Screen('FillRect', p.ptb.w , p.stim.bg, p.ptb.imrect ); %always create a gray background
-        %% Show instruction to the participant
-%         KeyPressed = ShowInstruction(100,1);
-        %%
-        %get all the times
+
+        %% compute times for all events
+        mblock_id = 0;                
         TimeCrossOnset     = TimeStimOnset  - prestimdur;
         TimeCrossJump      = TimeStimOnset  + p.duration.stim/2;
         TimeEndStim        = TimeStimOnset  + p.duration.stim- p.ptb.slack;        
         TimeTrackerOff     = TimeEndStim    + p.duration.keep_recording;
         TimeRatingOnset    = TimeEndStim    + time2rating;        
         %% Prestimulus cross
-        Screen('FillRect',  p.ptb.w, [255,255,255], p.ptb.FixCross{fix_i}');%draw the prestimus cross atop                
-        Screen('DrawingFinished',p.ptb.w,0);
-        TimeCrossOn  = Screen('Flip',p.ptb.w,TimeCrossOnset,0);
-        Log(TimeCrossOn,1,fix_i);%cross onset.
-        %turn the eye tracker on        
+        Screen('FillRect',       p.ptb.w, p.stim.bg    , p.ptb.imrect );%create a gray background
+        Screen('FillRect',       p.ptb.w, [255,255,255], p.ptb.FixCross{fix_i}');%draw the prestimus cross atop                
+        Screen('DrawingFinished',p.ptb.w, 0);
+        TimeCrossOn  = Screen('Flip',p.ptb.w,TimeCrossOnset,0);        
+        %turn the eye tracker on and LOG
         StartEyelinkRecording(nTrial,stim_id,p.var.ExpPhase,dist,oddball,ucs,fix_i,mblock_id);%I would be cautious here, the first trial is never recorded in the EDF file, reason yet unknown.        
-        %% Draw the stimulus to the buffer
-        if ~stim_id==0
-            %draw all images
-            Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(stim_id),[],p.ptb.imrect);
-            Screen('DrawTexture', p.ptb.w, p.ptb.valley_sprites(1),[],p.ptb.rightrect);
-            Screen('DrawTexture', p.ptb.w, p.ptb.valley_sprites(2),[],p.ptb.leftrect);
-            %draw arrows
-            Screen('DrawLine',p.ptb.w,[],p.ptb.leftrect(3),p.ptb.leftrect(2),p.ptb.leftrect(3)-200,p.ptb.leftrect(2)+200,10);
-            Screen('DrawLine',p.ptb.w,[],p.ptb.leftrect(3)-200,p.ptb.leftrect(2)+200,p.ptb.leftrect(3),p.ptb.leftrect(4),10);
-            %
-            Screen('DrawLine',p.ptb.w,[],p.ptb.rightrect(1),p.ptb.rightrect(2),p.ptb.rightrect(3)-200,p.ptb.rightrect(2)+200,10);
-            Screen('DrawLine',p.ptb.w,[],p.ptb.rightrect(3)-200,p.ptb.rightrect(2)+200,p.ptb.rightrect(1),p.ptb.rightrect(4),10);
-        end
+        Log(TimeCrossOn,1,fix_i);%actual cross onset.
+        %% Stimulus Onset        
+        %draw all images
+        Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(stim_id),[],p.ptb.imrect);
+        Screen('DrawTexture', p.ptb.w, p.ptb.valley_sprites(1),[],p.ptb.rightrect);
+        Screen('DrawTexture', p.ptb.w, p.ptb.valley_sprites(2),[],p.ptb.leftrect);
+        %draw arrows
+        Screen('DrawLine'   , p.ptb.w,[],p.ptb.leftrect(3),p.ptb.leftrect(2),p.ptb.leftrect(3)-200,p.ptb.leftrect(2)+200,10);
+        Screen('DrawLine'   , p.ptb.w,[],p.ptb.leftrect(3)-200,p.ptb.leftrect(2)+200,p.ptb.leftrect(3),p.ptb.leftrect(4),10);
+        Screen('DrawLine'   , p.ptb.w,[],p.ptb.rightrect(1),p.ptb.rightrect(2),p.ptb.rightrect(3)-200,p.ptb.rightrect(2)+200,10);
+        Screen('DrawLine'   , p.ptb.w,[],p.ptb.rightrect(3)-200,p.ptb.rightrect(2)+200,p.ptb.rightrect(1),p.ptb.rightrect(4),10);        
+        %draw frames
+        Screen('FrameRect'  , p.ptb.w, [255 255 255 .3] , p.ptb.leftrect,5);
+        Screen('FrameRect'  , p.ptb.w, [255 255 255 .3] , p.ptb.rightrect,5);
         %draw also the fixation cross
-        Screen('FillRect',  p.ptb.w, [255,255,255], p.ptb.FixCross{fix_i}');
+%         Screen('FillRect'   , p.ptb.w, [255,255,255], p.ptb.FixCross{fix_i}');
         % STIMULUS ONSET
         TimeStimOnset  = Screen('Flip',p.ptb.w,TimeStimOnset,0);%asap and dont clear
-        %
         %send eyelink and ced a marker asap
         if EyelinkWanted
-            Eyelink('Message', 'Stim Onset');
+            Eyelink('Message', 'STIMONSET');
             Eyelink('Message', 'SYNCTIME');
         end
         MarkCED( p.com.lpt.address, p.com.lpt.StimOnset );%this actually didn't really work nicely.
         %the first stim onset pulse is always missing. This could be due to
         %the fact that the state of the port was already 1 and thus CED
-        %didn't realize this command.        
-        if ucs
-            MarkCED(p.com.lpt.address, p.com.lpt.ucs);
-        end        
-        Log(TimeStimOnset,3,dist);%log the stimulus onset        
-        %% CROSS JUMPS (same as before but with a different fix position)
-        if ~stim_id==0
-            %draw all images
-            Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(stim_id),[],p.ptb.imrect);
-            Screen('DrawTexture', p.ptb.w, p.ptb.valley_sprites(1),[],p.ptb.rightrect);
-            Screen('DrawTexture', p.ptb.w, p.ptb.valley_sprites(2),[],p.ptb.leftrect);
-            %draw arrows
-            Screen('DrawLine',p.ptb.w,[],p.ptb.leftrect(3),p.ptb.leftrect(2),p.ptb.leftrect(3)-200,p.ptb.leftrect(2)+200,10);
-            Screen('DrawLine',p.ptb.w,[],p.ptb.leftrect(3)-200,p.ptb.leftrect(2)+200,p.ptb.leftrect(3),p.ptb.leftrect(4),10);
-            %
-            Screen('DrawLine',p.ptb.w,[],p.ptb.rightrect(1),p.ptb.rightrect(2),p.ptb.rightrect(3)-200,p.ptb.rightrect(2)+200,10);
-            Screen('DrawLine',p.ptb.w,[],p.ptb.rightrect(3)-200,p.ptb.rightrect(2)+200,p.ptb.rightrect(1),p.ptb.rightrect(4),10);
-        end                
-        Screen('FillRect',  p.ptb.w, [255,255,255], p.ptb.FixCross{setdiff([1 2],fix_i)}');
-        Screen('DrawingFinished',p.ptb.w,0);
-        TimeCrossJump  = Screen('Flip',p.ptb.w,TimeCrossJump,0);%asap and dont clear
-        Log(TimeCrossJump,4,0);%log the stimulus onset
-        %% STIM OFF immediately after response acquisition;
+        %didn't realize this command.                
+        Log(TimeStimOnset,3,dist);
+%         %% CROSS JUMPS (same as just above but with a different fix position)        
+%         %draw all images
+%         Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(stim_id),[],p.ptb.imrect);
+%         Screen('DrawTexture', p.ptb.w, p.ptb.valley_sprites(1),[],p.ptb.rightrect);
+%         Screen('DrawTexture', p.ptb.w, p.ptb.valley_sprites(2),[],p.ptb.leftrect);
+%         %draw arrows
+%         Screen('DrawLine'   ,p.ptb.w,[],p.ptb.leftrect(3),p.ptb.leftrect(2),p.ptb.leftrect(3)-200,p.ptb.leftrect(2)+200,10);
+%         Screen('DrawLine'   ,p.ptb.w,[],p.ptb.leftrect(3)-200,p.ptb.leftrect(2)+200,p.ptb.leftrect(3),p.ptb.leftrect(4),10);
+%         Screen('DrawLine'   ,p.ptb.w,[],p.ptb.rightrect(1),p.ptb.rightrect(2),p.ptb.rightrect(3)-200,p.ptb.rightrect(2)+200,10);
+%         Screen('DrawLine'   ,p.ptb.w,[],p.ptb.rightrect(3)-200,p.ptb.rightrect(2)+200,p.ptb.rightrect(1),p.ptb.rightrect(4),10);
+%         
+%         Screen('FillRect'   ,p.ptb.w, [255,255,255], p.ptb.FixCross{setdiff([1 2],fix_i)}');        
+%         TimeCrossJump = Screen('Flip',p.ptb.w,TimeCrossJump,0);%asap and dont clear
+%         Log(TimeCrossJump,4,0);%log the stimulus onset        
+        %% STIM OFF immediately after response acquisition, MONITOR KEYSTROKE        
+        [secs, keyCode, deltaSecs] = KbWait([],2);
+        Screen('FillRect'   , p.ptb.w, p.stim.bg    , p.ptb.imrect );        
+        Screen('Flip',p.ptb.w);%asap and dont clear
+        %Log key press
+%         pause(randsample([1 2 3 4]*p.mrt.tr,1));        
+        %%        
+        Screen('FillRect'   , p.ptb.w, p.stim.bg     , p.ptb.imrect );
+        Screen('FrameRect'  , p.ptb.w, [255 255 255] , p.ptb.leftrect,5);
+        Screen('FrameRect'  , p.ptb.w, [255 255 255] , p.ptb.rightrect,5);
+        for n=1:p.RewardDeserted
+            Screen('DrawTexture', p.ptb.w, p.ptb.reward_sprites,[],p.ptb.leftrewardrect{p.RewardDeserted}(n,:));
+        end
+        for n=1:p.RewardInhabited
+            Screen('DrawTexture', p.ptb.w, p.ptb.reward_sprites,[],p.ptb.rightrewardrect{p.RewardInhabited}(n,:));
+        end
+        TimeFeedback  = Screen('Flip',p.ptb.w,TimeStimOnset,0);%asap and dont clear
+        %%
         TimeEndStim = Screen('Flip',p.ptb.w,TimeEndStim,0);
         %send eyelink and ced a marker
+        if EyelinkWanted
+            Eyelink('Message', 'STIM_OFFSET');            
+        end
         Log(TimeEndStim,6,stim_id);%log the stimulus offset                
         %% Ask for ratings
         rect                   = [p.ptb.width*0.2  p.ptb.midpoint(2) p.ptb.width*0.6 100];
@@ -473,7 +421,7 @@ cleanup;
                 %% Only natural disaster occur in baseline
                 TimeStartShock         = WaitSecs('UntilTime',TimeStartReward);                
                 if EyelinkWanted
-                    Eyelink('Message', 'UCS Onset');
+                    Eyelink('Message', 'UCS_ONSET');
                 end
                 while GetSecs < TimeEndShock;                
                     Buzz;%this is anyway sent to CED.
@@ -495,7 +443,7 @@ cleanup;
                     %% Thief encountered.
                     TimeStartShock         = WaitSecs('UntilTime',TimeStartReward);                
                     if EyelinkWanted
-                        Eyelink('Message', 'UCS Onset');
+                        Eyelink('Message', 'UCS_ONSET');
                     end
                     while GetSecs < TimeEndShock;                
                         Buzz;%this is anyway sent to CED.
@@ -530,7 +478,7 @@ cleanup;
         %% record some more eye data after stimulus offset.
         WaitSecs('UntilTime',TimeTrackerOff);
         if EyelinkWanted
-            Eyelink('Message', 'Stim Offset');
+            Eyelink('Message', 'STIM_OFFSET');
             Eyelink('Message', 'BLANK_SCREEN');
         end
         TimeTrackerOff    = StopEyelinkRecording;                  
@@ -658,7 +606,7 @@ cleanup;
         p.duration.onset2shock         = p.duration.stim - p.duration.shock;
         p.duration.crossmoves          = p.duration.stim./2;
         p.duration.keep_recording      = 0.25;%this is the time we will keep recording (eye data) after stim offset.
-        p.duration.prestim             = .85;
+        p.duration.prestim             = .85;        
         %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %stimulus sequence: Explanation of the fields:
         s = load([fileparts(which('exp_FearGen_ForAll.m')) filesep 'bin' filesep 'feargen_seq.mat']);
@@ -702,6 +650,10 @@ cleanup;
         p.out.ShockFactor             = 2;%factor to multiply the PainThreshold with, will use this factor to propose the experimenter the final shock intensity to be used during the FearGen Experiment.
         %%
         p.var.current_bg              = p.stim.bg;%current background to be used.
+        %% reward business
+        p.RewardDeserted  = 2;
+        p.RewardInhabited = 4;
+        p.RewardSuper     = 8;
         %Save the stuff
         save(p.path.path_param,'p');
         %
@@ -1021,7 +973,7 @@ cleanup;
     end
     function SetPTB        
         %Sets the parameters related to the PTB toolbox. Including
-        %fontsizes, font names.
+        %fontsizes, font names.        
         %Default parameters
         Screen('Preference', 'SkipSyncTests', 1);
         Screen('Preference', 'DefaultFontSize', p.text.fontsize);
@@ -1047,18 +999,38 @@ cleanup;
         
         %Open a graphics window using PTB
         [p.ptb.w p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, p.var.current_bg,[3840/2 0 3840 1200]);
-        %Screen('BlendFunction', p.ptb.w, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        
+        Screen('BlendFunction', p.ptb.w, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);%for transparency to work
+        
         Screen('Flip',p.ptb.w);%make the bg
         p.ptb.slack                 = Screen('GetFlipInterval',p.ptb.w)./2;
         [p.ptb.width, p.ptb.height] = Screen('WindowSize', p.ptb.screenNumber);
+                
         
+        mid       = @(rect) [rect(3)-rect(1) rect(4)-rect(2)]/2;%find midpoint
+        midx      = @(rect) rect(1)+[rect(3)-rect(1)                ]/2;%find midpoint
+        midy      = @(rect) rect(2)+[                rect(4)-rect(2)]/2;%find midpoint
+        mergerect = @(rect) [min(rect(:,1:2),[],1) max(rect(:,3:4),[],1)];
         %find the mid position on the rect.
-        p.ptb.midpoint              = [ (p.ptb.rect(3)-p.ptb.rect(1))./2 (p.ptb.rect(4)-p.ptb.rect(2))./2];
+        p.ptb.midpoint              = mid(p.ptb.rect);
         %NOTE about RECT:
         %RectLeft=1, RectTop=2, RectRight=3, RectBottom=4.
-        p.ptb.imrect                = [ p.ptb.midpoint(1)-p.stim.width/2 p.ptb.midpoint(2)-p.stim.height/2 p.ptb.midpoint(1)-p.stim.width/2+p.stim.width p.ptb.midpoint(2)-p.stim.height/2+p.stim.height];
-        p.ptb.leftrect              = p.ptb.imrect-[p.stim.width 0 p.stim.width 0 ]*1.5;
-        p.ptb.rightrect             = p.ptb.imrect+[p.stim.width 0 p.stim.width 0 ]*1.5;
+        p.ptb.imrect                = [p.ptb.midpoint(1) - p.stim.width/2 p.ptb.midpoint(2)-p.stim.height/2 p.ptb.midpoint(1)-p.stim.width/2+p.stim.width p.ptb.midpoint(2)-p.stim.height/2+p.stim.height];
+        %%
+        p.ptb.leftrect              =  p.ptb.imrect      - [p.stim.width 0 p.stim.width 0 ];
+        p.ptb.rightrect             =  p.ptb.imrect      + [p.stim.width 0 p.stim.width 0 ];        
+        for m = 1:4
+            dummy = [];
+            for n = 1:m
+                dummy(n,:)                       = [p.ptb.midpoint.*[.1*n 1] p.ptb.midpoint.*[.1*n 1]+p.ptb.midpoint(1)*.1 ];                
+            end
+            p.ptb.leftrewardrect{m}          = dummy;
+            p.ptb.leftrewardrect{m}(:,[1 3]) = p.ptb.leftrewardrect{m}(:,[1 3]) + (midx(p.ptb.leftrect) - midx(mergerect(dummy))); 
+            p.ptb.rightrewardrect{m}         = p.ptb.leftrewardrect{m};
+            p.ptb.rightrewardrect{m}(:,1)    = p.ptb.leftrewardrect{m}(:,1) + (midx(p.ptb.rightrect)-midx(p.ptb.leftrect));
+            p.ptb.rightrewardrect{m}(:,3)    = p.ptb.leftrewardrect{m}(:,3) + (midx(p.ptb.rightrect)-midx(p.ptb.leftrect))
+        end        
+        %%
         p.ptb.cross_shift           = [180 -120]./2.5;%incremental upper and lower cross positions
         p.ptb.CrossPosition_x       = p.ptb.midpoint(1);%bb(1);%always the same
         p.ptb.CrossPosition_y       = p.ptb.midpoint(2)+p.ptb.cross_shift;%bb(1);%always the same
@@ -1088,10 +1060,11 @@ cleanup;
         p.ptb.keysOfInterest = [];for i = fields(p.keys)';p.ptb.keysOfInterest = [p.ptb.keysOfInterest p.keys.(i{1})];end
         fprintf('Key listening will be restricted to %d\n',p.ptb.keysOfInterest)
         RestrictKeysForKbCheck(p.ptb.keysOfInterest);
-        p.ptb.keysOfInterest=zeros(1,256);
-        p.ptb.keysOfInterest(p.keys.confirm) = 1;
-        %create a queue sensitive to only relevant keys.
-        % KbQueueCreate(p.ptb.device,p.ptb.keysOfInterest);%default device.
+        p.ptb.keysToMonitor                                      = zeros(256,1);
+        p.ptb.keysToMonitor(p.ptb.keysOfInterest)               = 1;
+        p.ptb.keysForResponse                                    = zeros(256,1);
+        p.ptb.keysForResponse([p.keys.increase p.keys.decrease]) = 1;
+        %create a queue sensitive to only relevant keys.        
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
         %prepare parallel port communication. This relies on cogent i
         %think. We could do it with PTB as well.
@@ -1129,7 +1102,7 @@ cleanup;
         %%
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
         %load the pictures to the video memory.
-        [p.ptb.stim_sprites p.ptb.valley_sprites] = CreateStimSprites(p.stim.files);%        
+        [p.ptb.stim_sprites p.ptb.valley_sprites p.ptb.reward_sprites] = CreateStimSprites(p.stim.files);%        
         %% take care of the circle presentation
         %order of faces on the circle that will be shown at the end.
         if phase == 4
@@ -1152,7 +1125,7 @@ cleanup;
         end
         
         %%
-        function [out out2]=CreateStimSprites(files)
+        function [out out2 out3]=CreateStimSprites(files)
             %loads all the stims to video memory
             for nStim = 1:size(files,1)
                 filename       = files(nStim,:);
@@ -1163,6 +1136,10 @@ cleanup;
             out2(1)        = Screen('MakeTexture', p.ptb.w, im );
             [im , ~, ~]    = imread('/home/onat/Dropbox/DesertedValley.jpg');
             out2(2)        = Screen('MakeTexture', p.ptb.w, im );
+                        
+            [im , ~, alpha] = imread('/home/onat/Dropbox/RewardToast.png');
+            im              = cat(3,im,alpha);
+            out3(1)         = Screen('MakeTexture', p.ptb.w, im );
         end
     end
     function [t]=StopEyelinkRecording
@@ -1194,7 +1171,7 @@ cleanup;
             fix_x = p.ptb.CrossPosition_x;
             fix_y = p.ptb.CrossPosition_y(fix);
             Eyelink('Message', 'TRIALID: %04d, PHASE: %04d, FILE: %04d, DELTACSP: %04d, ODDBALL: %04d, UCS: %04d, FIXX: %04d, FIXY %04d, MBLOCK %04d', nTrial, phase, nStim, dist, double(oddball), double(ucs),fix_x,fix_y,block_id);
-            Eyelink('Message', 'FX Onset at %d %d',fix_x,fix_y);
+            Eyelink('Message', 'FX_ONSET %d %d',fix_x,fix_y);
             % an integration message so that an image can be loaded as
             % overlay background when performing Data Viewer analysis.
             WaitSecs(0.01);
