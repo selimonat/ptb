@@ -79,9 +79,12 @@ if phase == 1
     %test
 %     ShowInstruction(1,1);
 %     ShowInstruction(2,1);
+    for ninst = [101]
+        ShowInstruction(ninst,1);
+    end
     PresentStimuli;
     
-elseif phase > 1%baseline, conditioning and test phases
+elseif phase > 1
     %
     if EyelinkWanted
         CalibrateEL;    
@@ -98,8 +101,14 @@ elseif phase > 1%baseline, conditioning and test phases
 %     end
     fprintf('Continuing...\n');
     %%
-    for ninst = [3 301 302]
-        ShowInstruction(ninst,1);
+    if phase == 2
+        for ninst = [102]
+            ShowInstruction(ninst,1);
+        end
+    elseif phase == 3
+        for ninst = [103]
+            ShowInstruction(ninst,1);
+        end
     end
     PresentStimuli;
 %     WaitSecs(2.5);
@@ -339,9 +348,10 @@ cleanup;
         elseif phase == 3
             ShowFace(1);
             RecordResponses();
+            
             Feedback();
         end
-        ZeroPoint = GetSecs;
+        ZeroPoint = GetSecs;        
         %%
         function ClearScreenAt(ThisTime)
 %             Screen('FillRect'   , p.ptb.w, p.stim.bg    , p.ptb.imrect );
@@ -350,7 +360,7 @@ cleanup;
         function ShowFace(withvalleys)          
             Screen('FillRect'       ,p.ptb.w, p.stim.bg    , p.ptb.imrect );%create a gray background
             Screen('FillRect'       ,p.ptb.w, [255,255,255], p.ptb.FixCross{fix_i}');%draw the prestimus cross atop
-            TimeCrossOn              = Screen('Flip',p.ptb.w,TimeCrossOnset,0);
+            TimeCrossOn            = Screen('Flip',p.ptb.w,TimeCrossOnset,0);
             Screen('DrawingFinished',p.ptb.w, 0);
             Screen('DrawTexture'    , p.ptb.w, p.ptb.stim_sprites(stim_id),[],p.ptb.imrect);
             
@@ -376,8 +386,15 @@ cleanup;
             end
         end
         %%
-        function RecordResponses()
-            [secs, keyCode, deltaSecs] = KbWait([],2);
+        function RecordResponses()            
+            while 1
+                [ keyIsDown, secs, keyCode ] = KbCheck;
+                if keyIsDown                   
+                    if keyCode(p.keys.increase) | keyCode(p.keys.decrease)
+                        break;
+                    end                    
+                end
+            end            
             Screen('FillRect'   , p.ptb.w, p.stim.bg    , p.ptb.imrect );
             Screen('Flip',p.ptb.w);
             Log(secs,7,find(keyCode))
@@ -386,34 +403,35 @@ cleanup;
           %%
         function Feedback()          
             TimeEndReward    = TimeStartReward + 4;
-            if find(keyCode) == p.keys.increase %% inhabited valley                
-                DrawReward([255 255 255],5,.3,[255 0 0],25,1);
-                message=Earnings(p.participant.reward_inhabited,'Inhabited');
-            else %% uninhabited valley                
-                DrawReward([255 0 0],25,1,[255 255 255],5,.3);
+            if keyCode(p.keys.increase) %% inhabited valley                
+                if ucs
+                   UCS(ucs);
+                   return;
+                else
+                   DrawReward([255 255 255],5,.3,[0 255 0],25,1);
+                   message=Earnings(p.participant.reward_inhabited,'Inhabited');                    
+                end
+            elseif keyCode(p.keys.decrease) %% uninhabited valley                
+                DrawReward([0 255 0],25,1,[255 255 255],5,.3);
                 message=Earnings(p.participant.reward_deserted,'Deserted');
             end            
             DrawFormattedText(p.ptb.w,message, 'center', 50,  [],[],[],[],2);
+            Bank('gain');
             TimeStartReward  = Screen('Flip',p.ptb.w,TimeStartReward,0);%asap and dont clear             
-            TimeEndReward = Screen('Flip',p.ptb.w,TimeEndReward,0);
+            TimeEndReward    = Screen('Flip',p.ptb.w,TimeEndReward,0);
             Log(TimeStartReward,1,dist);
             Log(TimeEndReward,8,dist);
                                     
             function DrawReward(uColor,uThickness,uOpacity,iColor,iThickness,iOpacity)
-                Screen('FrameRect'  , p.ptb.w, [255 255 255] , p.ptb.leftrect,5);
-                Screen('FrameRect'  , p.ptb.w, [255   0   0] , p.ptb.rightrect,25);
+                Screen('FrameRect'  , p.ptb.w, uColor , p.ptb.leftrect,uThickness);
+                Screen('FrameRect'  , p.ptb.w, iColor , p.ptb.rightrect,iThickness);
                 for n=1:p.RewardDeserted
-                    Screen('DrawTexture', p.ptb.w, p.ptb.reward_sprites,[],p.ptb.leftrewardrect{p.RewardDeserted}(n,:),[],[],.3);
+                    Screen('DrawTexture', p.ptb.w, p.ptb.reward_sprites,[],p.ptb.leftrewardrect{p.RewardDeserted}(n,:),[],[],uOpacity);
                 end
                 for n=1:p.RewardInhabited
-                    Screen('DrawTexture', p.ptb.w, p.ptb.reward_sprites,[],p.ptb.rightrewardrect{p.RewardInhabited}(n,:),[],[],1);
+                    Screen('DrawTexture', p.ptb.w, p.ptb.reward_sprites,[],p.ptb.rightrewardrect{p.RewardInhabited}(n,:),[],[],iOpacity);
                 end
-            end            
-            function [message]=Earnings(reward,valley_type)
-                p.participant.earning            = [p.participant.earning (randn(1)*.3+reward)];
-                p.participant.earning_cumulative = [p.participant.earning_cumulative p.participant.earning_cumulative(end) + p.participant.earning(end)];
-                message                          = sprintf('You selected: %s Valley.\nEARNED: %.2f food items.\nTOTAL EARNINGS: %.2f food items.',valley_type, p.participant.earning(end),p.participant.earning_cumulative(end));
-            end
+            end                        
         end           
         %%
         function UCS(ucs)
@@ -423,10 +441,10 @@ cleanup;
                 while GetSecs < TimeEndShock;
                     Buzz;%this is anyway sent to CED.
                 end
-                123123123132
                 %             message     = sprintf('You encountered a thief, who has stolen your food items.\nEARNED: %.2f food items.\nTOTAL EARNINGS: %.2f food items.',valley_type, p.participant.earning(end),p.participant.earning_cumulative(end));
-                message     = sprintf('You encountered a thief, who has stolen your food items.');
+                [message]=Earnings(-2,'');
                 %
+                Bank('loss');
                 DrawFormattedText(p.ptb.w,message, 'center', 'center',  [],[],[],[],2);
                 TimeStartReward  = Screen('Flip',p.ptb.w,TimeStartReward,0);%asap and dont clear             
                 TimeEndReward = Screen('Flip',p.ptb.w,TimeEndReward,0);
@@ -434,6 +452,44 @@ cleanup;
                 Log(TimeEndReward,8,dist);
             end
         end
+        function [message]=Earnings(reward,valley_type)            
+            p.participant.earning            = [p.participant.earning reward];
+            p.participant.earning_cumulative = [p.participant.earning_cumulative p.participant.earning_cumulative(end) + p.participant.earning(end)];
+            if reward > 0                
+                message  = sprintf('You selected: %s Valley.\nEARNED: %d food items.\nTOTAL EARNINGS: %d food items.',valley_type, p.participant.earning(end),p.participant.earning_cumulative(end));
+            else
+                message  = sprintf('You encountered the thief sibling, who has stolen your food items.');
+            end
+        end
+        
+        function Bank(gainORloss)
+            %%
+            p.ptb.bar_width   = 60;
+            p.ptb.bar_height  = 15;
+            p.ptb.bar_hspace  = 10;
+            p.ptb.bar_vspace  = 5;
+            rects            = [];
+            for nbar = 0:max(p.participant.earning_cumulative(end-1:end))-1
+                rects = [rects [p.ptb.rect(3)-p.ptb.bar_width-p.ptb.bar_hspace  ...
+                    p.ptb.rect(4)-(p.ptb.bar_vspace+p.ptb.bar_height)*nbar ...
+                    p.ptb.rect(3)-p.ptb.bar_hspace ...
+                    p.ptb.rect(4)-(p.ptb.bar_vspace+p.ptb.bar_height)*nbar-p.ptb.bar_height]'];
+            end
+            
+            if strcmp(gainORloss,'gain')
+                new     = round(p.participant.earning(end));
+                old     = round(p.participant.earning_cumulative(end-1));
+                colors  = [repmat([255;255;255],1,old) repmat([0;255;0],1,new)];
+            else strcmp(gainORloss,'loss')
+                new     = abs(round(p.participant.earning(end)));
+                old     = round(p.participant.earning_cumulative(end));
+                colors = [repmat([255;255;255],1,old) repmat([255;0;0],1,new)];
+            end
+            %%
+            Screen('FillRect'       ,p.ptb.w, colors, rects);%draw the prestimus cross atop
+        end
+        
+        
         %% compute times for all events
         mblock_id          = 0;                
         
@@ -720,11 +776,11 @@ cleanup;
            p.presentation.cross_position   = [2 2 2 2 2 2 2 2];
            p.presentation.tTrial           = length(p.presentation.cond_id);
         elseif phase == 3
-           p.presentation.cond_id          = [2 3 4 5 6 7 8 9];
-           p.presentation.stim_id          = [2 3 4 5 6 7 8 1];
+           p.presentation.cond_id          = [2 9 3 4 5 6 7 8];
+           p.presentation.stim_id          = [2 1 3 4 5 6 7 8];
            p.presentation.mblock           = [1 1 1 1 1 1 1 1];
            p.presentation.isi              = [3 3 3 3 3 3 3 3];
-           p.presentation.ucs              = [0 0 0 0 0 0 0 1];
+           p.presentation.ucs              = [0 1 0 1 0 1 0 1];
            p.presentation.oddball          = [0 0 0 0 0 0 0 0];
            p.presentation.dist             = [MinimumAngle((p.presentation.stim_id-1)*45,(csp-1)*45)];
            p.presentation.cross_position   = [2 2 2 2 2 2 2 2];
@@ -1053,13 +1109,27 @@ cleanup;
             text = ['Danke. Den aktiven Teil des Experiment haben Sie nun geschafft.\n'...
                 'Es folgt nun noch eine strukturelle Messung, die ca. 7 Minuten dauert.\n'...
                 'Sie k???nnen dabei ruhig die Augen schlie???en und sich entspannen.\n'];
-        elseif nInstruct == 100
-            text = ['Press button to see who is currently present\n'...
-                'in the inhabited valley.\n'...
-                'Then choose inhabited or deserted valleys to forage food for yourself.\n'];
         elseif nInstruct == 101
-            text = ['Now, please choose where you want to go:\n'...
-                    'Inhabited Valley <-> Deserted Valley.\n'];
+            text = ['Valley Learning\n'...
+                'Please select with ' 8592 ' and '  8594 ' keys in which valley\n' ... 
+                '(Deserted vs. Inhabited)\n'...
+                'you would like to forage for food.\n' ...
+                'The person who you will deal with in the inhabited valley\n' ...
+                'is also shown.'];
+        elseif nInstruct == 102
+            text = ['Sibling Learning\n'...
+                    'You will now encounter the ciblings that are currently\n'...
+                    'present in the inhabited valley.\n'...
+                    'One of the ciblings is a thief and the encounter results in\n' ...
+                     'a shock AND loss of food items.\n' ...
+                    'No key presses are required.'...
+                    ];        
+        elseif nInstruct == 103
+            text = ['Please select with ' 8592 ' and '  8594 ' keys in which valley\n' ... 
+                '(Deserted vs. Inhabited)\n'...
+                'you would like to forage for food.\n' ...
+                'The person who you will deal with in the inhabited valley\n' ...
+                'is also shown.'];
         else
             text = {''};
         end
