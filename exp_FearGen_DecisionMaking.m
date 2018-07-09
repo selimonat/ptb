@@ -22,7 +22,7 @@ if ~IsWindows
     %in PTB. This presentation will now replace the OUTP.m function with
     %the following code, which simply does nothing but allows the program
     %run.    
-    outp = @(x,y) 1;
+    %outp = @(x,y) 1;
 end
 if nargin < 5
     fprintf('Wrong number of inputs\n');
@@ -36,7 +36,8 @@ clear mex global functions;%clear all before we start.
 
 if IsWindows%clear cogent if we are in Windows and rely on Cogent for outp.
     cgshut;
-    global cogent;
+    config_io
+    global cogent;    
 end
 %%%%%%%%%%%load the GETSECS mex files so call them at least once
 GetSecs;
@@ -1143,7 +1144,7 @@ cleanup;
         Screen('Preference', 'SuppressAllWarnings', 1);
         %%Find the number of the screen to be opened
         screens                     =  Screen('Screens');
-        p.ptb.screenNumber          =  max(screens);%the maximum is the second monitor
+        p.ptb.screenNumber          =  1;%the maximum is the second monitor
         %Make everything transparent for debugging purposes.
         if debug
             commandwindow;
@@ -1293,13 +1294,14 @@ cleanup;
                 out(nStim)     = Screen('MakeTexture', p.ptb.w, im );
             end
             
-            [im , ~, ~]    = imread([homedir '/Dropbox/InhabitedValley.jpg']);
+            valley_path    = [fileparts(which('exp_FearGen_ForAll.m')) filesep 'bin' filesep 'FearGen_Instrumental_valleys' filesep];
+            [im , ~, ~]    = imread([valley_path 'InhabitedValley.jpg']);
             out2(1)        = Screen('MakeTexture', p.ptb.w, im );
             
-            [im , ~, ~]    = imread([homedir '/Dropbox/DesertedValley.jpg']);
+            [im , ~, ~]    = imread([valley_path 'DesertedValley.jpg']);
             out2(2)        = Screen('MakeTexture', p.ptb.w, im );
                         
-            [im , ~, alpha] = imread([homedir '/Dropbox/RewardToast.png']);
+            [im , ~, alpha] = imread([valley_path 'RewardToast.jpg']);
             im              = cat(3,im,alpha);
             out3(1)         = Screen('MakeTexture', p.ptb.w, im );
                         
@@ -1593,6 +1595,9 @@ cleanup;
         
         if any(abs(a) == 180);
             a(abs(a) == 180) = 180;
+        end
+        function D=rad2deg(R)
+            D = R*180/pi
         end
     end
 end
