@@ -22,7 +22,7 @@ if ~IsWindows
     %in PTB. This presentation will now replace the OUTP.m function with
     %the following code, which simply does nothing but allows the program
     %run.    
-    %outp = @(x,y) 1;
+    outp = @(x,y) 1;
 end
 if nargin < 5
     fprintf('Wrong number of inputs\n');
@@ -1144,7 +1144,7 @@ cleanup;
         Screen('Preference', 'SuppressAllWarnings', 1);
         %%Find the number of the screen to be opened
         screens                     =  Screen('Screens');
-        p.ptb.screenNumber          =  1;%the maximum is the second monitor
+        p.ptb.screenNumber          =  max(screens);%the maximum is the second monitor
         %Make everything transparent for debugging purposes.
         if debug
             commandwindow;
