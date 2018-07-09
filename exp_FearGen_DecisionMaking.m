@@ -29,10 +29,6 @@ if nargin < 5
     return;
 end
 
-if nargin == 5
-    CurrentGains = 0;
-end
-
 csn   = mod( csp + 8/2-1, 8)+1;%obtain CS- from the CS+ faces
 commandwindow;%focus on the command window, so that output is not written on the editor
 %clear everything
@@ -358,16 +354,16 @@ cleanup;
             Screen('Flip',p.ptb.w,ThisTime,0);
         end
         function ShowFace(withvalleys)          
-            Screen('FillRect'       ,p.ptb.w, p.stim.bg    , p.ptb.imrect );%create a gray background
+            Screen('FillRect'       ,p.ptb.w, p.stim.bg    );%create a gray background
             Screen('FillRect'       ,p.ptb.w, [255,255,255], p.ptb.FixCross{fix_i}');%draw the prestimus cross atop
-            TimeCrossOn            = Screen('Flip',p.ptb.w,TimeCrossOnset,0);
-            Screen('DrawingFinished',p.ptb.w, 0);
-            Screen('DrawTexture'    , p.ptb.w, p.ptb.stim_sprites(stim_id),[],p.ptb.imrect);
-            
+            TimeCrossOn            = Screen('Flip',p.ptb.w,TimeCrossOnset,0);            
+            %%
+            Screen('DrawTexture'    , p.ptb.w, p.ptb.stim_sprites(stim_id),[],p.ptb.imrect);            
             if withvalleys
-                ShowValleys()
+                 ShowValleys()
             end
             TimeStimOnset            = Screen('Flip',p.ptb.w,TimeStimOnset,0);%asap and dont clear
+            %%
             Log(TimeCrossOn,1,fix_i);%actual cross onset.
             Log(TimeStimOnset,3,dist);%log the stimulus onset
             
@@ -476,11 +472,11 @@ cleanup;
                     p.ptb.rect(4)-(p.ptb.bar_vspace+p.ptb.bar_height)*nbar-p.ptb.bar_height]'];
             end
             
-            if strcmp(gainORloss,'gain')
+            if strcmp(gainORloss,'gain');
                 new     = round(p.participant.earning(end));
                 old     = round(p.participant.earning_cumulative(end-1));
                 colors  = [repmat([255;255;255],1,old) repmat([0;255;0],1,new)];
-            else strcmp(gainORloss,'loss')
+            else strcmp(gainORloss,'loss');
                 new     = abs(round(p.participant.earning(end)));
                 old     = round(p.participant.earning_cumulative(end));
                 colors = [repmat([255;255;255],1,old) repmat([255;0;0],1,new)];
@@ -1151,7 +1147,7 @@ cleanup;
         %Make everything transparent for debugging purposes.
         if debug
             commandwindow;
-            PsychDebugWindowConfiguration(0,0.5);
+            PsychDebugWindowConfiguration(0,0.25);
 %;
         end
         %set the resolution correctly
@@ -1161,7 +1157,8 @@ cleanup;
         fprintf('Resolution of the screen is %dx%d...\n',res.width,res.height);
         
         %Open a graphics window using PTB
-        [p.ptb.w p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, p.var.current_bg,[3840/2 0 3840 1200]);
+%         [p.ptb.w p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, p.var.current_bg,[3840/2 0 3840 1200]);
+        [p.ptb.w p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, p.var.current_bg);
         
         Screen('BlendFunction', p.ptb.w, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);%for transparency to work
         
@@ -1296,13 +1293,13 @@ cleanup;
                 out(nStim)     = Screen('MakeTexture', p.ptb.w, im );
             end
             
-            [im , ~, ~]    = imread('/home/onat/Dropbox/InhabitedValley.jpg');
+            [im , ~, ~]    = imread([homedir '/Dropbox/InhabitedValley.jpg']);
             out2(1)        = Screen('MakeTexture', p.ptb.w, im );
             
-            [im , ~, ~]    = imread('/home/onat/Dropbox/DesertedValley.jpg');
+            [im , ~, ~]    = imread([homedir '/Dropbox/DesertedValley.jpg']);
             out2(2)        = Screen('MakeTexture', p.ptb.w, im );
                         
-            [im , ~, alpha] = imread('/home/onat/Dropbox/RewardToast.png');
+            [im , ~, alpha] = imread([homedir '/Dropbox/RewardToast.png']);
             im              = cat(3,im,alpha);
             out3(1)         = Screen('MakeTexture', p.ptb.w, im );
                         
