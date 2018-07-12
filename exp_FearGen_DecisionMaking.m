@@ -9,7 +9,7 @@ function [p]=exp_FearGen_DecisionMaking(subject,Nseq,phase,csp,PainThreshold,Cur
 
 
 
-debug   = 1;%debug mode => 1: transparent window enabling viewing the background.
+debug         = 1;%debug mode => 1: transparent window enabling viewing the background.
 EyelinkWanted = 0;%is Eyelink wanted?
 %replace parallel port function with a dummy function
 if ~IsWindows
@@ -490,127 +490,7 @@ cleanup;
         %% compute times for all events
         mblock_id          = 0;                
         
-        %TimeCrossJump     = TimeStimOnset  + p.duration.stim/2;
-        %% Prestimulus cross
-% % %         StartEyelinkRecording(nTrial,stim_id,p.var.ExpPhase,dist,oddball,ucs,fix_i,mblock_id);%I would be cautious here, the first trial is never recorded in the EDF file, reason yet unknown.        
-% % % 
-% % %         %draw also the fixation cross
-% % % %         Screen('FillRect'   , p.ptb.w, [255,255,255], p.ptb.FixCross{fix_i}');
-% % %         % STIMULUS ONSET
-% % %         
-% % %         %send eyelink and ced a marker asap
-% % %         if EyelinkWanted
-% % %             Eyelink('Message', 'STIMONSET');
-% % %             Eyelink('Message', 'SYNCTIME');
-% % %         end
-% % %         MarkCED( p.com.lpt.address, p.com.lpt.StimOnset );%this actually didn't really work nicely.
-% % %         %the first stim onset pulse is always missing. This could be due to
-% % %         %the fact that the state of the port was already 1 and thus CED
-% % %         %didn't realize this command.                
-% % %         
-% % % %         %% CROSS JUMPS (same as just above but with a different fix position)        
-% % % %         %draw all images
-% % % %         Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(stim_id),[],p.ptb.imrect);
-% % % %         Screen('DrawTexture', p.ptb.w, p.ptb.valley_sprites(1),[],p.ptb.rightrect);
-% % % %         Screen('DrawTexture', p.ptb.w, p.ptb.valley_sprites(2),[],p.ptb.leftrect);
-% % % %         %draw arrows
-% % % %         Screen('DrawLine'   ,p.ptb.w,[],p.ptb.leftrect(3),p.ptb.leftrect(2),p.ptb.leftrect(3)-200,p.ptb.leftrect(2)+200,10);
-% % % %         Screen('DrawLine'   ,p.ptb.w,[],p.ptb.leftrect(3)-200,p.ptb.leftrect(2)+200,p.ptb.leftrect(3),p.ptb.leftrect(4),10);
-% % % %         Screen('DrawLine'   ,p.ptb.w,[],p.ptb.rightrect(1),p.ptb.rightrect(2),p.ptb.rightrect(3)-200,p.ptb.rightrect(2)+200,10);
-% % % %         Screen('DrawLine'   ,p.ptb.w,[],p.ptb.rightrect(3)-200,p.ptb.rightrect(2)+200,p.ptb.rightrect(1),p.ptb.rightrect(4),10);
-% % % %         
-% % % %         Screen('FillRect'   ,p.ptb.w, [255,255,255], p.ptb.FixCross{setdiff([1 2],fix_i)}');        
-% % % %         TimeCrossJump = Screen('Flip',p.ptb.w,TimeCrossJump,0);%asap and dont clear
-% % % %         Log(TimeCrossJump,4,0);%log the stimulus onset        
-% % %         %% STIM OFF immediately after response acquisition, MONITOR KEYSTROKE        
-% % %         if ~ucs
-% % %             
-% % %         else
-% % %             WaitSecs(2)
-% % %         end
-% % %         
-% % %         time2reward        = randsample([1 2 3 4]*p.mrt.tr,1);        
-% % %         time2reward        = randsample([1]*p.mrt.tr,1);        
-% % %         TimeStartReward    = TimeEndStim      + time2reward;        
-% % %         TimeEndShock       = TimeStartReward  + p.duration.shock;   
-% % %         TimeEndReward      = TimeStartReward  + 4;        
-% % %         %Log key press        
-% % %         Log(TimeEndStim,6,stim_id);%log the stimulus offset                
-% % %         %% Show the rewards, highlight the selected one.        
-% % %         Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(stim_id),[],p.ptb.imrect);
-% % %         if ucs ~= 1            
-% % %                     
-% % %             
-% % %         elseif ucs == 1
-% % %                 %draw everything fainted.
-% % %                 Screen('FrameRect'  , p.ptb.w, [255 255 255] , p.ptb.leftrect,5);
-% % %                 Screen('FrameRect'  , p.ptb.w, [255 255 255] , p.ptb.rightrect,5);
-% % %                 for n=1:p.RewardDeserted
-% % %                     Screen('DrawTexture', p.ptb.w, p.ptb.reward_sprites,[],p.ptb.leftrewardrect{p.RewardDeserted}(n,:),[],[],.3);
-% % %                 end
-% % %                 for n=1:p.RewardInhabited
-% % %                     Screen('DrawTexture', p.ptb.w, p.ptb.reward_sprites,[],p.ptb.rightrewardrect{p.RewardInhabited}(n,:),[],[],.3);
-% % %                 end
-% % %             if phase == 3                 
-% % %                 %% Only natural disaster occur in baseline
-% % %                 TimeStartShock         = WaitSecs('UntilTime',TimeStartReward);                
-% % %                 if EyelinkWanted
-% % %                     Eyelink('Message', 'UCS_ONSET');
-% % %                 end
-% % %                 while GetSecs < TimeEndShock;                
-% % %                     Buzz;%this is anyway sent to CED.
-% % %                 end
-% % %                 Log(TimeStartShock,5,NaN);%UCS delivery...This is done here to not waste time there
-% % %                 %% Reward Screen.
-% % %                 p.participant.earning                = [p.participant.earning (randn(1)*.3+p.participant.reward_thief)];
-% % %                 p.participant.earning_cumulative     = [p.participant.earning_cumulative p.participant.earning_cumulative(end) + p.participant.earning(end)];
-% % %                 message                              = sprintf('A NATURAL DISASTER hit both valleys.\nLOST: %.2f food items.\nTOTAL EARNINGS: %.2f food items.', abs(p.participant.earning(end)),p.participant.earning_cumulative(end));            
-% % %             end
-% % %         end
-% % %         %
-% % %         
-% % %         %send eyelink and ced a marker
-% % %         if EyelinkWanted
-% % %             Eyelink('Message', 'STIM_OFFSET');            
-% % %         end
-% % % 
-% % % %         %% REWARD SCREEN                
-% % % %         if ucs == 1
-% % % %             %% Deliver shock OR make natural disaster.
-% % % %         elseif phase == 3
-% % % %             %% During conditioning, thieves replace natural disasters, but only in the inhabited valley.
-% % % %             if rating == 1
-% % % %                 %% deserted valley (participant avoids the thief)
-% % % %                 p.participant.earning            = [p.participant.earning (randn(1)*.3+p.participant.reward_deserted)];
-% % % %                 p.participant.earning_cumulative = [p.participant.earning_cumulative p.participant.earning_cumulative(end) + p.participant.earning(end)];
-% % % %                 message                          = sprintf('You selected: Deserted Valley.\nEARNED: %.2f food items.\nTOTAL EARNINGS: %.2f food items.',p.participant.earning(end),p.participant.earning_cumulative(end));
-% % % %             elseif rating == 2
-% % % %                 %% Thief encountered.
-
-% % % %                 if EyelinkWanted
-% % % %                     Eyelink('Message', 'UCS_ONSET');
-% % % %                 end
-
-% % % %                 Log(TimeStartShock,5,NaN);%UCS delivery...This is done here to not waste time there
-% % % %                 %%
-% % % %                 p.participant.earning            = [p.participant.earning (randn(1)*.3+p.participant.reward_thief)];
-% % % %                 p.participant.earning_cumulative = [p.participant.earning_cumulative p.participant.earning_cumulative(end) + p.participant.earning(end)];
-% % % %                 message                          = sprintf('You selected: %s.\n This person turned to be a thief!!!\nLOST: %.2f food items.\nTOTAL EARNINGS: %.2f food items.',valleys{rating}, abs(p.participant.earning(end)),p.participant.earning_cumulative(end));
-% % % %             end
-% % % %         end
-% % % %         
-% % %         
-% % %         Screen('Flip',p.ptb.w);
-% % %         
-% % %         WaitSecs('UntilTime',TimeEndReward);
-% % %         
-% % %         %% record some more eye data after stimulus offset.
-% % % 
-% % %         if EyelinkWanted
-% % %             Eyelink('Message', 'STIM_OFFSET');
-% % %             Eyelink('Message', 'BLANK_SCREEN');
-% % %         end
-% % %         TimeTrackerOff    = StopEyelinkRecording;                  
+           
     end
 
     function SetParams
@@ -753,15 +633,18 @@ cleanup;
         %       
         
         if phase == 1
-           p.presentation.cond_id          = [1 2 3 4 5 6 7 8];
-           p.presentation.stim_id          = [1 2 3 4 5 6 7 8];
-           p.presentation.mblock           = [1 1 1 1 1 1 1 1];
-           p.presentation.isi              = [3 3 3 3 3 3 3 3];
-           p.presentation.ucs              = [0 0 0 0 0 0 0 0];
-           p.presentation.oddball          = [0 0 0 0 0 0 0 0];
-           p.presentation.dist             = [MinimumAngle((p.presentation.stim_id-1)*45,(csp-1)*45)];
-           p.presentation.cross_position   = [2 2 2 2 2 2 2 2];
-           p.presentation.tTrial           = length(p.presentation.cond_id); 
+            repeat = 2;
+            for n = 1:repeat
+                p.presentation.cond_id          = [p.presentation.cond_id [1 2 3 4 5 6 7 8]];
+                p.presentation.stim_id          = [1 2 3 4 5 6 7 8];
+                p.presentation.mblock           = [1 1 1 1 1 1 1 1];
+                p.presentation.isi              = [3 3 3 3 3 3 3 3];
+                p.presentation.ucs              = [0 0 0 0 0 0 0 0];
+                p.presentation.oddball          = [0 0 0 0 0 0 0 0];
+                p.presentation.dist             = [MinimumAngle((p.presentation.stim_id-1)*45,(csp-1)*45)];
+                p.presentation.cross_position   = [2 2 2 2 2 2 2 2];
+                p.presentation.tTrial           = length(p.presentation.cond_id); 
+            end
         elseif phase == 2            
            p.presentation.cond_id          = [9 5 9 5 9 5 9 5];
            p.presentation.stim_id          = [1 5 1 5 1 5 1 5];
@@ -1108,7 +991,7 @@ cleanup;
                 'Sie k???nnen dabei ruhig die Augen schlie???en und sich entspannen.\n'];
         elseif nInstruct == 101
             text = ['Valley Learning\n'...
-                'Please select with ' 8592 ' and '  8594 ' keys in which valley\n' ... 
+                'Please select with left and right arrow keys in which valley\n' ... 
                 '(Deserted vs. Inhabited)\n'...
                 'you would like to forage for food.\n' ...
                 'The person who you will deal with in the inhabited valley\n' ...
@@ -1144,7 +1027,7 @@ cleanup;
         Screen('Preference', 'SuppressAllWarnings', 1);
         %%Find the number of the screen to be opened
         screens                     =  Screen('Screens');
-        p.ptb.screenNumber          =  max(screens);%the maximum is the second monitor
+        p.ptb.screenNumber          =  0;%the maximum is the second monitor
         %Make everything transparent for debugging purposes.
         if debug
             commandwindow;
