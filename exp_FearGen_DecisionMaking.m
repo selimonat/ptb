@@ -239,15 +239,15 @@ cleanup;
         %these are the intervals of importance
         %time2fixationcross->cross2onset->onset2shock->shock2offset
         %these (duration.BLA) are average duration values:
-        p.duration.stim                = 1.5;%2;%s
-        p.duration.shock               = 0.1;%s;x
-        p.duration.shockpulse          = 0.005;%ms; duration of each individual pulses
-        p.duration.intershockpulse     = 0.01;%ms; and the time between each pulse
-        p.duration.onset2shock         = p.duration.stim - p.duration.shock;
-        p.duration.crossmoves          = p.duration.stim./2;
-        p.duration.keep_recording      = 0.25;%this is the time we will keep recording (eye data) after stim offset.
-        p.duration.prestim             = .85;
-        p.duration.reward_screen_duration = 4;%seconds
+        p.duration.stim                   = 1.5;%2;%s
+        p.duration.shock                  = 0.1;%s;x
+        p.duration.shockpulse             = 0.005;%ms; duration of each individual pulses
+        p.duration.intershockpulse        = 0.01;%ms; and the time between each pulse
+        p.duration.onset2shock            = p.duration.stim - p.duration.shock;
+        p.duration.crossmoves             = p.duration.stim./2;
+        p.duration.keep_recording         = 0.25;%this is the time we will keep recording (eye data) after stim offset.
+        p.duration.prestim                = .85;
+        p.duration.reward_screen_duration = 4;%seconds        
         %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %stimulus sequence: Explanation of the fields:
         %Explanation of the fields:
@@ -265,30 +265,21 @@ cleanup;
         %% create the randomized design
         if phase == 1
             %%
-            p.presentation.cond_id          = [1 2 3 4 5 6 7 8];
-            p.presentation.stim_id          = [1 2 3 4 5 6 7 8];
-            p.presentation.mblock           = [1 1 1 1 1 1 1 1];
-            p.presentation.isi              = [3 3 3 3 3 3 3 3];
-            p.presentation.ucs              = [0 0 0 0 0 0 0 0];
-            p.presentation.oddball          = [0 0 0 0 0 0 0 0];
-            p.presentation.dist             = [MinimumAngle((p.presentation.stim_id-1)*45,(csp-1)*45)];
-            p.presentation.cross_position   = [2 2 2 2 2 2 2 2];
-            p.presentation.tTrial           = length(p.presentation.cond_id);
-            
+            nrepeat                         = 1;
+            RR                              = 0;
+            SeqGen([1:8],nrepeat,RR);
         elseif phase == 2
             %%
-            keyboard
             nrepeat                         = 8;
             RR                              = .5;
-            SeqGen([p.stim.cs_plus p.stim.cs_neg],nrepeat,RR);
-            p.presentation                                                                    
+            SeqGen([p.stim.cs_plus p.stim.cs_neg],nrepeat,RR);                                                          
         elseif phase == 3
             %%
-            nrepeat                         = 10;
+            nrepeat                         = 8;
             RR                              = .5;
             SeqGen([1:8],nrepeat,RR)
-            p.presentation            
-        end                                        
+        end
+        p.presentation
         %Record which Phase are we going to run in this run.
         p.stim.phase                   = phase;
         p.out.rating                  = [];%will contain explicite ratings of UCS likelihood
@@ -312,27 +303,41 @@ cleanup;
             %%
             stim_perblock                   = length(base_seq);
             t_stim                          = nrepeat*stim_perblock;
-            t_ucs                           = floor(nrepeat*RR)
+            t_ucs                           = floor(nrepeat*RR);
             
-            [p.presentation.stim_id,idx]    = Shuffle(repmat(base_seq,1,nrepeat));
-            p.presentation.stim_id          = p.presentation.stim_id(:)';
-            
-            fprintf('There are %d presentation of the CS+ face\n',t_stim);
+            p.presentation.stim_id = [];
+            for i = 1:nrepeat
+                p.presentation.stim_id      = [p.presentation.stim_id Shuffle(base_seq)'];
+            end                                                
             
             ucs_idx                         = Shuffle(find(p.presentation.stim_id == csp));
             ucs_idx                         = ucs_idx(1:t_ucs);
-            fprintf('There are %d UCS trials: Reinforcement rate is %f\n',t_ucs,t_ucs/t_stim);
+                        
             p.presentation.ucs              = zeros(1,length(p.presentation.stim_id));
             p.presentation.ucs(ucs_idx)     = 1;
             p.presentation.cond_id          = p.presentation.stim_id;
             p.presentation.cond_id(ucs_idx) = 9;
-            p.presentation.isi              = RandSample([2,4,6,8,10],[1 t_stim]);
+            
+            p.presentation.isi              = RandSample([1:4]*p.mrt.tr, [1 t_stim]);
+            p.presentation.time2reward      = RandSample([1:4]*p.mrt.tr, [1 t_stim]);
+            
             p.presentation.mblock           = Vectorize(repmat([1:t_stim/stim_perblock],stim_perblock,1))';
             p.presentation.oddball          = zeros(1,t_stim);
             p.presentation.dist             = [MinimumAngle((p.presentation.stim_id-1)*45,(csp-1)*45)];
-            p.presentation.cross_position   = repmat(2,[1,t_stim]);
+            p.presentation.cross_position   = repmat(2,[1,t_stim]);            
+            
             p.presentation.tTrial           = length(p.presentation.cond_id);
             p.presentation.rr               = t_ucs/nrepeat;
+            
+            duration                        = sum(p.presentation.isi)+sum(p.presentation.time2reward)+t_stim*p.duration.reward_screen_duration+t_stim*p.duration.stim;
+            duration2                        = sum(p.presentation.isi)+sum(p.presentation.time2reward)+t_stim*p.duration.reward_screen_duration+t_stim*.5;
+            
+                        
+            fprintf('There are %d presentation of the CS+ face\n',t_stim);
+            fprintf('There are %d UCS trials: Reinforcement rate is %f\n',t_ucs,t_ucs/nrepeat);
+            
+            fprintf('The duration of this phase is expected to last %d seconds %g minutes with the current stimulus duration...\n',duration,duration/60);
+            fprintf('Otherwise %d seconds %g minutes assuming an average of .5 seconds reaction time...\n',duration2,duration2/60);
         end
     end    
     function SetPTB        
@@ -388,7 +393,7 @@ cleanup;
         p.ptb.rightrect             =  p.ptb.imrect      + [p.stim.width 0 p.stim.width 0 ];
         
         tiles                       =  RectMatrix(100,0, 4, p.participant.reward_deserted );
-        p.ptb.leftrewardrect        =  recenter(tiles,midx(p.ptb.leftrect),midy(p.ptb.leftrect))
+        p.ptb.leftrewardrect        =  recenter(tiles,midx(p.ptb.leftrect),midy(p.ptb.leftrect));
 
         tiles                       =  RectMatrix(100,0, 4, p.participant.reward_inhabited );
         p.ptb.rightrewardrect       =  recenter(tiles,midx(p.ptb.rightrect),midy(p.ptb.rightrect));
@@ -421,10 +426,13 @@ cleanup;
         p.ptb.device        = [];
         %get all the required keys in a vector
         p.ptb.keysOfInterest = [];for i = fields(p.keys)';p.ptb.keysOfInterest = [p.ptb.keysOfInterest p.keys.(i{1})];end
-        fprintf('Key listening will be restricted to %d\n',p.ptb.keysOfInterest)
+        fprintf('\n');
+        fprintf('Key listening will be restricted to:');
+        fprintf('%d, ',p.ptb.keysOfInterest);
+        fprintf('\n');
         RestrictKeysForKbCheck(p.ptb.keysOfInterest);
         p.ptb.keysToMonitor                                      = zeros(256,1);
-        p.ptb.keysToMonitor(p.ptb.keysOfInterest)               = 1;
+        p.ptb.keysToMonitor(p.ptb.keysOfInterest)                = 1;
         p.ptb.keysForResponse                                    = zeros(256,1);
         p.ptb.keysForResponse([p.keys.increase p.keys.decrease]) = 1;
         %create a queue sensitive to only relevant keys.        
@@ -579,12 +587,12 @@ cleanup;
             %Get the variables that Trial function needs.
             stim_id      = p.presentation.stim_id(nTrial);
             fix_y        = p.presentation.cross_position(nTrial);
-            ISI          = p.presentation.isi(nTrial)+1;%[1 2 3] more or less equally
+            ISI          = p.presentation.isi(nTrial);
             ucs          = p.presentation.ucs(nTrial);
             oddball      = p.presentation.oddball(nTrial);
-            prestimdur   = p.duration.prestim+rand(1)*.25;
+            prestimdur   = p.duration.prestim;
             dist         = p.presentation.dist(nTrial);            
-            time2reward  = 5;%randsample([.5 ]*p.mrt.tr,1);            
+            time2reward  = p.presentation.time2reward(nTrial);
             %
             OnsetTime    = ZeroPoint + ISI;            
                         
@@ -599,11 +607,11 @@ cleanup;
                
         end
     end
-    function [ZeroPoint]=Trial(nTrial, TimeStimOnset , prestimdur, stim_id , ucs  , fix_i, oddball, dist,time2reward)        
+    function [ZeroPoint]=Trial(nTrial, TimeStimOnset , prestimdur, stim_id , ucs  , fix_i, oddball, dist, time2reward)        
         %% compute time of different events
         keyCode            = [];        
         TimeCrossOnset     = TimeStimOnset    - prestimdur;
-        TimeStimOffset     = TimeStimOnset    + 1.5;
+        TimeStimOffset     = TimeStimOnset    + p.duration.stim;
         TimeStartReward    = TimeStimOffset   + time2reward;        
         TimeEndReward      = TimeStartReward  + p.duration.reward_screen_duration;
         TimeStartShock     = TimeStartReward;
@@ -736,8 +744,8 @@ cleanup;
                 TimeStartReward  = Screen('Flip',p.ptb.w,TimeStartReward,0);%asap and dont clear             
                 TimeEndReward    = Screen('Flip',p.ptb.w,TimeEndReward,0);
                 %
-                Log(TimeStartShock ,-4);
-                Log(TimeStartShock , 4);
+                Log(TimeStartShock ,-4, NaN);
+                Log(TimeStartShock , 4, NaN);
                 Log(TimeStartReward, 3, dist);
                 Log(TimeEndReward  ,-3, dist);
             end
@@ -1086,21 +1094,21 @@ cleanup;
                 '(Deserted vs. Inhabited)\n'...
                 'you would like to forage for food.\n' ...
                 'The person who you will deal with in the inhabited valley\n' ...
-                'is also shown.'];
+                'is also shown.\n'];
         elseif nInstruct == 102
             text = ['Sibling Learning\n'...
                     'You will now encounter the ciblings that are currently\n'...
                     'present in the inhabited valley.\n'...
-                    'One of the ciblings is a thief and the encounter results in\n' ...
-                     'a shock AND loss of food items.\n' ...
-                    'No key presses are required.'...
+                    'One of the siblings is a thief and the encounter results in\n' ...
+                    'a shock AND loss of food items.\n' ...
+                    'No key presses are required.\n'...
                     ];        
         elseif nInstruct == 103
-            text = ['Please select with ' 8592 ' and '  8594 ' keys in which valley\n' ... 
+            text = ['Please select with left and right keys in which valley\n' ... 
                 '(Deserted vs. Inhabited)\n'...
                 'you would like to forage for food.\n' ...
                 'The person who you will deal with in the inhabited valley\n' ...
-                'is also shown.'];
+                'is also shown.\n'];
         else
             text = {''};
         end
