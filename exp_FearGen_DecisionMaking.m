@@ -276,7 +276,7 @@ cleanup;
         elseif phase == 3
             %%
             nrepeat                         = 8;
-            RR                              = .5;
+            RR                              = 1;
             SeqGen([1:8],nrepeat,RR)
         end
         p.presentation
