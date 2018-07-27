@@ -357,7 +357,7 @@ cleanup;
         %Make everything transparent for debugging purposes.
         if debug
             commandwindow;
-            PsychDebugWindowConfiguration(0,0.25);
+            PsychDebugWindowConfiguration(0,0.75);
 %;
         end
         %set the resolution correctly
@@ -367,8 +367,8 @@ cleanup;
         fprintf('Resolution of the screen is %dx%d...\n',res.width,res.height);
         
         %Open a graphics window using PTB
-        [p.ptb.w p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, p.var.current_bg,[3840/2 0 3840 1200]);
-%         [p.ptb.w p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, p.var.current_bg);
+%         [p.ptb.w p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, p.var.current_bg,[3840/2 0 3840 1200]);
+        [p.ptb.w p.ptb.rect]        = Screen('OpenWindow', p.ptb.screenNumber, p.var.current_bg);
         
         Screen('BlendFunction', p.ptb.w, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);%for transparency to work
         
@@ -657,10 +657,10 @@ cleanup;
                 Screen('DrawTexture'    , p.ptb.w, p.ptb.valley_sprites(1),[],p.ptb.rightrect);
                 Screen('DrawTexture'    , p.ptb.w, p.ptb.valley_sprites(2),[],p.ptb.leftrect);
                 %draw arrows
-                Screen('DrawLine'       , p.ptb.w,[],p.ptb.leftrect(3),p.ptb.leftrect(2),p.ptb.leftrect(3)-200,p.ptb.leftrect(2)+200,10);
-                Screen('DrawLine'       , p.ptb.w,[],p.ptb.leftrect(3)-200,p.ptb.leftrect(2)+200,p.ptb.leftrect(3),p.ptb.leftrect(4),10);
-                Screen('DrawLine'       , p.ptb.w,[],p.ptb.rightrect(1),p.ptb.rightrect(2),p.ptb.rightrect(3)-200,p.ptb.rightrect(2)+200,10);
-                Screen('DrawLine'       , p.ptb.w,[],p.ptb.rightrect(3)-200,p.ptb.rightrect(2)+200,p.ptb.rightrect(1),p.ptb.rightrect(4),10);
+                Screen('DrawLine'       , p.ptb.w,[],p.ptb.leftrect(3),p.ptb.leftrect(2),p.ptb.leftrect(3)-200,p.ptb.leftrect(2)+200,7);
+                Screen('DrawLine'       , p.ptb.w,[],p.ptb.leftrect(3)-200,p.ptb.leftrect(2)+200,p.ptb.leftrect(3),p.ptb.leftrect(4),7);
+                Screen('DrawLine'       , p.ptb.w,[],p.ptb.rightrect(1),p.ptb.rightrect(2),p.ptb.rightrect(3)-200,p.ptb.rightrect(2)+200,7);
+                Screen('DrawLine'       , p.ptb.w,[],p.ptb.rightrect(3)-200,p.ptb.rightrect(2)+200,p.ptb.rightrect(1),p.ptb.rightrect(4),7);
                 %draw frames
                 Screen('FrameRect'      , p.ptb.w, [255 255 255 .3] , p.ptb.leftrect,5);
                 Screen('FrameRect'      , p.ptb.w, [255 255 255 .3] , p.ptb.rightrect,5);                
