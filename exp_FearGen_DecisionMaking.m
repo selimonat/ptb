@@ -5,6 +5,7 @@ function [p]=exp_FearGen_DecisionMaking(subject,phase,csp,PainThreshold,CurrentG
 % not recorded/
 % Move StartTrial to the begninng of the experiment.
 % preload kbcheck kbwait
+%
 
 
 
