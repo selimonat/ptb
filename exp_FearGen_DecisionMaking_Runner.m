@@ -5,7 +5,7 @@ PainThreshold = 10;
 for world         = [1 2];
     % exp_FearGen_DecisionMaking(subject,phase,csp,PainThreshold,CurrentGains,world)
     phase         = 1;
-    CurrentGains  = 0;
+    CurrentGains  = 8;
     p             = exp_FearGen_DecisionMaking(subject,phase,csp,PainThreshold,CurrentGains,world);
     %%
     phase         = 2;

@@ -128,11 +128,12 @@ cleanup;
         p.participant.reward_thief       = -10;%or natural disaster
         p.participant.reward_deserted    = 2;
         worlds = {4,8};
-        p.participant.reward_inhabited   = worlds{world};        
+        p.participant.reward_inhabited   = worlds{world};
+        p.participant.thief_punishment   = 4;
         %mrt business
         p.mrt.dummy_scan              = 0;%this will wait until the 6th image is acquired.
         p.mrt.LastScans               = 0;%number of scans after the offset of the last stimulus
-        p.mrt.tr                      = 2;%in seconds.
+        p.mrt.tr                      = 1;%in seconds.
         %will count the number of events to be logged
         p.var.event_count             = 0;
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -272,7 +273,7 @@ cleanup;
         elseif phase == 2
             %%
             nrepeat                         = 8;
-            RR                              = .5;
+            RR                              = 1;
             SeqGen([p.stim.cs_plus p.stim.cs_neg],nrepeat,RR);                                                          
         elseif phase == 3
             %%
@@ -738,7 +739,7 @@ cleanup;
                     Buzz;%this is anyway sent to CED.
                 end
                 %             message     = sprintf('You encountered a thief, who has stolen your food items.\nEARNED: %.2f food items.\nTOTAL EARNINGS: %.2f food items.',valley_type, p.participant.earning(end),p.participant.earning_cumulative(end));
-                [message]=Earnings(-2,'');
+                [message]=Earnings(p.participant.thief_punishment,'');
                 %
                 Bank('loss');
                 DrawFormattedText(p.ptb.w,message, 'center', 'center',  [],[],[],[],2);
@@ -763,9 +764,9 @@ cleanup;
         function Bank(gainORloss)
             %%
             p.ptb.bar_width   = 60;
-            p.ptb.bar_height  = 15;
+            p.ptb.bar_height  = 4;
             p.ptb.bar_hspace  = 10;
-            p.ptb.bar_vspace  = 5;
+            p.ptb.bar_vspace  = 1;
             rects            = [];
             for nbar = 0:max(p.participant.earning_cumulative(end-1:end))-1
                 rects = [rects [p.ptb.rect(3)-p.ptb.bar_width-p.ptb.bar_hspace  ...
@@ -783,7 +784,7 @@ cleanup;
                 old     = round(p.participant.earning_cumulative(end));
                 colors = [repmat([255;255;255],1,old) repmat([255;0;0],1,new)];
             end
-            %%
+            %
             Screen('FillRect'       ,p.ptb.w, colors, rects);%draw the prestimus cross atop
         end        
         %% compute times for all events
