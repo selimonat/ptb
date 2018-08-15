@@ -10,11 +10,11 @@ function [p]=exp_FearGen_DecisionMaking(subject,phase,csp,PainThreshold,CurrentG
 
 
 
-debug         = 1;          %debug mode => 1: transparent window enabling viewing the background.
+debug         = 0;          %debug mode => 1: transparent window enabling viewing the background.
 EyelinkWanted = 0;          %is Eyelink wanted?
 
 if ~IsWindows               %replace parallel port function with a dummy function    
-    outp = @(x,y) 1;
+   % outp = @(x,y) 1;
 end
 
 if nargin ~= 6
@@ -124,12 +124,11 @@ cleanup;
     function SetParams        
         p.participant.earning            = [];
         p.participant.earning_cumulative = CurrentGains;
-        %% reward business
-        p.participant.reward_thief       = -10;%or natural disaster
+        %% reward business        
         p.participant.reward_deserted    = 2;
         worlds = {4,8};
         p.participant.reward_inhabited   = worlds{world};
-        p.participant.thief_punishment   = 4;
+        p.participant.thief_punishment   = -worlds{world};
         %mrt business
         p.mrt.dummy_scan              = 0;%this will wait until the 6th image is acquired.
         p.mrt.LastScans               = 0;%number of scans after the offset of the last stimulus
@@ -194,7 +193,7 @@ cleanup;
         p.stim.white                   = [255 255 255];
         %% font size and background gray level
         p.text.fontname                = 'Times New Roman';
-        p.text.fontsize                = 50;
+        p.text.fontsize                = 30;
         p.text.fixsize                 = 60;
         %rating business, how many ticks
         p.rating.division              = 10;%number of divisions for the rating slider
@@ -228,8 +227,8 @@ cleanup;
         p.com.lpt.address = 888;%parallel port of the computer.
         %codes for different events that are sent for logging in the
         %physiological computer.
-        p.com.lpt.digitimer = 12;%8
-        p.com.lpt.mBlock    = 128;
+        p.com.lpt.digitimer = 128;
+        p.com.lpt.mBlock    = 32;
         p.com.lpt.StimOnset = 64;
         p.com.lpt.oddball   = 32;
         p.com.lpt.ucs       = 16;
@@ -355,7 +354,7 @@ cleanup;
         Screen('Preference', 'SuppressAllWarnings', 1);
         %%Find the number of the screen to be opened
         screens                     =  Screen('Screens');
-        p.ptb.screenNumber          =  0;%the maximum is the second monitor
+        p.ptb.screenNumber          =  1;%the maximum is the second monitor
         %Make everything transparent for debugging purposes.
         if debug
             commandwindow;
@@ -784,7 +783,7 @@ cleanup;
                 old     = round(p.participant.earning_cumulative(end));
                 colors = [repmat([255;255;255],1,old) repmat([255;0;0],1,new)];
             end
-            %
+            %            
             Screen('FillRect'       ,p.ptb.w, colors, rects);%draw the prestimus cross atop
         end        
         %% compute times for all events
