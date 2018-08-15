@@ -14,7 +14,7 @@ debug         = 0;          %debug mode => 1: transparent window enabling viewin
 EyelinkWanted = 0;          %is Eyelink wanted?
 
 if ~IsWindows               %replace parallel port function with a dummy function    
-   % outp = @(x,y) 1;
+    %outp = @(x,y) 1;
 end
 
 if nargin ~= 6
@@ -126,9 +126,11 @@ cleanup;
         p.participant.earning_cumulative = CurrentGains;
         %% reward business        
         p.participant.reward_deserted    = 2;
-        worlds = {4,8};
+        worlds                           = {4,8};
         p.participant.reward_inhabited   = worlds{world};
-        p.participant.thief_punishment   = -worlds{world};
+        p.participant.thief_punishment   = -4;
+        p.participant.stimulus           = [];
+        p.participant.response           = [];
         %mrt business
         p.mrt.dummy_scan              = 0;%this will wait until the 6th image is acquired.
         p.mrt.LastScans               = 0;%number of scans after the offset of the last stimulus
@@ -278,7 +280,7 @@ cleanup;
             %%
             nrepeat                         = 8;
             RR                              = 1;
-            SeqGen([1:8],nrepeat,RR)
+            SeqGen([1:8],nrepeat,RR);
         end
         p.presentation
         %Record which Phase are we going to run in this run.
@@ -319,8 +321,11 @@ cleanup;
             p.presentation.cond_id          = p.presentation.stim_id;
             p.presentation.cond_id(ucs_idx) = 9;
             
-            p.presentation.isi              = RandSample([1:4]*p.mrt.tr, [1 t_stim]);
-            p.presentation.time2reward      = RandSample([1:4]*p.mrt.tr, [1 t_stim]);
+            p.presentation.isi              = RandSample([1:3]*p.mrt.tr, [1 t_stim]);
+            p.presentation.time2reward      = RandSample([1:3]*p.mrt.tr, [1 t_stim]);
+            
+%             p.presentation.isi              = ceil(exprnd(4,[1 t_stim]));
+%             p.presentation.time2reward      = ceil(exprnd(4,[1 t_stim]));
             
             p.presentation.mblock           = Vectorize(repmat([1:t_stim/stim_perblock],stim_perblock,1))';
             p.presentation.oddball          = zeros(1,t_stim);
@@ -331,7 +336,7 @@ cleanup;
             p.presentation.rr               = t_ucs/nrepeat;
             
             duration                        = sum(p.presentation.isi)+sum(p.presentation.time2reward)+t_stim*p.duration.reward_screen_duration+t_stim*p.duration.stim;
-            duration2                        = sum(p.presentation.isi)+sum(p.presentation.time2reward)+t_stim*p.duration.reward_screen_duration+t_stim*.5;
+            duration2                       = sum(p.presentation.isi)+sum(p.presentation.time2reward)+t_stim*p.duration.reward_screen_duration+t_stim*.5;
             
                         
             fprintf('There are %d presentation of the CS+ face\n',t_stim);
@@ -358,7 +363,7 @@ cleanup;
         %Make everything transparent for debugging purposes.
         if debug
             commandwindow;
-            PsychDebugWindowConfiguration(0,0.75);
+            PsychDebugWindowConfiguration(0,0.25);
 %;
         end
         %set the resolution correctly
@@ -685,6 +690,21 @@ cleanup;
             %log keypress and stim offset
             Log(TimeStimOffset , -2 ,dist);
             Log(secs,5,find(keyCode));
+            % register responses
+            p.participant.stimulus = [p.participant.stimulus dist         ];
+            if find(keyCode) == p.keys.decrease %left
+                p.participant.response = [p.participant.response 0];
+                fprintf('Participant selected the deserted valley.\n',find(keyCode))
+            else
+                p.participant.response = [p.participant.response 1];
+                fprintf('Participant selected the inhabited valley.\n',find(keyCode))
+            end
+            
+            for stim = [-135:45:180]
+                R = p.participant.response(p.participant.stimulus == stim);                
+                fprintf('Face %04d (%03d): Mean: %3.5g, Responses: %s \n',stim,length(R),mean(R),mat2str(R))                
+            end
+            fprintf('Current number of foods owned by the participant: %05d\n',p.participant.earning_cumulative(end))
             
             %update time for reward screens
             TimeStartReward    = secs             + time2reward;
@@ -694,7 +714,7 @@ cleanup;
         function Feedback()
             %show the feedback screen, deliver UCS if necessary, update the
             %Bank.
-            if keyCode(p.keys.increase) %% inhabited valley                
+            if keyCode(p.keys.increase) %% inhabited valley     
                 if ucs
                    UCS(ucs);
                    return;
@@ -726,14 +746,13 @@ cleanup;
                 
                 for n=1:p.participant.reward_inhabited
                     Screen('DrawTexture', p.ptb.w, p.ptb.reward_sprites,[],p.ptb.rightrewardrect(n,:),[],[],iOpacity);
-                end
-                
+                end                
             end                        
         end           
         function UCS(ucs)
-            TimeEndReward    = TimeStartReward + 4;            
-            if ucs
-                TimeStartShock = WaitSecs('UntilTime',TimeStartShock);
+            %TimeEndReward    = TimeStartReward + 4;            
+            if ucs                
+                TimeStartShock = WaitSecs('UntilTime',TimeStartReward);
                 while GetSecs < TimeEndShock;
                     Buzz;%this is anyway sent to CED.
                 end
@@ -1440,4 +1459,24 @@ cleanup;
         bottom          = top+p.stim.height/factor;
         myrect          = [left top right bottom];
     end
+
+    function r = exprnd(mu,varargin)       
+        
+        
+        if nargin < 1
+            error(message('stats:exprnd:TooFewInputs'));
+        end
+        
+        [err, sizeOut] = statsizechk(1,mu,varargin{:});
+        if err > 0
+            error(message('stats:exprnd:InputSizeMismatch'));
+        end
+        
+        % Return NaN for elements corresponding to illegal parameter values.
+        mu(mu < 0) = NaN;
+        
+        % Generate uniform random values, and apply the exponential inverse CDF.
+        r = -mu .* log(rand(sizeOut, 'like', mu)); % == expinv(u, mu)
+    end
+
 end
