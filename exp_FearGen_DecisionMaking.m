@@ -14,7 +14,7 @@ debug         = 0;          %debug mode => 1: transparent window enabling viewin
 EyelinkWanted = 0;          %is Eyelink wanted?
 
 if ~IsWindows               %replace parallel port function with a dummy function    
-    %outp = @(x,y) 1;
+%     outp = @(x,y) 1;
 end
 
 if nargin ~= 6
@@ -330,7 +330,8 @@ cleanup;
             p.presentation.mblock           = Vectorize(repmat([1:t_stim/stim_perblock],stim_perblock,1))';
             p.presentation.oddball          = zeros(1,t_stim);
             p.presentation.dist             = [MinimumAngle((p.presentation.stim_id-1)*45,(csp-1)*45)];
-            p.presentation.cross_position   = repmat(2,[1,t_stim]);            
+            p.presentation.cross_position   = repmat(2,[1,t_stim]);
+            p.presentation.inhab_position   = 2-double(rand(1,t_stim)<.5);%1:left;2:right
             
             p.presentation.tTrial           = length(p.presentation.cond_id);
             p.presentation.rr               = t_ucs/nrepeat;
@@ -393,17 +394,20 @@ cleanup;
         %NOTE about RECT:
         %RectLeft=1, RectTop=2, RectRight=3, RectBottom=4.
         p.ptb.imrect                = [p.ptb.midpoint(1) - p.stim.width/2 p.ptb.midpoint(2)-p.stim.height/2 p.ptb.midpoint(1)-p.stim.width/2+p.stim.width p.ptb.midpoint(2)-p.stim.height/2+p.stim.height];
-        %% reward positions
+        %% reward positions for both left, right and inh, des
         
         p.ptb.leftrect              =  p.ptb.imrect      - [p.stim.width 0 p.stim.width 0 ];
         p.ptb.rightrect             =  p.ptb.imrect      + [p.stim.width 0 p.stim.width 0 ];
         
         tiles                       =  RectMatrix(100,0, 4, p.participant.reward_deserted );
-        p.ptb.leftrewardrect        =  recenter(tiles,midx(p.ptb.leftrect),midy(p.ptb.leftrect));
-
+        p.ptb.leftrewardrect_des    =  recenter(tiles,midx(p.ptb.leftrect),midy(p.ptb.leftrect));
         tiles                       =  RectMatrix(100,0, 4, p.participant.reward_inhabited );
-        p.ptb.rightrewardrect       =  recenter(tiles,midx(p.ptb.rightrect),midy(p.ptb.rightrect));
-                
+        p.ptb.leftrewardrect_inh    =  recenter(tiles,midx(p.ptb.leftrect),midy(p.ptb.leftrect));        
+        
+        tiles                       =  RectMatrix(100,0, 4, p.participant.reward_inhabited );
+        p.ptb.rightrewardrect_inh   =  recenter(tiles,midx(p.ptb.rightrect),midy(p.ptb.rightrect));                
+        tiles                       =  RectMatrix(100,0, 4, p.participant.reward_deserted);
+        p.ptb.rightrewardrect_des   =  recenter(tiles,midx(p.ptb.rightrect),midy(p.ptb.rightrect));
         %%
         p.ptb.cross_shift           = [180 -120]./2.5;%incremental upper and lower cross positions
         p.ptb.CrossPosition_x       = p.ptb.midpoint(1);%bb(1);%always the same
@@ -544,9 +548,9 @@ cleanup;
             Buzz;
         end
         %
-        message   = 'Bewege den "Zeiger" mit der rechten und linken Pfeiltaste\n und bestätige deine Einschätzung mit der oberen Pfeiltaste.';
+        message   = 'Bewege den "Zeiger" mit der rechten und linken Pfeiltaste\n und bestï¿½tige deine Einschï¿½tzung mit der oberen Pfeiltaste.';
         rect        = [p.ptb.width*0.2  p.ptb.midpoint(2) p.ptb.width*0.6 100];
-        response = RatingSlider(rect,2,1,p.keys.increase,p.keys.decrease,p.keys.confirm,{ 'nicht\nerträglich' 'erträglich'},message,0);
+        response = RatingSlider(rect,2,1,p.keys.increase,p.keys.decrease,p.keys.confirm,{ 'nicht\nertrï¿½glich' 'ertrï¿½glich'},message,0);
         if response == 2
             fprintf('All is fine :)\n');
             fprintf('Subject confirmed the shock intensity inside the scanner...\n');
@@ -599,13 +603,14 @@ cleanup;
             prestimdur   = p.duration.prestim;
             dist         = p.presentation.dist(nTrial);            
             time2reward  = p.presentation.time2reward(nTrial);
+            inhab_position  = p.presentation.inhab_position(nTrial);
             %
             OnsetTime    = ZeroPoint + ISI;            
                         
             fprintf('%03d of %03d, S: %d, ISI: %d, UCS: %d, ODD: %d, OnsetTime: %f secs, ',nTrial,p.presentation.tTrial,stim_id,ISI,ucs,oddball, OnsetTime);
             
             %Start with the trial, here is time-wise sensitive must be optimal
-            [ZeroPoint]  = Trial(nTrial,OnsetTime, prestimdur, stim_id , ucs  , fix_y,  oddball, dist, time2reward);
+            [ZeroPoint]  = Trial(nTrial,OnsetTime, prestimdur, stim_id , ucs  , fix_y,  oddball, dist, time2reward,inhab_position);
             %zeropoint is the time of reward screen offset.
             
             %(nTrial,TimeStimOnset , prestimdur, stim_id , ucs  , fix_i, oddball, dist )
@@ -613,7 +618,7 @@ cleanup;
                
         end
     end
-    function [ZeroPoint]=Trial(nTrial, TimeStimOnset , prestimdur, stim_id , ucs  , fix_i, oddball, dist, time2reward)        
+    function [ZeroPoint]=Trial(nTrial, TimeStimOnset , prestimdur, stim_id , ucs  , fix_i, oddball, dist, time2reward,inhab_position)        
         %% compute time of different events
         keyCode            = [];        
         TimeCrossOnset     = TimeStimOnset    - prestimdur;
@@ -621,12 +626,12 @@ cleanup;
         TimeStartReward    = TimeStimOffset   + time2reward;        
         TimeEndReward      = TimeStartReward  + p.duration.reward_screen_duration;
         TimeStartShock     = TimeStartReward;
-        TimeEndShock       = TimeStartReward  + p.duration.shock;
+        TimeEndShock       = TimeStartReward  + p.duration.shock;        
         %%
         if  phase == 1      %valley exploration
             ShowFace(1)
-            RecordResponses()
-            Feedback()
+            selected_inhabited = RecordResponses()
+            Feedback(selected_inhabited)
         elseif phase == 2   %sibling learning
             %passive stage, no key press required.
             ShowFace(0);%show face without valleys            
@@ -634,8 +639,8 @@ cleanup;
             UCS(ucs);
         elseif phase == 3   %combination
             ShowFace(1);
-            RecordResponses();            
-            Feedback();
+            selected_inhabited = RecordResponses();            
+            Feedback(selected_inhabited);
         end
         ZeroPoint = GetSecs;        
         %%
@@ -660,8 +665,15 @@ cleanup;
             
             function ShowValleys()
                 %%
-                Screen('DrawTexture'    , p.ptb.w, p.ptb.valley_sprites(1),[],p.ptb.rightrect);
-                Screen('DrawTexture'    , p.ptb.w, p.ptb.valley_sprites(2),[],p.ptb.leftrect);
+                
+                %p.ptb.valley_sprites(1) ==> inhabited
+                %p.ptb.valley_sprites(2) ==> uninhabited
+                
+                unihab_position = setdiff([1 2],inhab_position);
+                
+                Screen('DrawTexture'    , p.ptb.w, p.ptb.valley_sprites(inhab_position ),[],p.ptb.leftrect);                
+                Screen('DrawTexture'    , p.ptb.w, p.ptb.valley_sprites(unihab_position),[],p.ptb.rightrect);                
+                
                 %draw arrows
                 Screen('DrawLine'       , p.ptb.w,[],p.ptb.leftrect(3),p.ptb.leftrect(2),p.ptb.leftrect(3)-200,p.ptb.leftrect(2)+200,7);
                 Screen('DrawLine'       , p.ptb.w,[],p.ptb.leftrect(3)-200,p.ptb.leftrect(2)+200,p.ptb.leftrect(3),p.ptb.leftrect(4),7);
@@ -672,7 +684,7 @@ cleanup;
                 Screen('FrameRect'      , p.ptb.w, [255 255 255 .3] , p.ptb.rightrect,5);                
             end
         end
-        function RecordResponses()            
+        function [selected_inhabited]=RecordResponses()            
             
             Screen('FillRect'   , p.ptb.w, p.stim.bg    , p.ptb.imrect );
             % Record key presses related to the valley selection
@@ -683,16 +695,23 @@ cleanup;
                         break;
                     end                    
                 end
-            end            
+            end                                    
             %turn screen off            
             TimeStimOffset = Screen('Flip',p.ptb.w);
             
+            %get the valley
+            inhabited_side                 = [0 0];
+            inhabited_side(inhab_position) = 1;
+            key_side                       = find([keyCode(p.keys.decrease) keyCode(p.keys.increase) ]);
+            
+            selected_inhabited             = inhabited_side(key_side);
+ 
             %log keypress and stim offset
             Log(TimeStimOffset , -2 ,dist);
-            Log(secs,5,find(keyCode));
+            Log(secs,5,selected_inhabited);
             % register responses
             p.participant.stimulus = [p.participant.stimulus dist         ];
-            if find(keyCode) == p.keys.decrease %left
+            if selected_inhabited == 0 
                 p.participant.response = [p.participant.response 0];
                 fprintf('Participant selected the deserted valley.\n',find(keyCode))
             else
@@ -711,10 +730,10 @@ cleanup;
             TimeEndReward      = TimeStartReward  + p.duration.reward_screen_duration;
             TimeEndShock       = TimeStartReward  + p.duration.shock;
         end        
-        function Feedback()
+        function Feedback(selected_inhabited)
             %show the feedback screen, deliver UCS if necessary, update the
             %Bank.
-            if keyCode(p.keys.increase) %% inhabited valley     
+            if selected_inhabited == 1
                 if ucs
                    UCS(ucs);
                    return;
@@ -722,7 +741,7 @@ cleanup;
                    DrawReward([255 255 255],5,.3,[0 255 0],25,1);
                    message=Earnings(p.participant.reward_inhabited,'Inhabited');                    
                 end
-            elseif keyCode(p.keys.decrease) %% uninhabited valley                
+            elseif selected_inhabited == 0
                 DrawReward([0 255 0],25,1,[255 255 255],5,.3);
                 message=Earnings(p.participant.reward_deserted,'Deserted');
             end            
@@ -737,15 +756,30 @@ cleanup;
                                     
             function DrawReward(uColor,uThickness,uOpacity,iColor,iThickness,iOpacity)
                 
-                Screen('FrameRect'  , p.ptb.w, uColor , p.ptb.leftrect,uThickness);
-                Screen('FrameRect'  , p.ptb.w, iColor , p.ptb.rightrect,iThickness);
+                %draw the green frame around the inhabited valley
+                if inhab_position == 2
+                    Screen('FrameRect'  , p.ptb.w, uColor , p.ptb.leftrect,uThickness);
+                    Screen('FrameRect'  , p.ptb.w, iColor , p.ptb.rightrect,iThickness);                    
+                else
+                    Screen('FrameRect'  , p.ptb.w, uColor , p.ptb.rightrect,uThickness);
+                    Screen('FrameRect'  , p.ptb.w, iColor , p.ptb.leftrect,iThickness);
+                end                
                 
+                %draw toasts at the location where inhabited valley has
+                %been presented.
                 for n=1:p.participant.reward_deserted
-                    Screen('DrawTexture', p.ptb.w, p.ptb.reward_sprites,[],p.ptb.leftrewardrect(n,:),[],[],uOpacity);
-                end
-                
+                    if inhab_position == 2
+                        Screen('DrawTexture', p.ptb.w, p.ptb.reward_sprites,[],p.ptb.leftrewardrect_des(n,:),[],[],uOpacity);
+                    else
+                         Screen('DrawTexture', p.ptb.w, p.ptb.reward_sprites,[],p.ptb.rightrewardrect_des(n,:),[],[],uOpacity);
+                    end
+                end                
                 for n=1:p.participant.reward_inhabited
-                    Screen('DrawTexture', p.ptb.w, p.ptb.reward_sprites,[],p.ptb.rightrewardrect(n,:),[],[],iOpacity);
+                    if inhab_position == 2
+                        Screen('DrawTexture', p.ptb.w, p.ptb.reward_sprites,[],p.ptb.rightrewardrect_inh(n,:),[],[],iOpacity);
+                    else
+                        Screen('DrawTexture', p.ptb.w, p.ptb.reward_sprites,[],p.ptb.leftrewardrect_inh(n,:),[],[],iOpacity);
+                    end
                 end                
             end                        
         end           
@@ -756,7 +790,7 @@ cleanup;
                 while GetSecs < TimeEndShock;
                     Buzz;%this is anyway sent to CED.
                 end
-                % message  = sprintf('Du bist dem Dieb begegnet, der dir einen Teil deiner Essenvorräte geklaut hat.\nVERDIENT: %.2f Essensrationen.\n: GESAMTER ESSENSVORRAT:%.2f Essensrationen.',valley_type, p.participant.earning(end),p.participant.earning_cumulative(end));
+                % message  = sprintf('Du bist dem Dieb begegnet, der dir einen Teil deiner Essenvorrï¿½te geklaut hat.\nVERDIENT: %.2f Essensrationen.\n: GESAMTER ESSENSVORRAT:%.2f Essensrationen.',valley_type, p.participant.earning(end),p.participant.earning_cumulative(end));
                 [message]=Earnings(p.participant.thief_punishment,'');
                 %
                 Bank('loss');
@@ -774,9 +808,9 @@ cleanup;
             p.participant.earning            = [p.participant.earning reward];
             p.participant.earning_cumulative = [p.participant.earning_cumulative p.participant.earning_cumulative(end) + p.participant.earning(end)];
             if reward > 0                
-                message  = sprintf('Du hast dich für das: %s Tal entschieden.\nVERDIENT: %d Essensrationen.\nGESAMTER ESSENSVORRAT: %d Essensrationen.',valley_type, p.participant.earning(end),p.participant.earning_cumulative(end));
+                message  = sprintf('Du hast dich fï¿½r das: %s Tal entschieden.\nVERDIENT: %d Essensrationen.\nGESAMTER ESSENSVORRAT: %d Essensrationen.',valley_type, p.participant.earning(end),p.participant.earning_cumulative(end));
             else
-                message  = sprintf('Du bist dem Dieb begegnet, der dir einen Teil deiner Essenvorräte gestohlen hat.');
+                message  = sprintf('Du bist dem Dieb begegnet, der dir einen Teil deiner Essenvorrï¿½te gestohlen hat.');
             end
         end        
         function Bank(gainORloss)
@@ -993,42 +1027,42 @@ cleanup;
         if nInstruct == 0%Eyetracking calibration
             
             text = ['Wir kalibrieren jetzt den Eye-Tracker.\n\n' ...
-                'Bitte fixieren Sie die nun folgenden weißen Kreise und \n' ...
+                'Bitte fixieren Sie die nun folgenden weiï¿½en Kreise und \n' ...
                 'bleiben so lange darauf, wie sie zu sehen sind.\n\n' ...
-                'Nach der Kalibrierung dürfen Sie Ihren Kopf nicht mehr bewegen.\n'...
-                'Sollten Sie Ihre Position noch verändern müssen, tun Sie dies jetzt.\n'...
+                'Nach der Kalibrierung dï¿½rfen Sie Ihren Kopf nicht mehr bewegen.\n'...
+                'Sollten Sie Ihre Position noch verï¿½ndern mï¿½ssen, tun Sie dies jetzt.\n'...
                 'Die beste Position ist meist die bequemste.\n\n'...
-                'Bitte drücken Sie jetzt den oberen Knopf, \n' ...
+                'Bitte drï¿½cken Sie jetzt den oberen Knopf, \n' ...
                 'um mit der Kalibrierung weiterzumachen.\n' ...
                 ];
             
         elseif nInstruct == 1%first Instr. of the training phase.
-            text = ['Wir werden nun als erstes einen Übungsdurchgang machen,\n' ...
-                'damit Sie sich an Ihre Aufgabe gewöhnen können.\n' ...
-                'In diesem Durchgang können Sie sich vollkommen sicher fühlen,\n' ...
+            text = ['Wir werden nun als erstes einen ï¿½bungsdurchgang machen,\n' ...
+                'damit Sie sich an Ihre Aufgabe gewï¿½hnen kï¿½nnen.\n' ...
+                'In diesem Durchgang kï¿½nnen Sie sich vollkommen sicher fï¿½hlen,\n' ...
                 'es werden keine elektrischen Reize verabreicht.\n' ...
-                'Eine wichtige grundsätzliche Regel ist, dass Sie das Fixationskreuz (das +)\n' ...
+                'Eine wichtige grundsï¿½tzliche Regel ist, dass Sie das Fixationskreuz (das +)\n' ...
                 'wenn es zu sehen ist, mit Ihren Augen fixieren. \n' ...
                 '\n'...
-                'Drücken Sie die obere Taste um fortzufahren.\n' ...
+                'Drï¿½cken Sie die obere Taste um fortzufahren.\n' ...
                 ];
         elseif nInstruct == 2%second Instr. of the training phase.
             text = ['Ein paar Bemerkungen zu den Zielreizen: \n' ...
                 'Zur Erinnerung: Zielreize sind die verschwommenen Gesichter.\n' ...
                 'Sobald ein solcher Zielreiz erscheint, \n' ...
-                'sollen Sie schnellstmöglich die obere Taste drücken, \n' ...
+                'sollen Sie schnellstmï¿½glich die obere Taste drï¿½cken, \n' ...
                 'und zwar bevor der Zielreiz wieder verschwunden ist \n' ...
-                '(Sie müssen also sehr schnell und aufmerksam sein).\n\n' ...
-                'Drücken Sie die obere Taste um fortzufahren.\n' ...
+                '(Sie mï¿½ssen also sehr schnell und aufmerksam sein).\n\n' ...
+                'Drï¿½cken Sie die obere Taste um fortzufahren.\n' ...
                 ];
         elseif nInstruct == 299%short instruction before localizer
             text = ['Die Kalibrierung war erfolgreich.\n'...
-                'Es startet nun eine kurze Vormessung (~2 min), während der Sie nichts tun müssen.\n\n'...
+                'Es startet nun eine kurze Vormessung (~2 min), wï¿½hrend der Sie nichts tun mï¿½ssen.\n\n'...
                 ];
         elseif nInstruct == 3%third Instr. of the training phase.
             text = ['Wir sind jetzt kurz vor Beginn des Experiments.\n'...
-                'Wir möchten Sie nun noch einmal an die wichtigsten Punkte erinnern.\n\n'...
-                'Drücken Sie jeweils die obere Taste um fortzufahren.\n' ...
+                'Wir mï¿½chten Sie nun noch einmal an die wichtigsten Punkte erinnern.\n\n'...
+                'Drï¿½cken Sie jeweils die obere Taste um fortzufahren.\n' ...
                 ];
         elseif nInstruct == 301%third Instr. of the training phase.
             text = ['Remember:\n There are ~2 times more food in the inhabited valley\nthan the deserted valley.'...
@@ -1040,49 +1074,49 @@ cleanup;
             text = ['3/ Bewegen Sie sich nicht.\n'...
                 ];
         elseif nInstruct == 304%third Instr. of the training phase.
-            text = ['4/ Lassen Sie sich vom Scannergeschehen nicht stören.\n'...
+            text = ['4/ Lassen Sie sich vom Scannergeschehen nicht stï¿½ren.\n'...
                 ];
         elseif nInstruct == 305%third Instr. of the training phase.
             text = ['5/ Nur eines der Gesichter wird mit elektrischen Reizen gepaart.\n'...
                 ];
         elseif nInstruct == 306%third Instr. of the training phase.
-            text = ['Drücken Sie jetzt die obere Taste, das Experiment startet dann in wenigen Sekunden.\n' ...
+            text = ['Drï¿½cken Sie jetzt die obere Taste, das Experiment startet dann in wenigen Sekunden.\n' ...
                 ];
             
             
         elseif nInstruct == 4%third Instr. of the training phase.
             text = ['Vor dem Experiment legen wir nun \n' ...
-                'die Schockintensität für den Rest des Experiments fest. \n' ...
-                'Drücken Sie die obere Taste um fortzufahren.\n' ...
+                'die Schockintensitï¿½t fï¿½r den Rest des Experiments fest. \n' ...
+                'Drï¿½cken Sie die obere Taste um fortzufahren.\n' ...
                 ];
             
         elseif nInstruct == 7;%rating
-            text = ['In dieser Phase hätten wir gerne, dass Sie die Gesichter\n'...
+            text = ['In dieser Phase hï¿½tten wir gerne, dass Sie die Gesichter\n'...
                 'im Hinblick auf folgende Frage bewerten:\n'...
                 '"Wie wahrscheinlich ist es, bei dem gerade gesehenen Gesicht \n'...
                 'einen elektrischen Schock zu erhalten?"\n'...
                 'Bewegen Sie den Zeiger mit der rechten und linken Taste\n'...
-                'und bestätigen Sie Ihre Einschätzung mit der oberen Taste.\n'...
+                'und bestï¿½tigen Sie Ihre Einschï¿½tzung mit der oberen Taste.\n'...
                 ];
         elseif nInstruct == 8;%AskDetectionSelectable
-            text = ['Sie sehen nun noch einmal eine Übersicht der verschiedenen Gesichter.\n'...
+            text = ['Sie sehen nun noch einmal eine ï¿½bersicht der verschiedenen Gesichter.\n'...
                 'Bitte geben Sie an, welches der Gesichter Ihrer Meinung nach\n mit dem Schock gepaart wurde.\n\n'...
                 'Nutzen Sie die linke und rechte Taste, um die Markierung\n zum richtigen Gesicht zu navigieren,\n'...
-                'und drücken Sie die obere Taste zum Bestätigen.\n\n'...
-                'Bitte zum Starten die obere Taste drücken.\n'...
+                'und drï¿½cken Sie die obere Taste zum Bestï¿½tigen.\n\n'...
+                'Bitte zum Starten die obere Taste drï¿½cken.\n'...
                 ];
         elseif nInstruct == 801;%AskDetectionSelectable
-            text = ['Sie sehen nun eine Übersicht der verschiedenen Gesichter.\n'...
+            text = ['Sie sehen nun eine ï¿½bersicht der verschiedenen Gesichter.\n'...
                 'Bitte schauen Sie sich die Gesichter aufmerksam an.\n'...
-                'Bitte drücken Sie zum Start die obere Taste und\n' ...
-                'fixieren Sie das anschließend erscheinende Fixationskreuz.\n'...
+                'Bitte drï¿½cken Sie zum Start die obere Taste und\n' ...
+                'fixieren Sie das anschlieï¿½end erscheinende Fixationskreuz.\n'...
                 ];
             
         elseif nInstruct == 9%
             %=================================================================================================================%
-            text = ['Bitte geben Sie an, ob die Reizstärke des folgenden Schocks\n für Sie erträglich ist.\n'...
+            text = ['Bitte geben Sie an, ob die Reizstï¿½rke des folgenden Schocks\n fï¿½r Sie ertrï¿½glich ist.\n'...
                 '\n'...
-                'Drücken Sie bitte die obere Taste um den Reiz zu bekommen.\n'...
+                'Drï¿½cken Sie bitte die obere Taste um den Reiz zu bekommen.\n'...
                 ];
             
         elseif nInstruct == 10%just before the shock
@@ -1091,12 +1125,12 @@ cleanup;
             text = ['Wie wahrscheinlich ist es, bei dem gerade gesehenen Gesicht \n'...
                 'einen elektrischen Schock zu erhalten?\n' ...
                 'Bewegen Sie den "Zeiger" mit der rechten und linken Taste\n' ...
-                'und bestätigen Sie Ihre Einschätzung mit der mit der oberen Taste'...
+                'und bestï¿½tigen Sie Ihre Einschï¿½tzung mit der mit der oberen Taste'...
                 ];
         elseif nInstruct == 12 %These two below are the possible responses to the question in 11
             text = {'Sehr\nwahrscheinlich'};
         elseif nInstruct == 13
-            text = {'überhaupt\nnicht\nwahrscheinlich'};
+            text = {'ï¿½berhaupt\nnicht\nwahrscheinlich'};
         elseif nInstruct == 111
             text = ['Please select now where you would like to forage for food.'];
         elseif nInstruct == 122 %These two below are the possible responses to the question in 11
@@ -1107,13 +1141,13 @@ cleanup;
         elseif nInstruct == 14
             text = ['Danke. Den aktiven Teil des Experiment haben Sie nun geschafft.\n'...
                 'Es folgt nun noch eine strukturelle Messung, die ca. 7 Minuten dauert.\n'...
-                'Sie können dabei ruhig die Augen schließen und sich entspannen.\n'];
+                'Sie kï¿½nnen dabei ruhig die Augen schlieï¿½en und sich entspannen.\n'];
         elseif nInstruct == 101
-            text = ['Auskundschaften der Täler\n'...
-                'Bitte wähle mit der linken oder rechten Pfeiltaste aus in welchem Tal \n' ... 
+            text = ['Auskundschaften der Tï¿½ler\n'...
+                'Bitte wï¿½hle mit der linken oder rechten Pfeiltaste aus in welchem Tal \n' ... 
                 '(Bewohntem oder Verlassenem)\n'...
-                'du gerne nach Essen suchen würdest.\n' ...
-                'Die Person, der du im bewohnten Tal begegnen würdest\n' ...
+                'du gerne nach Essen suchen wï¿½rdest.\n' ...
+                'Die Person, der du im bewohnten Tal begegnen wï¿½rdest\n' ...
                 'wird auch angezeigt.\n'];;
         elseif nInstruct == 102
              text = ['Kennenlernen der Talbewohner\n'...
@@ -1121,13 +1155,13 @@ cleanup;
                      'unterwegs sind begegnen.\n'...
                      'Einer dieser Bewohner ist ein Dieb und eine Begegnung mit ihm\n' ...
                      'resultiert in einem Schock UND einem Verlust an Essen\n' ...
-                     'In diesem Durchgang müssen keine Tasten gedrückt werden.\n'...
+                     'In diesem Durchgang mï¿½ssen keine Tasten gedrï¿½ckt werden.\n'...
                       ];       
         elseif nInstruct == 103
-            text = [ 'Bitte wähle mit der linken oder rechten Pfeiltaste aus in welchem Tal \n' ... 
+            text = [ 'Bitte wï¿½hle mit der linken oder rechten Pfeiltaste aus in welchem Tal \n' ... 
                  '(Bewohntem oder Verlassenem)\n'...
-                 'du gerne nach Essen suchen würdest.\n' ...
-                 'Die Person, der du im bewohnten Tal begegnen würdest\n' ...
+                 'du gerne nach Essen suchen wï¿½rdest.\n' ...
+                 'Die Person, der du im bewohnten Tal begegnen wï¿½rdest\n' ...
                  'wird auch angezeigt.\n'];
         else
             text = {''};
