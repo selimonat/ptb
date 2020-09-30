@@ -55,7 +55,7 @@ while ok
     end
 end
 %% much simpler approach
-
+clear seq;
 for nsub = 1:100;
     for csp            = 1:8;
         cond_id        = [];
@@ -118,7 +118,7 @@ for nsub = 1:100;
         seq2.tTrial               = length(seq2.cond_id);
         seq2.dist                 = MinimumAngle((seq2.stim_id-1)*45,(csp-1)*45);
         seq2.dist(seq2.cond_id==0)=NaN;
-        %oddball=1000
+        %oddball=997
         seq2.dist(seq2.cond_id==max(seq2.cond_id))=1000;
         %ucs=500
         seq2.dist(seq2.cond_id==max(seq2.cond_id)-1)=500;
@@ -129,4 +129,4 @@ for nsub = 1:100;
 end
 %%
 
-save([fileparts(which('exp_FearAmy.m')) '/bin/fearamy_seq.mat'],'seq');
+% save([fileparts(which('exp_FearAmy.m')) '/bin/fearamy_seq.mat'],'seq');
