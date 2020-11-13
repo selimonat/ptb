@@ -115,7 +115,7 @@ save('C:\Users\Lea\Documents\Experiments\FearAdapt_Pilote\seq\exp\seq.mat','seq'
         % so we just assign the correct stims from the stimmatrix loaded in
         % SetPTB or SetParams in main scrip.
         stim_id = nan(size(cond_id));
-        lookup = [1 2 3 4 5 6 7 8 9; 1 2 2 5 5 3 4 6 7]';
+        lookup = [1 2 3 4 5 6 7 8 9; 1 2 2 3 3 4 5 6 7]';
         for ind = 1:length(cond_id);
         stim_id(ind) = lookup(lookup(:,1)==cond_id(ind),2);
         end
