@@ -110,6 +110,7 @@ el        = [];%eye-tracker variable
 p         = [];%parameter structure that contains all info about the experiment.
 s         = [];
 phase = 0; %for now
+p.var.ExpPhase  = 0;
 trun = 2;
 SetParams;%set parameters of the experiment
 SetPTB;%set visualization parameters.
@@ -117,6 +118,7 @@ SetPTB;%set visualization parameters.
 %init all the variables
 t                         = [];
 nTrial                    = 0;
+ntTrial                   = 0;
 %%
 %Time Storage
 TimeEndStim               = [];
@@ -156,7 +158,7 @@ for phase = 1:trun
     
 end
 fprintf('Going into AskStimRating mode.\n');
-AskStimRating;%make sure that scanner doesnt stop prematurely asa the stim offset
+% AskStimRating;%make sure that scanner doesnt stop prematurely asa the stim offset
        %     if phase == 6
     %         if EyelinkWanted
     %             CalibrateEL;
@@ -282,7 +284,8 @@ cleanup;
         %log the pulse timings.
  
         TimeEndStim     = secs(end)- p.ptb.slack;%take the first valid pulse as the end of the last stimulus.
-        for nTrial  = 1;%:p.presentation(phase).tTrial;
+        for nTrial  = 1:p.presentation(phase).trialsperblock;
+            ntTrial = ntTrial+1;
             %Get the variables that Trial function needs.
             stim_id      = p.presentation(phase).stim_id(nTrial);
             ISI          = p.presentation(phase).isi(nTrial);
@@ -290,11 +293,11 @@ cleanup;
             prestimdur   = p.duration.prestim+rand(1)*.25;
             %
             OnsetTime     = TimeEndStim + ISI - p.ptb.slack;
-            fprintf('%03d of %03d, S: %d, ISI: %d, UCS: %d, OnsetTime: %f secs, ',nTrial,p.presentation(phase).tTrial,stim_id,ISI,ucs,OnsetTime);
+            fprintf('Block %d: %03d of %03d (%02d of %02d total). S: %d, ISI: %d, UCS: %d, OnsetTime: %f secs, ',phase,nTrial,p.presentation(phase).trialsperblock,ntTrial,p.presentation(phase).tTrial,stim_id,ISI,ucs,OnsetTime);
             
             %Start with the trial, here is time-wise sensitive must be
             %optimal
-            [TimeEndStim] = Trial(nTrial,OnsetTime, prestimdur, stim_id , ucs);
+            [TimeEndStim] = Trial(nTrial,ntTrial,OnsetTime, prestimdur, stim_id , ucs);
             %
             %dump it
             [keycode, secs] = KbQueueDump;%this contains both the pulses and keypresses.
@@ -308,16 +311,16 @@ cleanup;
             end
             %now we have to detect if the subject has pressed the CONFIRM
             %key while the ODDBALL stimulus was on the screen.
-            if any((keycode == p.keys.confirm) & (secs > OnsetTime) & (secs <= TimeEndStim))
-                p.out.response(nTrial) = 1;
-                fprintf('Subject Pressed the Hit Key!!\n');
-            end
+%             if any((keycode == p.keys.confirm) & (secs > OnsetTime) & (secs <= TimeEndStim))
+%                 p.out.response(nTrial) = 1;
+%                 fprintf('Subject Pressed the Hit Key!!\n');
+%             end
 %             if mod(nTrial,p.presentation(phase).trialsperblock)==0%LK change later.
-            ShowInstruction(15,0,3)
-            
-            DeliverCostShocks(nTrial)
 %             end
         end
+        ShowInstruction(15,0,3)
+        
+        DeliverCostShocks(nTrial)
         
         %wait 6 seconds for the BOLD signal to come back to the baseline...
         KbQueueStop(p.ptb.device);
@@ -344,11 +347,11 @@ cleanup;
         fprintf('Waiting 2 sec for a short break after block...\n')
         WaitSecs(1);
     end
-    function [TimeEndStim]=Trial(nTrial,TimeStimOnset , jitter, stim_id , ucs)
+    function [TimeEndStim]=Trial(nTrial,ntTrial,TimeStimOnset , jitter, stim_id , ucs)
        cond_id = p.presentation(phase).cond_id(nTrial);
         if nTrial > 1
             counter = p.out.counter(nTrial-1);
-        elseif mod(nTrial,p.presentation(phase).trialsperblock)==1 
+        elseif nTrial == 1%mod(nTrial,p.presentation(phase).trialsperblock)==1 
             counter = 0;
             fprintf('New block, counter set to zero.\n')
         end
@@ -362,18 +365,18 @@ cleanup;
         fix          = [p.ptb.CrossPosition_x p.ptb.CrossPosition_y];
         if nTrial == 1
             %% First fixation cross Onset
-            FixCross     = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];
-            Screen('FillRect',  p.ptb.w, [0,0,0], FixCross');%draw the prestimus cross 
+%             FixCross     = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];
+%             Screen('FillRect',  p.ptb.w, [0,0,0], FixCross');%draw the prestimus cross 
             DrawFormattedText(p.ptb.w, num2str(counter), 'center',p.ptb.midpoint(2)+p.stim.rectsize*p.stim.dist_counter,p.text.color);
             DrawFormattedText(p.ptb.w, [num2str(press2shock) ' Knopfdrücke = 1 elektr. Reiz'], 'center',p.ptb.midpoint(2)+p.stim.rectsize*p.stim.dist_worldinfo,p.text.color);            
             Screen('DrawingFinished',p.ptb.w,0);
-            TimeCrossOn  = Screen('Flip',p.ptb.w,0,0);
+            TimeCrossOn  = Screen('Flip',p.ptb.w,0,0);   
             fprintf('\nTimeCrossOn: %f\n',TimeCrossOn)
         end
         Log(TimeCrossOn,2,NaN);%cross onset.
         %turn the eye tracker on
         if EyelinkWanted
-            StartEyelinkRecording(nTrial,stim_id,p.var.ExpPhase,stim_id,ucs,fix,mblock_id);%I would be cautious here, the first trial is never recorded in the EDF file, reason yet unknown.
+            StartEyelinkRecording(ntTrial,stim_id,p.var.ExpPhase,stim_id,ucs,fix,mblock_id);%I would be cautious here, the first trial is never recorded in the EDF file, reason yet unknown.
         end
         %% Draw the stimulus to the buffer
         Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(stim_id));
@@ -418,9 +421,9 @@ cleanup;
                         DrawFormattedText(p.ptb.w, [num2str(press2shock) ' Knopfdrücke = 1 elektr. Reiz'], 'center',p.ptb.midpoint(2)+p.stim.rectsize*p.stim.dist_worldinfo,p.text.color);
                         Screen('DrawingFinished',p.ptb.w,0);
                         Screen('Flip',p.ptb.w,0,0);%asap and dont clear
-                        p.out.response(nTrial) = 1;
-                        p.out.counter(nTrial)  = p.out.counter(nTrial) + 1;
-                        p.out.RT(nTrial)       = keyT - TimeStimOnset;
+                        p.out.response(ntTrial) = 1;
+                        p.out.counter(ntTrial)  = p.out.counter(ntTrial) + 1;
+                        p.out.RT(ntTrial)       = keyT - TimeStimOnset;
                         press_is_known = true;
                     end
                 end
@@ -441,11 +444,11 @@ cleanup;
         Screen('DrawingFinished',p.ptb.w,0);
         TimeBoxOnset = Screen('Flip',p.ptb.w,[],0);
         fprintf('TimeBoxOn: %f\n',TimeBoxOnset)
-        Log(TimeBoxOnset,4,nTrial);
+        Log(TimeBoxOnset,4,ntTrial);
         TimeOutcome = WaitSecs('UntilTime',TimeOutcome);
         %% shock if UCS
         ucs = 1;
-        if ucs && ~p.out.response(nTrial)==1
+        if ucs && ~p.out.response(ntTrial)==1
             MarkCED(p.com.lpt.address, p.com.lpt.ucs);
             %Deliver shock and stim off immediately
             fprintf('Buzz at %f.\n',GetSecs)
@@ -460,16 +463,16 @@ cleanup;
             WaitSecs('UntilTime',TimeEndStim);
         end
         %% Stimulus Offset -  switch to fixation cross
-        FixCross     = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];
-        Screen('FillRect',  p.ptb.w, [0 0 0], FixCross');%draw the prestimus cross atop
-        DrawFormattedText(p.ptb.w, num2str(p.out.counter(nTrial)), 'center',p.ptb.midpoint(2)+p.stim.rectsize*p.stim.dist_counter,p.text.color);
+%         FixCross     = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];
+%         Screen('FillRect',  p.ptb.w, [0 0 0], FixCross');%draw the prestimus cross atop
+        DrawFormattedText(p.ptb.w, num2str(p.out.counter(ntTrial)), 'center',p.ptb.midpoint(2)+p.stim.rectsize*p.stim.dist_counter,p.text.color);
         DrawFormattedText(p.ptb.w, [num2str(press2shock) ' Knopfdrücke = 1 elektr. Reiz'], 'center',p.ptb.midpoint(2)+p.stim.rectsize*p.stim.dist_worldinfo,p.text.color);
         
         Screen('DrawingFinished',p.ptb.w,0);
         TimeCrossOn  = Screen('Flip',p.ptb.w,0,0);
         fprintf('CrossOn: %f\n',TimeCrossOn)
-        Log(TimeCrossOn,6,nTrial)
-        Log(TimeCrossOn,2,nTrial)
+        Log(TimeCrossOn,6,ntTrial)
+        Log(TimeCrossOn,2,ntTrial)
         %% record some more eye data after stimulus offset.
         WaitSecs('UntilTime',TimeTrackerOff);
         if EyelinkWanted
@@ -489,8 +492,8 @@ cleanup;
         fix          = [p.ptb.CrossPosition_x p.ptb.CrossPosition_y];
         if nTrial == 1001
             %% First fixation cross Onset
-            FixCross     = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];
-            Screen('FillRect',  p.ptb.w, [0,0,0], FixCross');%draw the prestimus cross 
+%             FixCross     = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];
+%             Screen('FillRect',  p.ptb.w, [0,0,0], FixCross');%draw the prestimus cross 
             Screen('DrawingFinished',p.ptb.w,0);
             TimeCrossOn  = Screen('Flip',p.ptb.w,0,0);
             fprintf('\nTimeCrossOn: %f\n',TimeCrossOn)
@@ -517,8 +520,8 @@ cleanup;
         Log(TimeStimOnset,3,stim_id+1000);%log the stimulus onset
         WaitSecs('UntilTime',TimeEndStim);
         %% Stimulus Offset -  switch to fixation cross
-        FixCross     = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];
-        Screen('FillRect',  p.ptb.w, [0 0 0], FixCross');%draw the prestimus cross atop
+%         FixCross     = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];
+%         Screen('FillRect',  p.ptb.w, [0 0 0], FixCross');%draw the prestimus cross atop
         TimeCrossOn  = Screen('Flip',p.ptb.w,0,0);
         fprintf('CrossOn: %f\n',TimeCrossOn)
         Log(TimeCrossOn,6,nTrial)
