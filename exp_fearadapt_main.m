@@ -72,9 +72,10 @@ function [p]=exp_fearadapt_main(subject,PainThreshold)
 %   Selim Onat
 
 debug   = 1;%debug mode => 1: transparent window enabling viewing the background.
-trial_info = 1;
+trial_info = 0;
 EyelinkWanted = 0;%is Eyelink wanted?
 mrt           = 0;
+lab           = '204';
 %replace parallel port function with a dummy function
 if ~IsWindows
     %OUTP.m is used to communicate with the parallel port, mainly to send
@@ -111,9 +112,8 @@ p         = [];%parameter structure that contains all info about the experiment.
 s         = [];
 phase = 0; %for now
 p.var.ExpPhase  = 0;
-trun = 2;
+trun = 1;
 SetParams;%set parameters of the experiment
-TriggerTest; %before we open a screen in SetPTB, so we can read it.
 SetPTB;%set visualization parameters.
 %
 %init all the variables
@@ -136,16 +136,17 @@ KbQueueRelease(p.ptb.device);
 save(p.path.path_param,'p');
 
 if EyelinkWanted
-    CalibrateEL;
-    ShowInstruction(299,0,5);
+        CalibrateEL;
+        ShowInstruction(299,0,5);
 end
 
-%% Instructions
-p.var.ExpPhase  = 1;%set this after the calibration;
-    for ninst = [1 2 3 5]
+    %% Instructions
+    p.var.ExpPhase  = 1;%set this after the calibration;
+    for ninst = [1 2 3]
         ShowInstruction(ninst,1);
     end
-    ConfirmIntensity;
+%     ShowInstruction(5,1); %has been done in discr. task
+%     ConfirmIntensity;
     for ninst = [4 401:406]
         ShowInstruction(ninst,1);
     end
@@ -160,14 +161,14 @@ for phase = 1:trun
 end
 fprintf('Going into AskStimRating mode.\n');
 % AskStimRating;%make sure that scanner doesnt stop prematurely asa the stim offset
-%     if phase == 6
-%         if EyelinkWanted
-%             CalibrateEL;
-%             AskDetection;
+       %     if phase == 6
+    %         if EyelinkWanted
+    %             CalibrateEL;
+    %             AskDetection;
 %     fprintf('Going into AskStimRating mode.\n');
-%     AskStimRating;%make sure that scanner doesnt stop prematurely asa the stim offset
+AskStimRating;%make sure that scanner doesnt stop prematurely asa the stim offset
 
-%         end
+    %         end
 
 %get the eyelink file back to this computer
 StopEyelink(p.path.edf);
@@ -235,39 +236,67 @@ cleanup;
         %
         ShowInstruction(9,1);
         %
-        fprintf([repmat('=',1,50) '\n']);
-        fprintf('TEST SHOCK:\n');
-        fprintf('!!! ADJUST THE SHOCK INTENSITY ON THE DIGITIMER !!!\n');
-        fprintf('    The intensity is now: %g mA\n',p.var.ShockIntensity);
-        fprintf('    Experimenter: Press any key to deliver a shock.\n');
-        fprintf([repmat('=',1,50) '\n']);
-        %
-        [secs, keyCode, deltaSecs] = KbStrokeWait(p.ptb.device);
-        ShowInstruction(10,0,1+rand(1));%shock is coming message...
-        t = GetSecs + p.duration.shock;
-        MarkCED(p.com.lpt.address,p.com.lpt.ucs)
-         Log(GetSecs,5,999);
-        while GetSecs < t;
-            Buzz;
+        if strcmp(p.hostname,'blab0') && strcmp(lab,'204')
+            %
+            ShowInstruction(501,1);% Experimenter message.
+            WaitSecs(2);            
+            ShowInstruction(10,0,1+rand(1));%shock is coming message...
+            t = GetSecs + p.duration.shock;
+            while GetSecs < t;
+                Buzz;
+            end
+            %
+            message   = 'Bewege den "Zeiger" mit der rechten und linken Pfeiltaste\n und bestätige deine Einschätzung mit der mit der Leertaste.';
+            rect        = [p.ptb.width*0.2  p.ptb.midpoint(2) p.ptb.width*0.6 100];
+            response = RatingSlider(rect,2,1,p.keys.increase,p.keys.decrease,p.keys.confirm,{ 'nicht\nerträglich' 'erträglich'},message,0);
+            if response == 2
+                ShowInstruction(502,1); % Stimulation OK.
+                fprintf('All is fine :)\n');
+                fprintf('Subject confirmed the shock intensity inside the scanner...\n');
+                fprintf('INTENSITY TO BE USED FOR THE MAIN EXPERIMENT: %g mA\n',p.var.ShockIntensity);
+                p.out.ShockIntensity = p.var.ShockIntensity;
+                return;
+            elseif response == 1
+                ShowInstruction(503,1); % Stimulation not OK.
+                fprintf('Shit... :(, %g is too much for the subject\n',p.var.ShockIntensity);
+                fprintf('We will try a little milder intensity.\n');
+                p.out.ShockFactor = p.out.ShockFactor - 0.05;
+                ConfirmIntensity;
+            end
+            
+        else
+            %
+            fprintf([repmat('=',1,50) '\n']);
+            fprintf('TEST SHOCK:\n');
+            fprintf('!!! ADJUST THE SHOCK INTENSITY ON THE DIGITIMER !!!\n');
+            fprintf('    The intensity is now: %g mA\n',p.var.ShockIntensity);
+            fprintf('    Experimenter: Press any key to deliver a shock.\n');
+            fprintf([repmat('=',1,50) '\n']);
+            %
+            [secs, keyCode, deltaSecs] = KbStrokeWait(p.ptb.device);
+            ShowInstruction(10,0,1+rand(1));%shock is coming message...
+            t = GetSecs + p.duration.shock;
+            while GetSecs < t;
+                Buzz;
+            end
+            %
+            message   = 'Bewege den "Zeiger" mit der rechten und linken Pfeiltaste\n und bestätige deine Einschätzung mit der mit der Leertaste.';
+            rect        = [p.ptb.width*0.2  p.ptb.midpoint(2) p.ptb.width*0.6 100];
+            response = RatingSlider(rect,2,1,p.keys.increase,p.keys.decrease,p.keys.confirm,{ 'nicht\nerträglich' 'erträglich'},message,0);
+            if response == 2
+                fprintf('All is fine :)\n');
+                fprintf('Subject confirmed the shock intensity inside the scanner...\n');
+                fprintf('INTENSITY TO BE USED FOR THE MAIN EXPERIMENT: %g mA\n',p.var.ShockIntensity);
+                p.out.ShockIntensity = p.var.ShockIntensity;
+                return;
+            elseif response == 1
+                fprintf('Shit... :(, %g is too much for the subject\n',p.var.ShockIntensity);
+                fprintf('We will try a little milder intensity.\n');
+                p.out.ShockFactor = p.out.ShockFactor - 0.05;
+                ConfirmIntensity;
+            end
+            
         end
-        %
-        message   = 'Bewege den "Zeiger" mit der rechten und linken Pfeiltaste\n und bestätige deine Einschätzung mit der mit der Leertaste.';
-        rect        = [p.ptb.width*0.2  p.ptb.midpoint(2) p.ptb.width*0.6 100];
-        response = RatingSlider(rect,2,1,p.keys.increase,p.keys.decrease,p.keys.confirm,{ 'nicht\nerträglich' 'erträglich'},message,0);
-        if response == 2
-            fprintf('All is fine :)\n');
-            fprintf('Subject confirmed the shock intensity inside the scanner...\n');
-            fprintf('INTENSITY TO BE USED FOR THE MAIN EXPERIMENT: %g mA\n',p.var.ShockIntensity);
-            p.out.ShockIntensity = p.var.ShockIntensity;
-            return;
-        elseif response == 1
-            fprintf('Shit... :(, %g is too much for the subject\n',p.var.ShockIntensity);
-            fprintf('We will try a little milder intensity.\n');
-            p.out.ShockFactor = p.out.ShockFactor - 0.05;
-            ConfirmIntensity;
-        end
-        
-        
     end
     function PresentStimuli
         %Enter the presentation loop and wait for the first pulse to
@@ -285,10 +314,10 @@ cleanup;
         %If the scanner by mistake had been started prior to this point
         %those pulses would have been not logged.
         %log the pulse timings.
-        
+ 
         TimeEndStim     = secs(end)- p.ptb.slack;%take the first valid pulse as the end of the last stimulus.
         for nTrial  = 1:p.presentation(phase).trialsperblock;
-            ntTrial = ntTrial+1;
+             ntTrial = ntTrial+1;
             %Get the variables that Trial function needs.
             stim_id      = p.presentation(phase).stim_id(nTrial);
             ISI          = p.presentation(phase).isi(nTrial);
@@ -296,7 +325,7 @@ cleanup;
             prestimdur   = p.duration.prestim+rand(1)*.25;
             %
             OnsetTime     = TimeEndStim + ISI - p.ptb.slack;
-            fprintf('Block %d: %03d of %03d (%02d of %02d total). S: %d, ISI: %d, UCS: %d, OnsetTime: %f secs, ',phase,nTrial,p.presentation(phase).trialsperblock,ntTrial,p.presentation(phase).tTrial,stim_id,ISI,ucs,OnsetTime);
+            fprintf('Block %d: %03d of %03d (%02d of %02d total). S: %d, ISI: %d, UCS: %d, OnsetTime: %f secs.\n ',phase,nTrial,p.presentation(phase).trialsperblock,ntTrial,p.presentation(phase).tTrial,stim_id,ISI,ucs,OnsetTime);
             
             %Start with the trial, here is time-wise sensitive must be
             %optimal
@@ -314,12 +343,12 @@ cleanup;
             end
             %now we have to detect if the subject has pressed the CONFIRM
             %key while the ODDBALL stimulus was on the screen.
-            %             if any((keycode == p.keys.confirm) & (secs > OnsetTime) & (secs <= TimeEndStim))
-            %                 p.out.response(nTrial) = 1;
-            %                 fprintf('Subject Pressed the Hit Key!!\n');
-            %             end
-            %             if mod(nTrial,p.presentation(phase).trialsperblock)==0%LK change later.
-            %             end
+%             if any((keycode == p.keys.confirm) & (secs > OnsetTime) & (secs <= TimeEndStim))
+%                 p.out.response(nTrial) = 1;
+%                 fprintf('Subject Pressed the Hit Key!!\n');
+%             end
+%             if mod(nTrial,p.presentation(phase).trialsperblock)==0%LK change later.
+%             end
         end
         ShowInstruction(15,0,3)
         
@@ -351,30 +380,34 @@ cleanup;
         WaitSecs(1);
     end
     function [TimeEndStim]=Trial(nTrial,ntTrial,TimeStimOnset , jitter, stim_id , ucs)
-        cond_id = p.presentation(phase).cond_id(nTrial);
+       cond_id = p.presentation(phase).cond_id(nTrial);
+      
         if nTrial > 1
             counter = p.out.counter(nTrial-1);
-        elseif nTrial == 1%mod(nTrial,p.presentation(phase).trialsperblock)==1
+            fprintf('counter = %02d\n.',counter);
+        elseif nTrial == 1%mod(nTrial,p.presentation(phase).trialsperblock)==1 
             counter = 0;
             fprintf('New block, counter set to zero.\n')
         end
+         p.out.counter(1:10)'
+       fprintf('counter = %d\n',counter);
         %plan all the times
         TimeStimOnset      = TimeStimOnset + jitter;
         TimeBoxOnset       = TimeStimOnset  + p.duration.stim;
         TimeOutcome        = TimeStimOnset  + p.duration.stim + p.duration.outcomedelay;
         TimeEndStim        = TimeStimOnset  + p.duration.stim + p.duration.outcomedelay + p.duration.shock;
         TimeTrackerOff     = TimeStimOnset  + p.duration.stim + p.duration.outcomedelay + p.duration.shock + p.duration.keep_recording;
-        fprintf('\nPlanned timings: \nTimeStimOn: %f\nTimeBoxOn: %f\nTimeOutcome: %f\nTimeEndStim: %f\nTimeTrackerOff: %f\n',TimeStimOnset, TimeBoxOnset,TimeOutcome,TimeEndStim ,TimeTrackerOff)
+%         fprintf('\nPlanned timings: \nTimeStimOn: %f\nTimeBoxOn: %f\nTimeOutcome: %f\nTimeEndStim: %f\nTimeTrackerOff: %f\n',TimeStimOnset, TimeBoxOnset,TimeOutcome,TimeEndStim ,TimeTrackerOff)
         fix          = [p.ptb.CrossPosition_x p.ptb.CrossPosition_y];
         if nTrial == 1
             %% First fixation cross Onset
-            %             FixCross     = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];
-            %             Screen('FillRect',  p.ptb.w, [0,0,0], FixCross');%draw the prestimus cross
+%             FixCross     = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];
+%             Screen('FillRect',  p.ptb.w, [0,0,0], FixCross');%draw the prestimus cross 
             DrawFormattedText(p.ptb.w, num2str(counter), 'center',p.ptb.midpoint(2)+p.stim.rectsize*p.stim.dist_counter,p.text.color);
-            DrawFormattedText(p.ptb.w, [num2str(press2shock) ' Knopfdrücke = 1 elektr. Reiz'], 'center',p.ptb.midpoint(2)+p.stim.rectsize*p.stim.dist_worldinfo,p.text.color);
+            DrawFormattedText(p.ptb.w, [num2str(press2shock) ' Knopfdrücke = 1 elektr. Reiz'], 'center',p.ptb.midpoint(2)+p.stim.rectsize*p.stim.dist_worldinfo,p.text.color);            
             Screen('DrawingFinished',p.ptb.w,0);
-            TimeCrossOn  = Screen('Flip',p.ptb.w,0,0);
-            fprintf('\nTimeCrossOn: %f\n',TimeCrossOn)
+            TimeCrossOn  = Screen('Flip',p.ptb.w,0,0);   
+%             fprintf('\nTimeCrossOn: %f\n',TimeCrossOn)
         end
         Log(TimeCrossOn,2,NaN);%cross onset.
         %turn the eye tracker on
@@ -386,13 +419,13 @@ cleanup;
         DrawFormattedText(p.ptb.w, num2str(counter), 'center',p.ptb.midpoint(2)+p.stim.rectsize*p.stim.dist_counter,p.text.color);
         DrawFormattedText(p.ptb.w, [num2str(press2shock) ' Knopfdrücke = 1 elektr. Reiz'], 'center',p.ptb.midpoint(2)+p.stim.rectsize*p.stim.dist_worldinfo,p.text.color);
         if trial_info
-            DrawFormattedText(p.ptb.w, sprintf('Trial No %d, cond_id: %02d stim_id: %02d filename = %s.',stim_id,p.presentation(phase).cond_id(nTrial),p.stim.label{stim_id}), 'center',p.ptb.midpoint(2)-p.stim.rectsize-p.stim.dist_worldinfo,p.text.color);
+             DrawFormattedText(p.ptb.w, sprintf('Trial No %d, cond_id: %02d stim_id: %02d filename = %s.',stim_id,p.presentation(phase).cond_id(nTrial),p.stim.label{stim_id}), 'center',p.ptb.midpoint(2)-p.stim.rectsize-p.stim.dist_worldinfo,p.text.color);
         end
-        Screen('DrawDots', p.ptb.w, [p.ptb.midpoint(1) p.ptb.midpoint(2)], 10, [0 0 0], [], 2);
+%         Screen('DrawDots', p.ptb.w, [p.ptb.midpoint(1) p.ptb.midpoint(2)], 10, [0 0 0], [], 2);
         Screen('DrawingFinished',p.ptb.w,0);
         %% STIMULUS ONSET
         TimeStimOnset  = Screen('Flip',p.ptb.w,TimeStimOnset,0);%asap and dont clear
-        fprintf('Real TimeStimO: %f secs.\n',TimeStimOnset)
+%         fprintf('Real TimeStimO: %f secs.\n',TimeStimOnset)
         %send eyelink and ced a marker asap
         if EyelinkWanted
             Eyelink('Message', 'Stim Onset');
@@ -425,7 +458,6 @@ cleanup;
                         Screen('DrawingFinished',p.ptb.w,0);
                         Screen('Flip',p.ptb.w,0,0);%asap and dont clear
                         p.out.response(ntTrial) = 1;
-                        p.out.counter(ntTrial)  = p.out.counter(ntTrial) + 1;
                         p.out.RT(ntTrial)       = keyT - TimeStimOnset;
                         press_is_known = true;
                     end
@@ -435,30 +467,29 @@ cleanup;
                 timedout = true;
             end
         end
-        fprintf('Done with KBcheck loop\n')
-        fprintf('Now: %f secs.\n',GetSecs)
+%         fprintf('Done with KBcheck loop\n')
+%         fprintf('Now: %f secs.\n',GetSecs)
         %% Draw Yellow Frame with Stimulus
         Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(stim_id));
         DrawFormattedText(p.ptb.w, num2str(counter), 'center',p.ptb.midpoint(2)+p.stim.rectsize*p.stim.dist_counter,p.text.color);
         DrawFormattedText(p.ptb.w, [num2str(press2shock) ' Knopfdrücke = 1 elektr. Reiz'], 'center',p.ptb.midpoint(2)+p.stim.rectsize*p.stim.dist_worldinfo,p.text.color);       Screen('FrameRect',p.ptb.w, [255 255 0], p.ptb.rectbox, p.stim.rect_pix);
         if trial_info
-            DrawFormattedText(p.ptb.w, sprintf('Trial No %d, cond_id: %02d stim_id: %02d filename = %s.',stim_id,cond_id,p.stim.label{stim_id}), 'center',p.ptb.midpoint(2)-p.stim.rectsize-p.stim.dist_worldinfo,p.text.color);
+             DrawFormattedText(p.ptb.w, sprintf('Trial No %d, cond_id: %02d stim_id: %02d filename = %s.',stim_id,cond_id,p.stim.label{stim_id}), 'center',p.ptb.midpoint(2)-p.stim.rectsize-p.stim.dist_worldinfo,p.text.color);
         end
         Screen('DrawingFinished',p.ptb.w,0);
         TimeBoxOnset = Screen('Flip',p.ptb.w,[],0);
-        fprintf('TimeBoxOn: %f\n',TimeBoxOnset)
+%         fprintf('TimeBoxOn: %f\n',TimeBoxOnset)
         Log(TimeBoxOnset,4,ntTrial);
         TimeOutcome = WaitSecs('UntilTime',TimeOutcome);
         %% shock if UCS
-        ucs = 1;
         if ucs && ~p.out.response(ntTrial)==1
+%             MarkCED(p.com.lpt.address, p.com.lpt.ucs); 
             %Deliver shock and stim off immediately
             fprintf('Buzz at %f.\n',GetSecs)
             if EyelinkWanted
                 Eyelink('Message', 'UCS Onset');
             end
-            Log(GetSecs,5,cond_id) %lets say cond_id is during the task, 99 is after it (punishment phase), 999 is ConfirmIntensity.
-            MarkCED(p.com.lpt.address, p.com.lpt.ucs);
+            Log(GetSecs,5,cond_id) %lets say cond_id is during the task, 99 is after it (punishment phase)
             while GetSecs < TimeEndStim;
                 Buzz;%this is anyway sent to CED.
             end
@@ -466,14 +497,14 @@ cleanup;
             WaitSecs('UntilTime',TimeEndStim);
         end
         %% Stimulus Offset -  switch to fixation cross
-        %         FixCross     = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];
-        %         Screen('FillRect',  p.ptb.w, [0 0 0], FixCross');%draw the prestimus cross atop
-        DrawFormattedText(p.ptb.w, num2str(p.out.counter(ntTrial)), 'center',p.ptb.midpoint(2)+p.stim.rectsize*p.stim.dist_counter,p.text.color);
+%         FixCross     = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];
+%         Screen('FillRect',  p.ptb.w, [0 0 0], FixCross');%draw the prestimus cross atop
+        DrawFormattedText(p.ptb.w, num2str(counter), 'center',p.ptb.midpoint(2)+p.stim.rectsize*p.stim.dist_counter,p.text.color);
         DrawFormattedText(p.ptb.w, [num2str(press2shock) ' Knopfdrücke = 1 elektr. Reiz'], 'center',p.ptb.midpoint(2)+p.stim.rectsize*p.stim.dist_worldinfo,p.text.color);
         
         Screen('DrawingFinished',p.ptb.w,0);
         TimeCrossOn  = Screen('Flip',p.ptb.w,0,0);
-        fprintf('CrossOn: %f\n',TimeCrossOn)
+%         fprintf('CrossOn: %f\n',TimeCrossOn)
         Log(TimeCrossOn,6,ntTrial)
         Log(TimeCrossOn,2,ntTrial)
         %% record some more eye data after stimulus offset.
@@ -483,23 +514,23 @@ cleanup;
             Eyelink('Message', 'BLANK_SCREEN');
         end
         TimeTrackerOff    = StopEyelinkRecording;
-        
+        p.out.counter(ntTrial)  = counter;%sum(p.out.response(1:nTrial));
     end
-    function [TimeEndStim]=TrialRating(nTrial,TimeStimOnset , jitter, stim_id)
-        
+  function [TimeEndStim]=TrialRating(nTrial,TimeStimOnset , jitter, stim_id)
+       
         %plan all the times
         TimeStimOnset      = TimeStimOnset + jitter;
         TimeEndStim        = TimeStimOnset  + p.duration.stim;
         TimeTrackerOff     = TimeStimOnset  + p.duration.stim + p.duration.keep_recording;
-        fprintf('\nPlanned timings: \nTimeStimOn: %f\nTimeEndStim: %f\nTimeTrackerOff: %f\n',TimeStimOnset, TimeEndStim ,TimeTrackerOff)
+%         fprintf('\nPlanned timings: \nTimeStimOn: %f\nTimeEndStim: %f\nTimeTrackerOff: %f\n',TimeStimOnset, TimeEndStim ,TimeTrackerOff)
         fix          = [p.ptb.CrossPosition_x p.ptb.CrossPosition_y];
         if nTrial == 1001
             %% First fixation cross Onset
-            %             FixCross     = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];
-            %             Screen('FillRect',  p.ptb.w, [0,0,0], FixCross');%draw the prestimus cross
+%             FixCross     = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];
+%             Screen('FillRect',  p.ptb.w, [0,0,0], FixCross');%draw the prestimus cross 
             Screen('DrawingFinished',p.ptb.w,0);
             TimeCrossOn  = Screen('Flip',p.ptb.w,0,0);
-            fprintf('\nTimeCrossOn: %f\n',TimeCrossOn)
+%             fprintf('\nTimeCrossOn: %f\n',TimeCrossOn)
         end
         Log(TimeCrossOn,2,NaN);%cross onset.
         %turn the eye tracker on
@@ -510,7 +541,7 @@ cleanup;
         Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(stim_id));
         %% STIMULUS ONSET
         TimeStimOnset  = Screen('Flip',p.ptb.w,TimeStimOnset,0);%asap and dont clear
-        fprintf('Real Onset: %f secs.\n',TimeStimOnset)
+%         fprintf('Real Onset: %f secs.\n',TimeStimOnset)
         %send eyelink and ced a marker asap
         if EyelinkWanted
             Eyelink('Message', 'Stim Onset');
@@ -523,10 +554,10 @@ cleanup;
         Log(TimeStimOnset,3,stim_id+1000);%log the stimulus onset
         WaitSecs('UntilTime',TimeEndStim);
         %% Stimulus Offset -  switch to fixation cross
-        %         FixCross     = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];
-        %         Screen('FillRect',  p.ptb.w, [0 0 0], FixCross');%draw the prestimus cross atop
+%         FixCross     = [fix(1)-1,fix(2)-p.ptb.fc_size,fix(1)+1,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-1,fix(1)+p.ptb.fc_size,fix(2)+1];
+%         Screen('FillRect',  p.ptb.w, [0 0 0], FixCross');%draw the prestimus cross atop
         TimeCrossOn  = Screen('Flip',p.ptb.w,0,0);
-        fprintf('CrossOn: %f\n',TimeCrossOn)
+%         fprintf('CrossOn: %f\n',TimeCrossOn)
         Log(TimeCrossOn,6,nTrial)
         Log(TimeCrossOn,2,nTrial)
         %% record some more eye data after stimulus offset.
@@ -564,7 +595,7 @@ cleanup;
         end
         
         p.subID                       = sprintf('sub%02d',subject);%subject id
-        p.path.experiment             = [p.path.baselocation  filesep 'data '];
+        p.path.experiment             = [p.path.baselocation  filesep 'data\'];
         p.path.stim                   = [p.path.experiment p.subID filesep 'exp' filesep 'stim\'];
         p.path.stim24                 = [p.path.stim '24bit' filesep];%location of 24bit stimuli, useful only to send it to the eyelink system
         %         p.path.stim_cut               = [p.path.stim 'cut' filesep];%stimuli without borders, necessary for the facecircle
@@ -643,28 +674,37 @@ cleanup;
         %% %%%%%%%%%%%%%%%%%%%%%%%%%
         %Communication business
         %parallel port
-         if strcmp(p.hostname,'blab0')
-            %parallel port of the computer.
-            p.com.lpt.address           = hex2dec('0378');
+        if strcmp(p.hostname,'blab0') && strcmp(lab,'204')
+             p.com.lpt.address = 59392;%hex2dec('0378A');%parallel port of the computer.
+        elseif strcmp(p.hostname,'blab0') && strcmp(lab,'201')
+             p.com.lpt.address = hex2dec('0378A');
         else
-            p.com.lpt.address = 888;%parallel port of the computer.
+             p.com.lpt.address = 888;%parallel port of the computer.
         end
         %codes for different events that are sent for logging in the
         %physiological computer.
         p.com.lpt.digitimer = 1;%12;%8
-        p.com.lpt.StimOnset = 16;
-        p.com.lpt.ucs       = 32;
-         %%%%%%%%%%%%%%%%%%%%%%%%%%%
-        %prepare parallel port communication. This relies on cogent i
-        %think. We could do it with PTB as well.
-        if IsWindows
-            config_io;
-            outp(p.com.lpt.address,0);
-            if( cogent.io.status ~= 0 )
-                error('inp/outp installation failed');
-            end
-        end
-        
+        p.com.lpt.StimOnset = 4;
+%         %%%%%%%%%%%%%%%%%%%%%%%%%%% Parallel port settings
+%         p.com.lpt.BVRaddress           = 59392; %49232; %49020
+%         p.com.lpt.CEDaddress           = 888 %55296; %888;
+%         if p_slave_on
+%             p.com.lpt.CEDaddress       = 59392;
+%         end
+%         
+%         p.com.lpt.duration             = 0.005;
+%         
+% %         p.com.lpt.CEDduration          = 0.005;
+% %         if p.mri.on == 1
+% %             p.com.lpt.BVRduration      = 0.005;
+% %         else
+% %             p.com.lpt.BVRduration      = 0;
+% %         end
+%         % Codes for different events
+%         p.com.lpt.scannerPulseOnset    = 255;
+%         p.com.lpt.FixOnset             = 1;
+%         p.com.lpt.StimOnset            = 2;
+%         p.com.lpt.StartleOnset         = 4;
         %
         %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %timing business
@@ -678,21 +718,22 @@ cleanup;
         p.duration.keep_recording      = 0.25;%this is the time we will keep recording (eye data) after stim offset.
         p.duration.prestim             = .85;
         p.duration.outcomedelay        = 3;
-        speedup = 1; %factor to speed up things, e.g. for debugging or testing
+        speedup = 1; %factor to speed up things, e.g. for debugging or testing 
         p.duration.outcomedelay        = p.duration.outcomedelay   /speedup;
         p.duration.stim                = p.duration.stim           /speedup;
         %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %stimulus sequence: Explanation of the fields:
-        s = load([p.path.baselocation '\seq\exp\seq.mat']);
+%         s = load([p.path.baselocation '\seq\exp\seq.mat']);
+        s = load([p.path.baselocation '\seq\exp\seq_6runs_38trials.mat']);
         s = s.seq(subject,:);
-        
+
         %this will deal all the presentation sequence related information
-        p.presentation                 = s;
+        p.presentation                 = s;       
         clear s;
         %% create the randomized design
         
         %Record which Phase are we going to run in this run.
-        %         p.stim.phase                   = phase;
+%         p.stim.phase                   = phase;
         p.out.rating                  = [];%will contain explicite ratings of UCS likelihood
         p.out.log                     = zeros(1000000,4).*NaN;%Experimental LOG.
         p.out.response                = zeros(p.presentation(1).tTrial,1);%
@@ -762,11 +803,11 @@ cleanup;
             next_stim_id = [];%this is a trick, otherwise a fixation cross appears right before the rating :(
             next_pos1    = [];
             %
-            %             %to send know the distance here, little dummy setup:
-            %             dummy        = -135:45:180;
-            %             dist         = dummy(stim_id);
+%             %to send know the distance here, little dummy setup:
+%             dummy        = -135:45:180;
+%             dist         = dummy(stim_id);
             % show the picture
-            %          [TimeEndStim]=TrialRating(nTrial,TimeStimOnset , jitter, stim_id)
+%          [TimeEndStim]=TrialRating(nTrial,TimeStimOnset , jitter, stim_id)
             TrialRating(1000+nRatend,GetSecs+1,0,stim_id);
             % show the slider
             rate(nRatend,1)  = RatingSlider(rect, p.rating.division, Shuffle(1:p.rating.division,1), p.keys.increase, p.keys.decrease, p.keys.confirm, {SliderTextL{1} SliderTextR{1}},message,1);
@@ -869,16 +910,16 @@ cleanup;
         
         
         [text]= sprintf('Block %d.\n In diesem Block gilt folgende Regel: \n\n %d Tastendrücke = 1 elektr. Reiz am Ende des Blocks.\n\nDrücken Sie die Leertaste, um zu starten.',nBlock,press2shock);
-        
+    
         ShowText(text);
         if waitforkeypress %and blank the screen as soon as the key is pressed
             KbStrokeWait(p.ptb.device);
         else
             WaitSecs(varargin{1});
         end
-        Screen('FillRect',p.ptb.w,p.var.current_bg);
+        Screen('FillRect',p.ptb.w,p.var.current_bg);        
         t = Screen('Flip',p.ptb.w);
-        function ShowText(text)
+          function ShowText(text)
             
             Screen('FillRect',p.ptb.w,p.var.current_bg);
             DrawFormattedText(p.ptb.w, text, 'center', 'center',p.text.color,[],[],[],2,[]);
@@ -891,7 +932,7 @@ cleanup;
             fprintf('=========================================================\n');
             
         end
-        
+      
     end
     function ShowInstruction(nInstruct,waitforkeypress,varargin)
         %ShowInstruction(nInstruct,waitforkeypress)
@@ -908,7 +949,7 @@ cleanup;
         end
         Screen('FillRect',p.ptb.w,p.var.current_bg);
         t = Screen('Flip',p.ptb.w);
-        function ShowText(text)
+          function ShowText(text)
             
             Screen('FillRect',p.ptb.w,p.var.current_bg);
             DrawFormattedText(p.ptb.w, text, 'center', 'center',p.text.color,[],[],[],2,[]);
@@ -921,7 +962,7 @@ cleanup;
             fprintf('=========================================================\n');
             
         end
-        
+      
     end
 
     function [text]=GetText(nInstruct)
@@ -936,68 +977,71 @@ cleanup;
                 'Bitte drücken Sie jetzt den oberen Knopf, \n' ...
                 'um mit der Kalibrierung weiterzumachen.\n' ...
                 ];
-        elseif nInstruct == 1
-            text = ['Herzlich Willkommen zu diesem Teil des Experiments.' ...
-                '\n' ...
-                'Drücken Sie die Leertaste, um die Instruktionen zu lesen.\n'];
-            
+         elseif nInstruct == 1
+             text = ['Herzlich Willkommen zu diesem Teil des Experiments.' ...
+                 '\n' ...
+                 'Drücken Sie die Leertaste, um die Instruktionen zu lesen.\n'];
+    
         elseif nInstruct == 2
-            text = ['Auch in diesem Teil des Experiments sehen Sie verschiedene Formen.\n' ...
-                'Auf einige dieser Formen folgt in den meisten Fällen ein elektrischer Reiz.\n' ...
-                'Sie können dem elektrischen Reiz ausweichen, indem Sie die Leertaste schnell genug drücken,\n' ...
-                'd.h. bevor ein gelber Rahmen um die Form erscheint.\n' ...
-                '\n' ...
-                'Bedenken Sie jedoch: jeder Tastendruck zum Ausweichen des Reizes kostet!\n' ...
-                'Sie erhalten je nach Anzahl der Ausweich-Entscheidungen zusätzliche eletrische Reize am Ende eines Blocks.\n' ...
-                'Drücken Sie also nur, wenn die Form einen elektrischen Reiz ankündigt!\n' ...
-                '\n' ...
-                'Drücken Sie nun die Leertaste zum Fortfahren.\n'];
-        elseif nInstruct == 3
-            text = ['Je nachdem, in welchem Teil des Experiments Sie sich befinden, \n' ...
-                'kosten die Tastendrücke zum Ausweichen mehr oder weniger. \n' ...
-                '\n' ...
-                'Der Umrechnungsfaktor (z.B. 5 Tastendrücke = 1 elektr. Reiz) wird Ihnen \n' ...
-                'vor jedem Block angezeigt.\n' ...
-                'Er ist zudem stets untem am Bildschirm zu sehen.\n' ...
-                '\n' ...
-                'Drücken Sie nun die Leertaste zum Fortfahren.\n'];
+             text = ['Auch in diesem Teil des Experiments sehen Sie verschiedene Formen.\n' ...
+                 'Auf einige dieser Formen folgt in den meisten Fällen ein elektrischer Reiz.\n' ...
+                 'Sie können dem elektrischen Reiz ausweichen, indem Sie die Leertaste schnell genug drücken,\n' ...
+                 'd.h. bevor ein gelber Rahmen um die Form erscheint.\n' ...
+                 '\n' ...
+                 'Bedenken Sie jedoch: jeder Tastendruck zum Ausweichen des Reizes kostet!\n' ...
+                 'Sie erhalten je nach Anzahl der Ausweich-Entscheidungen zusätzliche eletrische Reize am Ende eines Blocks.\n' ...
+                 'Drücken Sie also nur, wenn die Form einen elektrischen Reiz ankündigt!\n' ...
+                 '\n' ...
+                 'Drücken Sie nun die Leertaste zum Fortfahren.\n'];
+          elseif nInstruct == 3
+             text = ['Je nachdem, in welchem Teil des Experiments Sie sich befinden, \n' ...
+                 'kosten die Tastendrücke zum Ausweichen mehr oder weniger. \n' ...
+                 '\n' ...
+                 'Der Umrechnungsfaktor (z.B. 5 Tastendrücke = 1 elektr. Reiz) wird Ihnen \n' ...
+                 'vor jedem Block angezeigt.\n' ...
+                 'Er ist zudem stets untem am Bildschirm zu sehen.\n' ...
+                 '\n' ...
+                 'Drücken Sie nun die Leertaste zum Fortfahren.\n'];     
         elseif nInstruct == 4%third Instr. of the training phase.
             text = ['Wir sind jetzt kurz vor Beginn des Experiments.\n'...
                 'Sie erhalten nun noch einmal eine Zusammenfassung der wichtigsten Punkte.\n\n'...
                 'Drücken Sie jeweils die Leertaste um fortzufahren.\n' ...
                 ];
         elseif nInstruct == 401%third Instr. of the training phase.
-            text = ['1/ Schauen Sie die Fixationskreuze und erscheinenden Formen an.\n'...
+            text = ['1/ Schauen Sie sich stets die erscheinenden Formen an.\n'...
                 ];
         elseif nInstruct == 402%third Instr. of the training phase.
             text = ['2/ Auf einige der gezeigten Formen folgt ein elektrischer Reiz.\n'...
                 ];
         elseif nInstruct == 403%third Instr. of the training phase.
-            text = ['3/ Drücken Sie die Leertaste, wenn Sie einem Reiz ausweichen möchten.\n'...
+            text = ['3/ Drücken Sie die Leertaste, wenn Sie einem Reiz ausweichen möchten.\nDrücken Sie schnell genug, d.h. bevor der gelbe Rahmen erscheint.'...
                 ];
         elseif nInstruct == 404%third Instr. of the training phase.
-            text = ['4/ Drücken Sie schnell genug, d.h. bevor der gelbe Rahmen erscheint.\n '...
+            text = ['4/ Jedes Ausweichen kostet, d.h. Sie erhalten zusätzliche Reize am Ende des Blocks. \n '...
                 ];
         elseif nInstruct == 405%third Instr. of the training phase.
-            text = ['5/ Jedes Ausweichen kostet, d.h. Sie erhalten zusätzliche Reize am Ende des Blocks.\n'...
+            text = ['5/ Die Kosten (X Tastendrücke = 1 elektr. Reiz) sowie Anzahl bisher getätigter Tastendrücke wird Ihnen stets angezeigt.\n'...
                 ];
         elseif nInstruct == 406%third Instr. of the training phase.
             text = ['Drücken Sie jetzt die Bestätigungstaste, das Experiment startet dann in wenigen Sekunden.\n' ...
                 ];
         elseif nInstruct == 5%third Instr. of the training phase.
-%             text = ['Vor dem Experiment legen wir nun \n' ...
-%                 'die Schockintensität für den Rest des Experiments fest. \n\n' ...
-%                 'Drücken Sie die Leertaste um fortzufahren.\n' ...
-%                 ];
-               text = ['Vor dem Experiment überprüfen wir nun die Schockintensität.\n\n' ...
+            text = ['Vor dem Experiment legen wir nun \n' ...
+                'die Schockintensität für den Rest des Experiments fest. \n\n' ...
                 'Drücken Sie die Leertaste um fortzufahren.\n' ...
                 ];
+        elseif nInstruct == 501%third Instr. of the training phase.
+            text = ['Experimenter: Please confirm that you set the stimulating intensity. \n'];
+        elseif nInstruct == 502%third Instr. of the training phase.
+            text = ['Experimenter: Stimulation OK. \n'];
+        elseif nInstruct == 503%third Instr. of the training phase.
+            text = ['Experimenter: Adapt stimulation intensity. \n'];
         elseif nInstruct == 7%third Instr. of the training phase.
             text = ['Bitte bewerten Sie die nun folgenden Formen noch einmal im Bezug folgende Frage:\n'...
                 'Wir wahrscheinlich war es bei der entsprechenden Form, einen elektr. Reiz zu erhalten, wenn Sie keine Ausweich-Taste gedrückt haben?\n' ...
                 'Nutzen Sie die Pfeiltasten, um den Cursor auf der Skala zu bewegen, und die Leertaste zum Bestätigen.\n\n'...
                 'Drücken Sie die Leertaste um fortzufahren.\n' ...
-                ];
+                ];   
         elseif nInstruct == 8;%AskDetectionSelectable
             text = ['Sie sehen nun noch einmal eine Übersicht der verschiedenen Formen.\n'...
                 'Bitte geben Sie an, welche der Formen Ihrer Meinung nach\n mit dem Schock gepaart wurde.\n\n'...
@@ -1005,13 +1049,13 @@ cleanup;
                 'und drücken Sie dann die Bestätigungstaste.\n\n'...
                 'Bitte zum Starten bestätigen.\n'...
                 ];
-            %         elseif nInstruct == 801;%AskDetectionSelectable
-            %             text = ['Sie sehen nun eine ï¿½bersicht der verschiedenen Gesichter.\n'...
-            %                 'Bitte schauen Sie sich die Gesichter aufmerksam an.\n'...
-            %                 'Bitte drï¿½cken Sie zum Start die Leertaste und\n' ...
-            %                 'fixieren Sie das anschlieï¿½end erscheinende Fixationskreuz.\n'...
-            %                 ];
-            %
+%         elseif nInstruct == 801;%AskDetectionSelectable
+%             text = ['Sie sehen nun eine ï¿½bersicht der verschiedenen Gesichter.\n'...
+%                 'Bitte schauen Sie sich die Gesichter aufmerksam an.\n'...
+%                 'Bitte drï¿½cken Sie zum Start die Leertaste und\n' ...
+%                 'fixieren Sie das anschlieï¿½end erscheinende Fixationskreuz.\n'...
+%                 ];
+%             
         elseif nInstruct == 9%
             %=================================================================================================================%
             text = ['Bitte geben Sie an, ob die Reizstärke des folgenden Schocks\n für Sie erträglich ist.\n'...
@@ -1118,12 +1162,28 @@ cleanup;
         end
         
         
-        
+        %% %%%%%%%%%%%%%%%%%%%%%%%%%
+        %Make final reminders to the experimenter to avoid false starts,
+        %which are annoying. Here I specifically send test pulses to the
+        %physio computer and check if everything OK.
+            % LK here
+        % Make a screen asking for button press.
+        k = 0;
+        while ~(k == p.keys.el_calib);%press V to continue
+            pause(0.1);
+            outp(p.com.lpt.address,244);%244 means all but the UCS channel (so that we dont shock the subject during initialization).
+            fprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n');
+            fprintf('/ Did the trigger test work?\n\n\n Turn on the Digitimer, then ress V to continue experiment or C to continue sending test pulses...\n')
+            [~, k] = KbStrokeWait(p.ptb.device);
+            k = find(k);
+            Log(GetSecs,7,k);
+        end
+        fprintf('Continuing...\n');
         %%
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
         %load the pictures to the video memory.
         p.ptb.stim_sprites     = CreateStimSprites(p.stim.files);%
-        
+   
         %%
         function [out]=CreateStimSprites(files)
             %loads all the stims to video memory
@@ -1228,15 +1288,14 @@ cleanup;
             for i=1:nShocks
                 now = GetSecs;
                 TimeEnd = now + p.duration.shock;
-                fprintf('Shock No %d.',i);
-                MarkCED(p.com.lpt.address,p.com.lpt.ucs)
-                Log(GetSecs,5,99);
+                Log(now,5,99);
+                fprintf('Shock No %d.',i)
                 while GetSecs<TimeEnd
                     Buzz;
                 end
-                ITI = 6 + +.5*randn(1,1); %add some randomness.. lets see if thats ok
-                fprintf(' Waiting ITI of %03.2f secs for SCR.\n',ITI)
-                WaitSecs(ITI);
+                shjit = rand(1);
+                fprintf('Waiting %4.2f secs between shocks.\n',5+shjit)
+                WaitSecs(5+shjit);
             end
         end
         fprintf('Waiting for 2 secs.\n')
@@ -1253,25 +1312,6 @@ cleanup;
         outp(socket,port);
         WaitSecs(0.01);
         outp(socket,0);
-    end
-    function TriggerTest
-        %% %%%%%%%%%%%%%%%%%%%%%%%%%
-        %Make final reminders to the experimenter to avoid false starts,
-        %which are annoying. Here I specifically send test pulses to the
-        %physio computer and check if everything OK.
-        % have to do this without a second screen...
-        
-        k = 0;
-        while ~(k == p.keys.el_calib);%press V to continue
-            pause(0.1);
-            MarkCED(p.com.lpt.address,8+16+32);% means all but the UCS channel (so that we dont shock the subject during initialization).
-            fprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n');
-            fprintf('/ Did the trigger test work?\n\n\nPress V to continue experiment or C to continue sending test pulses...\n')
-            [~, k] = KbStrokeWait(p.ptb.device);
-            k = find(k);
-            Log(GetSecs,7,k);
-        end
-        fprintf('Continuing...\n');
     end
     function InitEyeLink
         if EyelinkWanted
