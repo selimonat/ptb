@@ -71,7 +71,7 @@ function [p]=exp_fearadapt_main(subject,PainThreshold)
 %
 %   Selim Onat
 
-debug   = 1;%debug mode => 1: transparent window enabling viewing the background.
+debug   = 0;%debug mode => 1: transparent window enabling viewing the background.
 trial_info = 0;
 EyelinkWanted = 0;%is Eyelink wanted?
 mrt           = 0;
@@ -112,7 +112,7 @@ p         = [];%parameter structure that contains all info about the experiment.
 s         = [];
 phase = 0; %for now
 p.var.ExpPhase  = 0;
-trun = 1;
+trun = 4;
 SetParams;%set parameters of the experiment
 SetPTB;%set visualization parameters.
 %
@@ -352,7 +352,7 @@ cleanup;
         end
         ShowInstruction(15,0,3)
         
-        DeliverCostShocks(nTrial)
+        DeliverCostShocks(ntTrial)
         
         %wait 6 seconds for the BOLD signal to come back to the baseline...
         KbQueueStop(p.ptb.device);
@@ -383,7 +383,7 @@ cleanup;
        cond_id = p.presentation(phase).cond_id(nTrial);
       
         if nTrial > 1
-            counter = p.out.counter(nTrial-1);
+            counter = p.out.counter(ntTrial-1);
             fprintf('counter = %02d\n.',counter);
         elseif nTrial == 1%mod(nTrial,p.presentation(phase).trialsperblock)==1 
             counter = 0;
@@ -415,7 +415,7 @@ cleanup;
             StartEyelinkRecording(ntTrial,stim_id,p.var.ExpPhase,stim_id,ucs,fix,mblock_id);%I would be cautious here, the first trial is never recorded in the EDF file, reason yet unknown.
         end
         %% Draw the stimulus to the buffer
-        Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(stim_id));
+        Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(stim_id),[],p.ptb.rect2draw);
         DrawFormattedText(p.ptb.w, num2str(counter), 'center',p.ptb.midpoint(2)+p.stim.rectsize*p.stim.dist_counter,p.text.color);
         DrawFormattedText(p.ptb.w, [num2str(press2shock) ' Knopfdrücke = 1 elektr. Reiz'], 'center',p.ptb.midpoint(2)+p.stim.rectsize*p.stim.dist_worldinfo,p.text.color);
         if trial_info
@@ -452,7 +452,7 @@ cleanup;
                         fprintf('Subject Pressed the Escape Key!\n');
                         %update counter display right away
                         counter = counter + 1;
-                        Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(stim_id));
+                        Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(stim_id),[],p.ptb.rect2draw);
                         DrawFormattedText(p.ptb.w, num2str(counter), 'center',p.ptb.midpoint(2)+p.stim.rectsize*p.stim.dist_counter,p.text.color);
                         DrawFormattedText(p.ptb.w, [num2str(press2shock) ' Knopfdrücke = 1 elektr. Reiz'], 'center',p.ptb.midpoint(2)+p.stim.rectsize*p.stim.dist_worldinfo,p.text.color);
                         Screen('DrawingFinished',p.ptb.w,0);
@@ -470,7 +470,7 @@ cleanup;
 %         fprintf('Done with KBcheck loop\n')
 %         fprintf('Now: %f secs.\n',GetSecs)
         %% Draw Yellow Frame with Stimulus
-        Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(stim_id));
+        Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(stim_id),[],p.ptb.rect2draw);
         DrawFormattedText(p.ptb.w, num2str(counter), 'center',p.ptb.midpoint(2)+p.stim.rectsize*p.stim.dist_counter,p.text.color);
         DrawFormattedText(p.ptb.w, [num2str(press2shock) ' Knopfdrücke = 1 elektr. Reiz'], 'center',p.ptb.midpoint(2)+p.stim.rectsize*p.stim.dist_worldinfo,p.text.color);       Screen('FrameRect',p.ptb.w, [255 255 0], p.ptb.rectbox, p.stim.rect_pix);
         if trial_info
@@ -538,7 +538,7 @@ cleanup;
             StartEyelinkRecording(nTrial,stim_id,p.var.ExpPhase,stim_id);%I would be cautious here, the first trial is never recorded in the EDF file, reason yet unknown.
         end
         %% Draw the stimulus to the buffer
-        Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(stim_id));
+        Screen('DrawTexture', p.ptb.w, p.ptb.stim_sprites(stim_id),[],p.ptb.rect2draw);
         %% STIMULUS ONSET
         TimeStimOnset  = Screen('Flip',p.ptb.w,TimeStimOnset,0);%asap and dont clear
 %         fprintf('Real Onset: %f secs.\n',TimeStimOnset)
@@ -1084,6 +1084,36 @@ cleanup;
         end
     end
     function SetPTB
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%
+        %prepare parallel port communication. This relies on cogent i
+        %think. We could do it with PTB as well.
+        if IsWindows
+            config_io;
+            outp(p.com.lpt.address,0);
+            if( cogent.io.status ~= 0 )
+                error('inp/outp installation failed');
+            end
+        end
+        
+        
+        %% %%%%%%%%%%%%%%%%%%%%%%%%%
+        %Make final reminders to the experimenter to avoid false starts,
+        %which are annoying. Here I specifically send test pulses to the
+        %physio computer and check if everything OK.
+            % LK here
+        % Make a screen asking for button press.
+        k = 0;
+        while ~(k == p.keys.el_calib);%press V to continue
+            pause(0.1);
+            MarkCED(p.com.lpt.address,244);%244 means all but the UCS channel (so that we dont shock the subject during initialization).
+            fprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n');
+            fprintf('/ Did the trigger test work?\n\n\n Turn on the Digitimer, then press V to continue experiment or C to continue sending test pulses...\n')
+            [~, k] = KbStrokeWait([]);
+            k = find(k);
+            Log(GetSecs,7,k);
+        end
+        fprintf('Continuing...\n');
+        
         %Sets the parameters related to the PTB toolbox. Including
         %fontsizes, font names.
         %Default parameters
@@ -1117,6 +1147,7 @@ cleanup;
         
         %find the mid position on the screen.
         p.ptb.midpoint              = [ p.ptb.width./2 p.ptb.height./2];
+        p.ptb.res                   = res;
         %NOTE about RECT:
         %RectLeft=1, RectTop=2, RectRight=3, RectBottom=4.
         p.ptb.imrect                = [ p.ptb.midpoint(1)-p.stim.width/2 p.ptb.midpoint(2)-p.stim.height/2 p.ptb.midpoint(1)-p.stim.width/2+p.stim.width p.ptb.midpoint(2)-p.stim.height/2+p.stim.height];
@@ -1128,7 +1159,10 @@ cleanup;
         p.ptb.CrossPositionET_y     = [p.ptb.midpoint(2) p.ptb.midpoint(2)];
         p.ptb.fc_size               = 10;
         %
-        p.ptb.rectbox               =  [p.ptb.midpoint(1)-p.stim.rectsize p.ptb.midpoint(2)-p.stim.rectsize p.ptb.midpoint(1)+p.stim.rectsize p.ptb.midpoint(2)+p.stim.rectsize];
+        p.ptb.rectbox               =  [p.ptb.midpoint(1)-p.stim.rectsize p.ptb.midpoint(2)-p.stim.rectsize p.ptb.midpoint(1)+p.stim.rectsize p.ptb.midpoint(2)+p.stim.rectsize]; %this is for the yellow frame during outcome
+          p.ptb.imagesize           = [900 675]; %how big we want it.
+        p.ptb.rect2draw            =CenterRectOnPointd([0 0 p.ptb.imagesize], p.ptb.res.width / 2,p.ptb.res.height / 2); %taken from some demo.
+    
         
         %%
         %priorityLevel=MaxPriority(['GetSecs'],['KbCheck'],['KbWait'],['GetClicks']);
@@ -1150,35 +1184,7 @@ cleanup;
         p.ptb.keysOfInterest(p.keys.confirm) = 1;
         %create a queue sensitive to only relevant keys.
         % KbQueueCreate(p.ptb.device,p.ptb.keysOfInterest);%default device.
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%
-        %prepare parallel port communication. This relies on cogent i
-        %think. We could do it with PTB as well.
-        if IsWindows
-            config_io;
-            outp(p.com.lpt.address,0);
-            if( cogent.io.status ~= 0 )
-                error('inp/outp installation failed');
-            end
-        end
-        
-        
-        %% %%%%%%%%%%%%%%%%%%%%%%%%%
-        %Make final reminders to the experimenter to avoid false starts,
-        %which are annoying. Here I specifically send test pulses to the
-        %physio computer and check if everything OK.
-            % LK here
-        % Make a screen asking for button press.
-        k = 0;
-        while ~(k == p.keys.el_calib);%press V to continue
-            pause(0.1);
-            outp(p.com.lpt.address,244);%244 means all but the UCS channel (so that we dont shock the subject during initialization).
-            fprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n');
-            fprintf('/ Did the trigger test work?\n\n\n Turn on the Digitimer, then ress V to continue experiment or C to continue sending test pulses...\n')
-            [~, k] = KbStrokeWait(p.ptb.device);
-            k = find(k);
-            Log(GetSecs,7,k);
-        end
-        fprintf('Continuing...\n');
+
         %%
         %%%%%%%%%%%%%%%%%%%%%%%%%%%
         %load the pictures to the video memory.
@@ -1265,10 +1271,11 @@ cleanup;
         shuffled        = vector(idx(1:N));
         shuffled        = shuffled(:);
     end
-    function DeliverCostShocks(nTrial)
-        press_count = p.out.counter(nTrial);
+    function DeliverCostShocks(nt)
+        press_count = p.out.counter(nt);
         text = ['Sie haben die Taste ' num2str(press_count) ' mal gedrückt.\n'...
-            'Es folgt nun die entsprechende Anzahl an elektrischen Reizen.\n'];
+            'Es folgt nun die entsprechende Anzahl an elektrischen Reizen.\n'...
+            'Sie müssen nichts tun.\n'];
         pressesForShock = p.presentation(phase).press2shock(p.presentation(phase).world);
         Screen('FillRect',p.ptb.w,p.var.current_bg);
         DrawFormattedText(p.ptb.w, text, 'center', 'center',p.text.color,[],[],[],2,[]);
@@ -1279,11 +1286,12 @@ cleanup;
         fprintf('Text shown to the subject:\n');
         fprintf(text);
         fprintf('=========================================================\n');
-        WaitSecs(2.5)
+        WaitSecs(4)
         Screen('FillRect',p.ptb.w,p.var.current_bg);
         t = Screen('Flip',p.ptb.w);
         nShocks=round(press_count/pressesForShock);
         fprintf('\n\n Subject will get a total of %d shocks.\n',nShocks)
+        WaitSecs(rand(1)+2);
         if nShocks >=1;
             for i=1:nShocks
                 now = GetSecs;
