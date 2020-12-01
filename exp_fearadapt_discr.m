@@ -14,8 +14,8 @@ function [p]=exp_fearadapt_discr(subject,phase,PainThreshold)
 
 EyelinkWanted   = 0; %is Eyelink wanted?
 fixcross        = 0; %want to have fixcrossin ITI?
-sim_response    = 1; %simulate response by ObserverResponseFunction
-debug           = 1;
+sim_response    = 0; %simulate response by ObserverResponseFunction
+debug           = 0;
 lab           = '204';
 %(see variable fix_start).
 
@@ -135,6 +135,8 @@ for nTrial = 1:p.presentation.total_trials
     SetLog(nTrial,response,signal,sdt,RT,wrong)
     
 end
+ShowInstruction(4,0,3);
+DeliverCostShocks(nTrial);
 %final save of parameter-/logfile
 save(p.path.path_param,'p');
 
@@ -187,7 +189,7 @@ copyfile(p.path.subject,p.path.finalsubject);
         end
         Screen('FillRect',  p.ptb.w, p.ptb.fc_color, p.ptb.centralFixCross');%draw the prestimus cross atop    
         % 1) Stim1
-        Screen('DrawTexture',p.ptb.w,p.ptb.stim_sprites(ind1));
+        Screen('DrawTexture',p.ptb.w,p.ptb.stim_sprites(ind1),[],p.ptb.rect2draw);
         if fixcross==1
         Screen('FillRect',  p.ptb.w, p.ptb.fc_color, p.ptb.centralFixCross');
         end
@@ -200,6 +202,7 @@ copyfile(p.path.subject,p.path.finalsubject);
         Log(GetSecs,2,ind1);
         % 2) Mask1
         Screen('DrawTexture',p.ptb.w,p.ptb.stim_sprites(end));
+%         Screen('DrawTexture',p.ptb.w,p.ptb.stim_sprites(end),[],p.ptb.rect2draw);
         if fixcross==1
         Screen('FillRect',  p.ptb.w, p.ptb.fc_color, p.ptb.centralFixCross');
         end
@@ -212,7 +215,7 @@ copyfile(p.path.subject,p.path.finalsubject);
         Screen('Flip',p.ptb.w,onsets(3),0);
         Log(GetSecs,4,NaN);
         % 4) Stim2
-        Screen('DrawTexture',p.ptb.w,p.ptb.stim_sprites(ind2));
+        Screen('DrawTexture',p.ptb.w,p.ptb.stim_sprites(ind2),[],p.ptb.rect2draw);
         if fixcross==1
         Screen('FillRect',  p.ptb.w, p.ptb.fc_color, p.ptb.centralFixCross');
         end
@@ -225,6 +228,7 @@ copyfile(p.path.subject,p.path.finalsubject);
         end
         % 5) Mask2
         Screen('DrawTexture',p.ptb.w,p.ptb.stim_sprites(end));
+        %         Screen('DrawTexture',p.ptb.w,p.ptb.stim_sprites(end),[],p.ptb.rect2draw);
         if fixcross==1
         Screen('FillRect',  p.ptb.w, p.ptb.fc_color, p.ptb.centralFixCross');
         end
@@ -369,6 +373,7 @@ copyfile(p.path.subject,p.path.finalsubject);
         end
         %find the mid position on the screen.
         p.ptb.midpoint              = [ p.ptb.width./2 p.ptb.height./2];
+        p.ptb.res                   = res;
         %NOTE about RECT:
         %RectLeft=1, RectTop=2, RectRight=3, RectBottom=4.
         p.ptb.imrect                = round([ p.ptb.midpoint(1)-p.stim.width/2 p.ptb.midpoint(2)-p.stim.height/2 p.stim.width p.stim.height]);
@@ -384,7 +389,9 @@ copyfile(p.path.subject,p.path.finalsubject);
         p.ptb.startY                = p.ptb.midpoint(2); %I guess this allows putting it higher, if coil covers parts of the screen.
         fix          = [p.ptb.midpoint(1) p.ptb.startY]; % yaxis is 1/4 of total yaxis
         p.ptb.centralFixCross     = [fix(1)-p.ptb.fc_width,fix(2)-p.ptb.fc_size,fix(1)+p.ptb.fc_width,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-p.ptb.fc_width,fix(1)+p.ptb.fc_size,fix(2)+p.ptb.fc_width];
- 
+        p.ptb.imagesize           = [900 675]; %how big we want it.
+%         p.ptb.imagebox            = [p.ptb.res.width/2-p.ptb.imagesize(1)/2 p.ptb.res.height/2-p.ptb.imagesize(2)/2 p.ptb.midpoint(1)+p.ptb.imagesize(1) p.ptb.midpoint(2)+p.ptb.imagesize(2) ];
+        p.ptb.rect2draw            =CenterRectOnPointd([0 0 p.ptb.imagesize], p.ptb.res.width / 2,p.ptb.res.height / 2); %taken from some demo.
         %
 %         if fixjump == 0
 %             p.ptb.CrossPositions   = FixationCrossPool;
@@ -909,7 +916,8 @@ function ConfirmIntensity
     function DeliverCostShocks(nTrial)
         error_count = sum(p.psi.log.wrong(p.presentation.block == p.presentation.block(nTrial-1)));
         text = ['Sie haben ' num2str(error_count) ' mal falsch geantwortet.\n'...
-            'Es folgt nun die entsprechende Anzahl an elektrischen Reizen.\n'];
+            'Es folgt nun die entsprechende Anzahl an elektrischen Reizen.\n'...
+            'Sie müssen hier nichts tun.\n'];
         pressesForShock = p.presentation.press2shock;
         Screen('FillRect',p.ptb.w,p.var.current_bg);
         DrawFormattedText(p.ptb.w, text, 'center', 'center',p.text.color,[],[],[],2,[]);
@@ -920,11 +928,12 @@ function ConfirmIntensity
         fprintf('Text shown to the subject:\n');
         fprintf(text);
         fprintf('=========================================================\n');
-        WaitSecs(2.5)
+        WaitSecs(4);
         Screen('FillRect',p.ptb.w,p.var.current_bg);
         t = Screen('Flip',p.ptb.w);
         nShocks=round(error_count/pressesForShock);
         fprintf('\n\n Subject will get a total of %d shocks.\n',nShocks)
+        WaitSecs(rand(1)+2);
         if nShocks >=1;
             for i=1:nShocks
                 now = GetSecs;
