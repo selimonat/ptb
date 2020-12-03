@@ -14,8 +14,8 @@ function [p]=exp_fearadapt_discr(subject,phase,PainThreshold)
 
 EyelinkWanted   = 0; %is Eyelink wanted?
 fixcross        = 0; %want to have fixcrossin ITI?
-sim_response    = 0; %simulate response by ObserverResponseFunction
-debug           = 0;
+sim_response    = 1; %simulate response by ObserverResponseFunction
+debug           = 1;
 lab           = '204';
 %(see variable fix_start).
 
@@ -50,6 +50,7 @@ end
 if phase == 1
     ShowInstruction(5,1);
     ConfirmIntensity;
+    RateShockIntensity;
 end
 SetupLog;
 %save the parameter file once now
@@ -101,30 +102,31 @@ for nTrial = 1:p.presentation.total_trials
         signal=1;
     end
     
-    % see if subject found the different pair of faces...
-    % buttonpress left (Yes) is response_subj=2, right alternative
-    % (No) outputs a 1, this will be transformed here.
-    % note that response == 1 only means "yes", but not necessarily
-    % "correct"
+    % THIS PART WAS CHANGED AS COMPARED TO EXP_TREATGEN_PMF, because there
+    % repsonses were reversed.. came from exp_painthreshold, I guess. Didnt
+    % matter there bc of binary output, but here with shockIntensityRating
+    % 1-10, it would have been a problem.
+    
+    
     sdt = NaN;
-    if (response_subj == 2 && signal == 1)
+    if (response_subj == 1 && signal == 1)
         response = 1;
-%         fprintf('...Hit. \n')
+        fprintf('...Hit. \n')
         sdt=1;
         wrong = 0;
-    elseif (response_subj==1 && signal == 1)
+    elseif (response_subj==2 && signal == 1)
         response = 0;
-%         fprintf('...Miss. \n')
+        fprintf('...Miss. \n')
         sdt=3;
         wrong = 1;
-    elseif (response_subj == 2 && signal ==0)
+    elseif (response_subj == 1 && signal ==0)
         response = 1;
-%         fprintf('...False Alarm. \n')
+        fprintf('...False Alarm. \n')
         sdt=2;
         wrong = 1;
-    elseif (response_subj == 1 && signal == 0)
+    elseif (response_subj == 2 && signal == 0)
         response = 0;
-%         fprintf('...Correct Rejection. \n')
+        fprintf('...Correct Rejection. \n')
         sdt=4;
         wrong = 0;
     else
@@ -609,6 +611,7 @@ copyfile(p.path.subject,p.path.finalsubject);
         p.presentation.press2shock  = 5;
         p.out.PainThreshold           = PainThreshold;%the pain threshold (i.e. pain intensity where p(painful) = .5 for the subject, it is an input argument, must be computed before the experiment.
         p.out.ShockFactor             = 2;%factor to multiply the PainThreshold with, will use this factor to propose the experimenter the final shock intensity to be used during the FearGen Experiment.
+        p.out.ShockIntensityRating     = nan(1,10);
         
         p.var.current_bg              = p.stim.bg;%current background to be used.
         %Save the stuff
@@ -636,7 +639,7 @@ copyfile(p.path.subject,p.path.finalsubject);
                 next = position + increment(keyCode);
                 if next < (tSection+1) & next > 0
                     position = position + increment(keyCode);
-                    rating   = tSection - position + 1;
+%                     rating   = tSection - position + 1 %where did that come from?
                 end
                 DrawSkala;
             elseif keyCode == confirm
@@ -648,7 +651,7 @@ copyfile(p.path.subject,p.path.finalsubject);
         end
         
         function DrawSkala
-            rating               = tSection - position + 1;
+            rating               = position; %tSection - position + 1; %WHERE and WHEN did this happen?
             increment([up down]) = [1 -1];%delta
             tick_x               = linspace(rect(1),rect(1)+rect(3),tSection+1);%tick positions
             tick_size            = rect(3)./tSection;
@@ -786,6 +789,8 @@ copyfile(p.path.subject,p.path.finalsubject);
                 'Alle ' num2str(breakpoint) ' Durchgänge erfolgt eine Pause. \n Hier erhalten Sie zunächst die entsprechende Anzahl an elektr. Reizen, je nachdem wie oft Sie richtig oder falsch geantwortet haben.\n'...
                 'Anschließend können Sie eine kurze Pause machen und sich entspannen. Danach starten Sie per Tastendruck den nächsten Block.\n'...
                 '\n'...
+                'Hinweis: Bitte halten Sie die linke Hand so ruhig wie möglich. Dies ist sehr wichtig für die Datenqualität der physiologischen Messung.\nWenn nicht anders möglich, bewegen Sie diese bitte in der Pause zwischen den Blöcken, nach den elektr. Reizen.\n'...
+                '\n'...
                 '\n'...
                 'Drücken Sie die Leertaste um zu beginnen.\n'...
                 ];
@@ -822,13 +827,21 @@ copyfile(p.path.subject,p.path.finalsubject);
         elseif nInstruct == 503%third Instr. of the training phase.
             text = ['Experimenter: Adapt stimulation intensity. \n'];
           elseif nInstruct == 504%third Instr. of the training phase.
-            text = ['Wir haben die Reizstärke nun erfolgreich festgelegt.\n'...
+            text = ['Wir sind nun bereit, das Wahrnehmungsexperiment zu starten.\n'...
                   '\n'...
                 'Wenn Sie noch Fragen haben, können Sie jetzt die Versuchsleiter/in fragen.\n'...
                 '\n'...
                 'Drücken Sie ansonsten die Leertaste,\n'...
                 '   um das Experiment zu starten.\n'...
                 ];    
+        elseif nInstruct == 505
+              text = ['Wir würden Sie nun noch einmal bitten, den Reiz auf einer Skala von 1 bis 10 zu bewerten.\n'...
+                '\n'...
+                'Drücken Sie die Leertaste, um den Reiz zu erhalten und anschließend zu bewerten.\n'...
+                'Die Bewertung nehmen Sie wie gehabt mit Pfeiltasten und Leertaste zum Bestätigen vor.\n'...
+                '\n'...
+                'Drücken Sie bitte die Leertaste, wenn Sie bereit sind.\n'...
+                ]; 
         elseif nInstruct == 9%
             text = ['Bitte geben Sie an, ob die Reizstärke der folgenden elektr. Stimulation\n für Sie erträglich ist.\n'...
                 '\n'...
@@ -860,10 +873,10 @@ function ConfirmIntensity
                 Buzz;
             end
             %
-            message1   = 'Bewege den "Zeiger" mit der rechten und linken Pfeiltaste\n und bestätige deine Einschätzung mit der mit der Leertaste.';
+            message1   = 'Bewegen Sie den "Zeiger" mit der rechten und linken Pfeiltaste\n und bestätigen Sie mit der Leertaste.';
             rect        = [p.ptb.width*0.2  p.ptb.midpoint(2) p.ptb.width*0.6 100];
             response = RatingSlider(rect,2,1,p.keys.increase,p.keys.decrease,p.keys.confirm,{ 'nicht\nerträglich' 'erträglich'},message1,'',0);
-            if response == 1
+            if response == 2
                 ShowInstruction(502,1); % Stimulation OK.
                 fprintf('All is fine :)\n');
                 fprintf('Subject confirmed the shock intensity inside the scanner...\n');
@@ -871,7 +884,7 @@ function ConfirmIntensity
                 p.out.ShockIntensity = p.var.ShockIntensity;
                  ShowInstruction(504,1);% Final confirmation to start (subject's job).
                 return;
-            elseif response == 2
+            elseif response == 1
                 ShowInstruction(503,1); % Stimulation not OK.
                 fprintf('Shit... :(, %g is too much for the subject\n',p.var.ShockIntensity);
                 fprintf('We will try a little milder intensity.\n');
@@ -895,7 +908,7 @@ function ConfirmIntensity
                 Buzz;
             end
             %
-            message   = 'Bewege den "Zeiger" mit der rechten und linken Pfeiltaste\n und bestätige deine Einschätzung mit der mit der Leertaste.';
+            message1   = 'Bewegen Sie bitte den "Zeiger" mit der rechten und linken Pfeiltaste\n und bestätigen Sie mit der Leertaste.';
             rect        = [p.ptb.width*0.2  p.ptb.midpoint(2) p.ptb.width*0.6 100];
             response = RatingSlider(rect,2,1,p.keys.increase,p.keys.decrease,p.keys.confirm,{ 'nicht\nerträglich' 'erträglich'},message1,'',0);
             if response == 2
@@ -912,6 +925,46 @@ function ConfirmIntensity
             end
             
         end
+end
+    function RateShockIntensity
+        
+    ShowInstruction(505,1);
+       %instruction has been shown already
+       %
+       %
+       
+       WaitSecs(2);
+       ShowInstruction(10,0,1+rand(1));%shock is coming message...
+       t = GetSecs + p.duration.shock;
+       while GetSecs < t;
+           Buzz;
+       end
+       %
+       WaitSecs(2);
+       message1   = 'Bewegen Sie den "Zeiger" mit der rechten und linken Pfeiltaste\n und bestätigen Sie dann mit der Leertaste.';
+       rect        = [p.ptb.width*0.2  p.ptb.midpoint(2) p.ptb.width*0.6 100];
+       response = RatingSlider(rect,10,Shuffle(1:10,1),p.keys.increase,p.keys.decrease,p.keys.confirm,{ 'gar nicht\nschmerzhaft' 'maximal\nschmerzhaft'},message1,'',1);
+       p.out.ShockIntensityRating(find(isnan(p.out.ShockIntensityRating),1)) = response;
+       
+       text = ['Subject Rating: ' num2str(response) '\n Continue with v, repeat with c?'];
+       Screen('FillRect',p.ptb.w,p.var.current_bg);
+       DrawFormattedText(p.ptb.w, text, 'center', 'center',p.text.color,[],[],[],2,[]);
+       t=Screen('Flip',p.ptb.w);
+       Log(t,-1,99);
+       k = 0;
+       [~, k] = KbStrokeWait([]);
+       k = find(k);
+       if k == p.keys.el_calib
+           return
+       else
+           RateShockIntensity;
+       end
+       fprintf('Continuing...\n');
+       
+       Screen('FillRect',p.ptb.w,p.stim.bg);
+       Screen('Flip',p.ptb.w);
+       WaitSecs(2);
+       
     end
     function DeliverCostShocks(nTrial)
         error_count = sum(p.psi.log.wrong(p.presentation.block == p.presentation.block(nTrial-1)));
