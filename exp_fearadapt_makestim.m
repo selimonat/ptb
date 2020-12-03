@@ -92,6 +92,30 @@ end
 % end
 trialsPerCond=8;
 %generate trial type matrix for each subject:
+TestTrials=[repmat([1 1 2 3 4 5 6 7 8 9 10 10 11 12 13 14 15 16 17 18],[1,trialsPerCond])]; %as in norbury discrim_test_del_p_main -  the 1 and 10 (i.e. delta=0) is double, because other deltas are both pos/neg
+conds  = 1:18;
+delta  = [0 .05 .075 .1 .15 .05 .075 .1 .15 0 .05 .075 .1 .15 .05 .075 .1 .15];
+deltas = [0 .05 .075 .1 .15 -.05 -.075 -.1 -.15 0 .05 .075 .1 .15 -.05 -.075 -.1 -.15];
+nCS    = [ones(1,9) 2*ones(1,9)];
+
+M = [conds;delta;deltas;nCS];
+
+
+for n = 1:200
+TestTrialMatrix=TestTrials(randperm(size(TestTrials,2)));
+seq(n).cond = TestTrialMatrix;
+seq(n).delta = M(2,seq(n).cond);
+seq(n).sdelta = M(3,seq(n).cond);
+seq(n).nCS   =  M(4,seq(n).cond);
+seq(n).total_trials = length(TestTrialMatrix);
+end
+
+trialtypes = unique(TestTrialMatrix);
+
+
+%% shorter sequence
+trialsPerCond=5;
+%generate trial type matrix for each subject:
 TestTrials=[repmat([1 1 2 3 4 5 6 7 8 9 10 10 11 12 13 14 15 16 17 18],[1,trialsPerCond])]; %as in norbury discrim_test_del_p_main
 
 conds  = 1:18;
@@ -111,7 +135,8 @@ seq(n).nCS   =  M(4,seq(n).cond);
 seq(n).total_trials = length(TestTrialMatrix);
 end
 
-trialtypes = unique(TestTrialMatrix);
+
+
 
 function q = gen_shape(rho, nSpikes, R)
 
