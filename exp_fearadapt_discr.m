@@ -433,13 +433,22 @@ copyfile(p.path.subject,p.path.finalsubject);
             if nStim<p.stim.tFile %this excludes the mask
                 im = CenterStarfish(im);
             end
+            %make the mask
+%             im_rect = %get the rect in which the actual starfish is
+            star_roi  =CenterRectOnPointd([0 0 600 800], 900/2,1200/2);
+            clipped   = im(star_roi(1)+1:star_roi(3),star_roi(2)+1:star_roi(4),:);
+            im_mask = ScrambleImage(clipped);
+            im_mask_full = im;
+            im_mask_full(star_roi(1)+1:star_roi(3),star_roi(2)+1:star_roi(4),:)=im_mask;
+            
             % transform to grayscale if necessary
             %             if ndims(im) == 3
             %                 p.stim.stim(:,:,nStim)    = rgb2gray(im);
             %             else
             %                 p.stim.stim(:,:,nStim)    = im;
             %             end
-            p.ptb.stim_sprites(nStim)     = Screen('MakeTexture', p.ptb.w, im );
+            p.ptb.stim_sprites(nStim)                  = Screen('MakeTexture', p.ptb.w, im );
+            p.ptb.stim_sprites(nStim+p.stim.tFile)     = Screen('MakeTexture', p.ptb.w, im_mask );
         end
         %         p.stim.delta = 360/p.stim.tFace;
         
@@ -513,7 +522,7 @@ copyfile(p.path.subject,p.path.finalsubject);
         
         
         p.stim.tFile                  = size(p.stim.files,1);%number of different files
-        p.stim.tShape                 = p.stim.tFile-1;%number of shapes (- mask)
+%         p.stim.tShape                 = p.stim.tFile-1;%number of shapes (- mask)
         %
         display([mat2str(p.stim.tFile) ' found in the destination.']);
         %set the background gray according to the background of the stimuli
@@ -603,7 +612,7 @@ copyfile(p.path.subject,p.path.finalsubject);
         end
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
-        p.presentation = load([p.path.seq 'n200_8trials_random.mat']);
+        p.presentation = load([p.path.seq 'n100_5trials_random.mat']);
         p.presentation = p.presentation.seq(subject);
         p.presentation.seqid = subject;
         p.presentation.total_trials = length(p.presentation.cond);
@@ -716,6 +725,19 @@ copyfile(p.path.subject,p.path.finalsubject);
         offset_x = 15; %this was determined via entering the clicking world.
         offset_y = 10;
         centerput = imput([(Nrows-offset_y):Nrows 1:(Nrows-offset_y-1)],[(offset_x+1):Ncols 1:offset_x],:);
+    end
+    function scramble = ScrambleImage(im0)
+    %as done in Norbury et al. 2018
+    
+    blockSize = 10;
+    
+    nRows = size(im0, 1) / blockSize;
+    nCols = size(im0, 2) / blockSize;
+    scramble = mat2cell(im0, ones(1, nRows) * blockSize, ones(1, nCols) * blockSize, size(im0, 3));
+    scramble = cell2mat(reshape(scramble(randperm(nRows * nCols)), nRows, nCols));
+    
+
+%save as desired
     end
     function ShowInstruction(nInstruct,waitforkeypress,varargin)
         
