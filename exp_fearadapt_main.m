@@ -71,7 +71,7 @@ function [p]=exp_fearadapt_main(subject,PainThreshold)
 %
 %   Selim Onat
 
-debug   = 0;%debug mode => 1: transparent window enabling viewing the background.
+debug   = 1;%debug mode => 1: transparent window enabling viewing the background.
 trial_info = 0;
 EyelinkWanted = 0;%is Eyelink wanted?
 mrt           = 0;
@@ -112,7 +112,7 @@ p         = [];%parameter structure that contains all info about the experiment.
 s         = [];
 phase = 0; %for now
 p.var.ExpPhase  = 0;
-trun = 4;
+trun =2;
 SetParams;%set parameters of the experiment
 SetPTB;%set visualization parameters.
 %
@@ -145,8 +145,8 @@ end
     for ninst = [1 2 3]
         ShowInstruction(ninst,1);
     end
-%     ShowInstruction(5,1); %has been done in discr. task
-%     ConfirmIntensity;
+% %     ShowInstruction(5,1); %has been done in discr. task
+% %     ConfirmIntensity;
     for ninst = [4 401:406]
         ShowInstruction(ninst,1);
     end
@@ -160,15 +160,16 @@ for phase = 1:trun
     
 end
 fprintf('Going into AskStimRating mode.\n');
+AskStimRating;%make sure that scanner doesnt stop prematurely asa the stim offset
+
+RateShockIntensity;
 % AskStimRating;%make sure that scanner doesnt stop prematurely asa the stim offset
        %     if phase == 6
     %         if EyelinkWanted
     %             CalibrateEL;
     %             AskDetection;
-%     fprintf('Going into AskStimRating mode.\n');
-AskStimRating;%make sure that scanner doesnt stop prematurely asa the stim offset
-
     %         end
+%     fprintf('Going into AskStimRating mode.\n');
 
 %get the eyelink file back to this computer
 StopEyelink(p.path.edf);
@@ -389,8 +390,7 @@ cleanup;
             counter = 0;
             fprintf('New block, counter set to zero.\n')
         end
-         p.out.counter(1:10)'
-       fprintf('counter = %d\n',counter);
+%        fprintf('counter = %d\n',counter);
         %plan all the times
         TimeStimOnset      = TimeStimOnset + jitter;
         TimeBoxOnset       = TimeStimOnset  + p.duration.stim;
@@ -718,7 +718,7 @@ cleanup;
         p.duration.keep_recording      = 0.25;%this is the time we will keep recording (eye data) after stim offset.
         p.duration.prestim             = .85;
         p.duration.outcomedelay        = 3;
-        speedup = 1; %factor to speed up things, e.g. for debugging or testing 
+        speedup                        = 4; %factor to speed up things, e.g. for debugging or testing 
         p.duration.outcomedelay        = p.duration.outcomedelay   /speedup;
         p.duration.stim                = p.duration.stim           /speedup;
         %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -740,7 +740,8 @@ cleanup;
         p.out.RT                      = nan(p.presentation(1).tTrial,1);%
         p.out.counter                 = zeros(p.presentation(1).tTrial,1);%
         p.out.PainThreshold           = PainThreshold;%the pain threshold (i.e. pain intensity where p(painful) = .5 for the subject, it is an input argument, must be computed before the experiment.
-        p.out.ShockFactor             = 2;%factor to multiply the PainThreshold with, will use this factor to propose the experimenter the final shock intensity to be used during the FearGen Experiment.
+        p.out.ShockFactor             = 2;%factor to multiply the PainThreshold with, will use this factor to propose the experimenter the final shock intensity to be used during the FearGen Experiment.        p.out.ShockIntensityRating     = nan(1,10);
+        p.out.ShockIntensityRating    = nan(1,10);
         %%
         p.var.current_bg              = p.stim.bg;%current background to be used.
         %Save the stuff
@@ -756,6 +757,30 @@ cleanup;
             end
             labels = {dummy(:).name};
         end
+    end
+function RateShockIntensity
+        
+    ShowInstruction(505,1);
+       %instruction has been shown already
+       %
+       %
+       
+       WaitSecs(2);
+       ShowInstruction(10,0,1+rand(1));%shock is coming message...
+       t = GetSecs + p.duration.shock;
+       while GetSecs < t;
+           Buzz;
+       end
+       %
+       WaitSecs(2);
+       message1   = 'Bewegen Sie den "Zeiger" mit der rechten und linken Pfeiltaste\n und bestätigen Sie dann mit der Leertaste.';
+       rect        = [p.ptb.width*0.2  p.ptb.midpoint(2) p.ptb.width*0.6 100];
+       response = RatingSlider(rect,10,Shuffle(1:10,1),p.keys.increase,p.keys.decrease,p.keys.confirm,{ 'gar nicht\nschmerzhaft' 'maximal\nschmerzhaft'},message1,1);
+       p.out.ShockIntensityRating(find(isnan(p.out.ShockIntensityRating),1)) = response;
+       Screen('FillRect',p.ptb.w,p.stim.bg);
+       Screen('Flip',p.ptb.w);
+       WaitSecs(2);
+       
     end
     function AskStimRating
         
@@ -1036,6 +1061,14 @@ cleanup;
             text = ['Experimenter: Stimulation OK. \n'];
         elseif nInstruct == 503%third Instr. of the training phase.
             text = ['Experimenter: Adapt stimulation intensity. \n'];
+        elseif nInstruct == 505
+            text = ['Wir würden Sie nun noch einmal bitten zu bewerten, wie schmerzhaft Sie den elektr. Reiz finden.\n'...
+                '\n'...
+                'Drücken Sie die Leertaste, um den Reiz zu erhalten und anschließend auf einer Skala von 1 (nicht schmerzhaft) bis 10 (maximal schmerzhaft) zu bewerten.\n'...
+                'Die Bewertung nehmen Sie wie gehabt mit Pfeiltasten und Leertaste zum Bestätigen vor.\n'...
+                '\n'...
+                'Drücken Sie bitte die Leertaste, wenn Sie bereit sind.\n'...
+                ];
         elseif nInstruct == 7%third Instr. of the training phase.
             text = ['Bitte bewerten Sie die nun folgenden Formen noch einmal im Bezug folgende Frage:\n'...
                 'Wir wahrscheinlich war es bei der entsprechenden Form, einen elektr. Reiz zu erhalten, wenn Sie keine Ausweich-Taste gedrückt haben?\n' ...
