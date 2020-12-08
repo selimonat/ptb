@@ -7,6 +7,12 @@ if ~isempty(varargin)
 else
     debug = 0;
 end
+%set init intensity
+if nargin == 3
+    init_int = varargin{2}; 
+else
+    init_int = .5; %this was 0 (=1mA) before, but this electrode/digitimer setup seems to be quite strong.
+end
 global cogent;
 %
 p         = [];
@@ -37,7 +43,9 @@ cleanup;
         message = 'War der Reiz schmerzhaft oder nicht?\nBewege den "Zeiger" mit der rechten und linken Pfeiltaste\n und bestätige deine Einschätzung mit der mit der oberen Pfeiltaste.';
         %
         p.threshold.init.alphas        = log(0.1):0.177/100:log(50);
-        p.threshold.init.prior         = PAL_pdfNormal(p.threshold.init.alphas, log(3), log(2.5));
+%         p.threshold.init.prior = ones(size(p.threshold.init.alphas));
+%         p.threshold.init.prior = p.threshold.init.prior./sum(p.threshold.init.prior);
+        p.threshold.init.prior         = PAL_pdfNormal(p.threshold.init.alphas, log(3), log(2.5)); %LK: PAL_pdfNormal(p.threshold.init.alphas, .7, .5);
         p.threshold.init.stopcriterion = 'trials';
         p.threshold.init.stoprule      = 12;
         p.threshold.init.PFfit         = @PAL_Gumbel;
@@ -45,13 +53,13 @@ cleanup;
         p.threshold.init.lambda        = 0;
         p.threshold.init.gamma         = 0;
         p.threshold.init.meanmode      = 'mode';
-        p.threshold.final.factor       = [1.5 2 2.5];
+        p.threshold.final.factor       = [1.5 2];
         %
         p.threshold.RF = PAL_AMRF_setupRF('priorAlphaRange', p.threshold.init.alphas, 'prior', p.threshold.init.prior,...
             'stopCriterion',p.threshold.init.stopcriterion,'stoprule',p.threshold.init.stoprule,'beta',p.threshold.init.beta,'gamma',p.threshold.init.gamma,...
             'lambda',p.threshold.init.lambda,'PF',p.threshold.init.PFfit,'meanmode',p.threshold.init.meanmode);
         %
-        p.threshold.RF.xCurrent        = log(1);%start shock;
+        p.threshold.RF.xCurrent        = log(init_int);%start shock;
         %
         response_mapping = [1 0];
         ShowInstruction(4);
@@ -113,9 +121,8 @@ cleanup;
         fprintf('\n\n\nRESULT:\n');
         fprintf('The estimated pain threshold : %g mA\n',p.threshold.final.estimated);
         fprintf('Choose an intensity:\n');
-        fprintf('Intensity to be used for factor x 1.2): %g mA\n',exp(log_threshold.*p.threshold.final.factor(1)));
-        fprintf('Intensity to be used for factor x 1.3): %g mA\n',exp(log_threshold.*p.threshold.final.factor(2)));
-        fprintf('Intensity to be used for factor x 1.4): %g mA\n',exp(log_threshold.*p.threshold.final.factor(3)));
+        fprintf('Intensity to be used for factor x 1.5): %g mA\n',exp(log_threshold.*p.threshold.final.factor(1)));
+        fprintf('Intensity to be used for factor x 2): %g mA\n',exp(log_threshold.*p.threshold.final.factor(2)));
         fprintf('We will now ask whether this is bearable...\n');                
     end
     function ConfirmIntensity(factor)
@@ -169,7 +176,8 @@ cleanup;
         [~, hostname]                 = system('hostname');
         p.hostname                    = deblank(hostname);
         if strcmp(p.hostname,'blab0')
-            p.path.baselocation       = 'U:\kampermann\FearAdapt_Pilote';
+            p.path.baselocation       = 'U:\kampermann\FearAdapt_Pilote\';
+            addpath('U:\kampermann\Palamedes_1_8_2\Palamedes\')
         else
             p.path.baselocation           = 'C:\Users\Lea\Documents\Experiments\FearAdapt_Pilote\';
         end
