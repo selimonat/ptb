@@ -15,12 +15,12 @@ function [p]=exp_fearadapt_discr(subject,phase,PainThreshold)
 EyelinkWanted   = 0; %is Eyelink wanted?
 fixcross        = 0; %want to have fixcrossin ITI?
 sim_response    = 1; %simulate response by ObserverResponseFunction
-debug           = 1;
+debug           = 0;
 lab           = '204';
 %(see variable fix_start).
 
 % make a break every ....th Trial
-breakpoint      = 40;
+breakpoint      = 25;
 
 ListenChar(2);%disable unwanted keypresses
 commandwindow;
@@ -28,7 +28,6 @@ commandwindow;
 clear mex global functions
 cgshut;
 global cogent;
-addpath('Palamedes_1_8_2\Palamedes\');
 %%%%%%%%%%%load the GETSECS mex files so call them at least once
 GetSecs;
 WaitSecs(0.001);
@@ -51,6 +50,7 @@ if phase == 1
     ShowInstruction(5,1);
     ConfirmIntensity;
     RateShockIntensity;
+    ShowInstruction(504,1);% Final confirmation to start (subject's job).
 end
 SetupLog;
 %save the parameter file once now
@@ -73,7 +73,7 @@ for nTrial = 1:p.presentation.total_trials
         DeliverCostShocks(nTrial);
         ShowInstruction(7,1);
         %calibrate if Eyelink
-        if EyelinkWanted
+        if EyelinkWanted 
             CalibrateEL;
         end
     end
@@ -91,7 +91,10 @@ for nTrial = 1:p.presentation.total_trials
     secs0=GetSecs;
     if sim_response ==1
         [ response_subj] = ObserverResponseFunction(@PAL_CumulativeNormal,mean(p.presentation.delta),1/.01,.1,.05,p.presentation.delta(nTrial));
-        response_subj = response_subj + 1;
+        %quick fix
+        if response_subj == 0;
+            response_subj = 2;
+        end
     else
         [response_subj]  = RatingSlider(rect,2,Shuffle(1:2,1),p.keys.increase,p.keys.decrease,p.keys.confirm,{ 'unterschiedlich' 'gleich'},message1,message2,0);
     end
@@ -490,6 +493,7 @@ copyfile(p.path.subject,p.path.finalsubject);
             p.path.baselocation       = 'C:\Users\onat\Documents\Experiments\';
         elseif strcmp(p.hostname,'blab0')
             p.path.baselocation       = 'U:\kampermann\';
+            addpath('U:\kampermann\Palamedes_1_8_2\Palamedes\');
         else %%please enter your path here
             p.path.baselocation       = 'C:\Users\Lea\Documents\Experiments\';
         end
@@ -516,7 +520,7 @@ copyfile(p.path.subject,p.path.finalsubject);
         %get stim files
         
         dummy = dir([p.path.stim '*.png']);
-        dummy = dummy([5:9,1:4,14:18,10:13,19]); %quick and dirty permutation so that filename row corresponds to cond_id.
+        dummy = dummy([5:9,1:4,14:18,10:13]); %quick and dirty permutation so that filename row corresponds to cond_id.
         p.stim.files    = [repmat([fileparts(p.path.stim) filesep],length(dummy),1) vertcat(dummy(:).name)];
         p.stim.label = {dummy(:).name};
         
@@ -616,7 +620,8 @@ copyfile(p.path.subject,p.path.finalsubject);
         p.presentation = p.presentation.seq(subject);
         p.presentation.seqid = subject;
         p.presentation.total_trials = length(p.presentation.cond);
-        p.presentation.block        = reshape(repmat([1 2 3 4],40,1),1,p.presentation.total_trials);
+        p.presentation.trial2break  = 25;
+        p.presentation.block        = reshape(repmat([1 2 3 4],p.presentation.trial2break,1),1,p.presentation.total_trials);
         p.presentation.press2shock  = 5;
         p.out.PainThreshold           = PainThreshold;%the pain threshold (i.e. pain intensity where p(painful) = .5 for the subject, it is an input argument, must be computed before the experiment.
         p.out.ShockFactor             = 2;%factor to multiply the PainThreshold with, will use this factor to propose the experimenter the final shock intensity to be used during the FearGen Experiment.
@@ -735,7 +740,6 @@ copyfile(p.path.subject,p.path.finalsubject);
     nCols = size(im0, 2) / blockSize;
     scramble = mat2cell(im0, ones(1, nRows) * blockSize, ones(1, nCols) * blockSize, size(im0, 3));
     scramble = cell2mat(reshape(scramble(randperm(nRows * nCols)), nRows, nCols));
-    
 
 %save as desired
     end
@@ -857,9 +861,9 @@ copyfile(p.path.subject,p.path.finalsubject);
                 '   um das Experiment zu starten.\n'...
                 ];    
         elseif nInstruct == 505
-              text = ['Wir würden Sie nun noch einmal bitten, den Reiz auf einer Skala von 1 bis 10 zu bewerten.\n'...
+              text = ['Wir würden Sie nun noch einmal bitten zu bewerten, wie schmerzhaft Sie den elektr. Reiz finden.\n'...
                 '\n'...
-                'Drücken Sie die Leertaste, um den Reiz zu erhalten und anschließend zu bewerten.\n'...
+                'Drücken Sie die Leertaste, um den Reiz zu erhalten und anschließend auf einer Skala von 1 (nicht schmerzhaft) bis 10 (maximal schmerzhaft) zu bewerten.\n'...
                 'Die Bewertung nehmen Sie wie gehabt mit Pfeiltasten und Leertaste zum Bestätigen vor.\n'...
                 '\n'...
                 'Drücken Sie bitte die Leertaste, wenn Sie bereit sind.\n'...
@@ -904,7 +908,6 @@ function ConfirmIntensity
                 fprintf('Subject confirmed the shock intensity inside the scanner...\n');
                 fprintf('INTENSITY TO BE USED FOR THE MAIN EXPERIMENT: %g mA\n',p.var.ShockIntensity);
                 p.out.ShockIntensity = p.var.ShockIntensity;
-                 ShowInstruction(504,1);% Final confirmation to start (subject's job).
                 return;
             elseif response == 1
                 ShowInstruction(503,1); % Stimulation not OK.
