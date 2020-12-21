@@ -14,7 +14,7 @@ function [p]=exp_fearadapt_discr(subject,phase,PainThreshold)
 
 EyelinkWanted   = 0; %is Eyelink wanted?
 fixcross        = 0; %want to have fixcrossin ITI?
-sim_response    = 1; %simulate response by ObserverResponseFunction
+sim_response    = 0; %simulate response by ObserverResponseFunction
 debug           = 0;
 lab           = '204';
 %(see variable fix_start).
@@ -206,7 +206,7 @@ copyfile(p.path.subject,p.path.finalsubject);
         end
         Log(GetSecs,2,ind1);
         % 2) Mask1
-        Screen('DrawTexture',p.ptb.w,p.ptb.stim_sprites(end));
+        Screen('DrawTexture',p.ptb.w,p.ptb.stim_sprites(ind1+p.stim.tFile),[],p.ptb.rect2draw)
 %         Screen('DrawTexture',p.ptb.w,p.ptb.stim_sprites(end),[],p.ptb.rect2draw);
         if fixcross==1
         Screen('FillRect',  p.ptb.w, p.ptb.fc_color, p.ptb.centralFixCross');
@@ -232,7 +232,7 @@ copyfile(p.path.subject,p.path.finalsubject);
             Eyelink('Message', 'SYNCTIME');
         end
         % 5) Mask2
-        Screen('DrawTexture',p.ptb.w,p.ptb.stim_sprites(end));
+        Screen('DrawTexture',p.ptb.w,p.ptb.stim_sprites(ind2+2*p.stim.tFile),[],p.ptb.rect2draw)
         %         Screen('DrawTexture',p.ptb.w,p.ptb.stim_sprites(end),[],p.ptb.rect2draw);
         if fixcross==1
         Screen('FillRect',  p.ptb.w, p.ptb.fc_color, p.ptb.centralFixCross');
@@ -394,7 +394,7 @@ copyfile(p.path.subject,p.path.finalsubject);
         p.ptb.startY                = p.ptb.midpoint(2); %I guess this allows putting it higher, if coil covers parts of the screen.
         fix          = [p.ptb.midpoint(1) p.ptb.startY]; % yaxis is 1/4 of total yaxis
         p.ptb.centralFixCross     = [fix(1)-p.ptb.fc_width,fix(2)-p.ptb.fc_size,fix(1)+p.ptb.fc_width,fix(2)+p.ptb.fc_size;fix(1)-p.ptb.fc_size,fix(2)-p.ptb.fc_width,fix(1)+p.ptb.fc_size,fix(2)+p.ptb.fc_width];
-        p.ptb.imagesize           = [900 675]; %how big we want it.
+        p.ptb.imagesize           = [808 606];%[900 675]; %how big we want it.
 %         p.ptb.imagebox            = [p.ptb.res.width/2-p.ptb.imagesize(1)/2 p.ptb.res.height/2-p.ptb.imagesize(2)/2 p.ptb.midpoint(1)+p.ptb.imagesize(1) p.ptb.midpoint(2)+p.ptb.imagesize(2) ];
         p.ptb.rect2draw            =CenterRectOnPointd([0 0 p.ptb.imagesize], p.ptb.res.width / 2,p.ptb.res.height / 2); %taken from some demo.
         %
@@ -438,7 +438,9 @@ copyfile(p.path.subject,p.path.finalsubject);
             end
             %make the mask
 %             im_rect = %get the rect in which the actual starfish is
-            star_roi  =CenterRectOnPointd([0 0 600 800], 900/2,1200/2);
+%             star_roi  =CenterRectOnPointd([0 0 600 800], 900/2,1200/2);
+            
+            star_roi  =CenterRectOnPointd([0 0 680 900], 900/2,1200/2);
             clipped   = im(star_roi(1)+1:star_roi(3),star_roi(2)+1:star_roi(4),:);
             im_mask = ScrambleImage(clipped);
             im_mask_full = im;
@@ -451,7 +453,9 @@ copyfile(p.path.subject,p.path.finalsubject);
             %                 p.stim.stim(:,:,nStim)    = im;
             %             end
             p.ptb.stim_sprites(nStim)                  = Screen('MakeTexture', p.ptb.w, im );
-            p.ptb.stim_sprites(nStim+p.stim.tFile)     = Screen('MakeTexture', p.ptb.w, im_mask );
+            p.ptb.stim_sprites(nStim+p.stim.tFile)     = Screen('MakeTexture', p.ptb.w, im_mask_full );
+            im_mask_full_flipped = flipud(im_mask_full);
+            p.ptb.stim_sprites(nStim+2*p.stim.tFile)   = Screen('MakeTexture', p.ptb.w, im_mask_full_flipped );
         end
         %         p.stim.delta = 360/p.stim.tFace;
         
@@ -580,7 +584,7 @@ copyfile(p.path.subject,p.path.finalsubject);
         %% %%%%%%%%%%%%%%%%%%%%%%%%%
         %Communication business
         %parallel port
-      if strcmp(p.hostname,'blab0') && strcmp(lab,'204')
+        if strcmp(p.hostname,'blab0') && strcmp(lab,'204')
              p.com.lpt.address = 59392;%hex2dec('0378A');%parallel port of the computer.
         elseif strcmp(p.hostname,'blab0') && strcmp(lab,'201')
              p.com.lpt.address = hex2dec('0378A');
