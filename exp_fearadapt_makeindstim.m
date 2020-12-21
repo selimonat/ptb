@@ -136,6 +136,8 @@ end
 
 fg.Position = [400 200 700 450];
 fg.Color = [1 1 1]; %white bg
+% % Experimenter check
+% pause
 % st = supertitle(sprintf('Fit for Sub:%02d, Theta_{PAL} = %04.3f. Theta_{PSI} = %04.3f.',subject,meantheta,wmeantheta));set(st,'FontSize',16,'Position',[.028 .55 0])
 % fprintf('Paused. Check fit and press any button to continue.\n')
 % pause
