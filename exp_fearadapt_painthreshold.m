@@ -11,12 +11,13 @@ end
 if nargin == 3
     init_int = varargin{2}; 
 else
-    init_int = .5; %this was 0 (=1mA) before, but this electrode/digitimer setup seems to be quite strong.
+    init_int = 1; %this was 0 (=1mA) before, but this electrode/digitimer setup seems to be quite strong.
 end
 global cogent;
 %
 p         = [];
 log_threshold =[];
+lab = '204';
 %
 SetParams;
 SetPTB;
@@ -43,9 +44,11 @@ cleanup;
         message = 'War der Reiz schmerzhaft oder nicht?\nBewege den "Zeiger" mit der rechten und linken Pfeiltaste\n und bestätige deine Einschätzung mit der mit der oberen Pfeiltaste.';
         %
         p.threshold.init.alphas        = log(0.1):0.177/100:log(50);
+%         p.threshold.init.alphas        = log(0.1):0.177/100:log(3);
 %         p.threshold.init.prior = ones(size(p.threshold.init.alphas));
 %         p.threshold.init.prior = p.threshold.init.prior./sum(p.threshold.init.prior);
-        p.threshold.init.prior         = PAL_pdfNormal(p.threshold.init.alphas, log(3), log(2.5)); %LK: PAL_pdfNormal(p.threshold.init.alphas, .7, .5);
+        p.threshold.init.prior         = PAL_pdfNormal(p.threshold.init.alphas, log(3), log(2.5)); 
+%         p.threshold.init.prior         = PAL_pdfNormal(p.threshold.init.alphas,log(2.5),log(2.5));%LK: PAL_pdfNormal(p.threshold.init.alphas, .7, .5);
         p.threshold.init.stopcriterion = 'trials';
         p.threshold.init.stoprule      = 12;
         p.threshold.init.PFfit         = @PAL_Gumbel;
@@ -83,7 +86,7 @@ cleanup;
             else
                 ShowInstruction(5);%shock is coming message, stays ~2 sec...
                 %prepare for the shock
-                MarkCED(p.lpt.address,p.lpt.ShockOnset)
+%                 MarkCED(p.lpt.address,p.lpt.ShockOnset)
                 t = GetSecs + p.duration.shock;
                 while GetSecs < t;
                     Buzz;
@@ -121,8 +124,10 @@ cleanup;
         fprintf('\n\n\nRESULT:\n');
         fprintf('The estimated pain threshold : %g mA\n',p.threshold.final.estimated);
         fprintf('Choose an intensity:\n');
-        fprintf('Intensity to be used for factor x 1.5): %g mA\n',exp(log_threshold.*p.threshold.final.factor(1)));
-        fprintf('Intensity to be used for factor x 2): %g mA\n',exp(log_threshold.*p.threshold.final.factor(2)));
+%         fprintf('Intensity to be used for factor x 1.5): %g mA\n',exp(log_threshold.*p.threshold.final.factor(1)));
+%         fprintf('Intensity to be used for factor x 2): %g mA\n',exp(log_threshold.*p.threshold.final.factor(2)));
+        fprintf('Intensity to be used for factor x 1.5): %g mA\n',exp(log_threshold).*p.threshold.final.factor(1));
+        fprintf('Intensity to be used for factor x 2): %g mA\n',exp(log_threshold).*p.threshold.final.factor(2));
         fprintf('We will now ask whether this is bearable...\n');                
     end
     function ConfirmIntensity(factor)
@@ -144,7 +149,7 @@ cleanup;
         %
         [secs, keyCode, deltaSecs] = KbStrokeWait;
         ShowInstruction(5);%shock is coming message...
-        MarkCED(p.lpt.address,p.lpt.ShockOnset)
+%         MarkCED(p.lpt.address,p.lpt.ShockOnset)
         t = GetSecs + p.duration.shock;
         while GetSecs < t;
             Buzz;
@@ -211,10 +216,16 @@ cleanup;
         p.keys.decrease   = KbName('left');
         p.keys.esc        = KbName('esc');
         %parallel port
-        p.lpt.address       = 888;
-        p.lpt.digitimer     = 128;                
-        p.lpt.ShockOnset    = 16;   
-        p.lpt.InitExperiment = 64;
+        if strcmp(p.hostname,'blab0') && strcmp(lab,'204')
+             p.lpt.address = 59392;%hex2dec('0378A');%parallel port of the computer.
+        elseif strcmp(p.hostname,'blab0') && strcmp(lab,'201')
+             p.lpt.address = hex2dec('0378A');
+        else
+            p.lpt.address = 888;%parallel port of the computer.
+        end
+        p.lpt.digitimer     = 1;                
+%         p.lpt.ShockOnset    = 16;   
+        p.lpt.InitExperiment = 4;
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %timing business
         p.duration.shock           = 0.1;%s;x
