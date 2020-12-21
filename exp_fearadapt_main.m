@@ -71,7 +71,7 @@ function [p]=exp_fearadapt_main(subject,PainThreshold)
 %
 %   Selim Onat
 
-debug   = 1;%debug mode => 1: transparent window enabling viewing the background.
+debug   = 0;%debug mode => 1: transparent window enabling viewing the background.
 trial_info = 0;
 EyelinkWanted = 0;%is Eyelink wanted?
 mrt           = 0;
@@ -112,7 +112,7 @@ p         = [];%parameter structure that contains all info about the experiment.
 s         = [];
 phase = 0; %for now
 p.var.ExpPhase  = 0;
-trun =2;
+trun  = 6;
 SetParams;%set parameters of the experiment
 SetPTB;%set visualization parameters.
 %
@@ -718,7 +718,7 @@ cleanup;
         p.duration.keep_recording      = 0.25;%this is the time we will keep recording (eye data) after stim offset.
         p.duration.prestim             = .85;
         p.duration.outcomedelay        = 3;
-        speedup                        = 4; %factor to speed up things, e.g. for debugging or testing 
+        speedup                        = 1; %factor to speed up things, e.g. for debugging or testing 
         p.duration.outcomedelay        = p.duration.outcomedelay   /speedup;
         p.duration.stim                = p.duration.stim           /speedup;
         %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1014,7 +1014,7 @@ function RateShockIntensity
                  'd.h. bevor ein gelber Rahmen um die Form erscheint.\n' ...
                  '\n' ...
                  'Bedenken Sie jedoch: jeder Tastendruck zum Ausweichen des Reizes kostet!\n' ...
-                 'Sie erhalten je nach Anzahl der Ausweich-Entscheidungen zusätzliche eletrische Reize am Ende eines Blocks.\n' ...
+                 'Sie erhalten je nach Anzahl der Ausweich-Entscheidungen zusätzliche elektrische Reize am Ende eines Blocks.\n' ...
                  'Drücken Sie also nur, wenn die Form einen elektrischen Reiz ankündigt!\n' ...
                  '\n' ...
                  'Drücken Sie nun die Leertaste zum Fortfahren.\n'];
@@ -1193,7 +1193,7 @@ function RateShockIntensity
         p.ptb.fc_size               = 10;
         %
         p.ptb.rectbox               =  [p.ptb.midpoint(1)-p.stim.rectsize p.ptb.midpoint(2)-p.stim.rectsize p.ptb.midpoint(1)+p.stim.rectsize p.ptb.midpoint(2)+p.stim.rectsize]; %this is for the yellow frame during outcome
-          p.ptb.imagesize           = [900 675]; %how big we want it.
+        p.ptb.imagesize           = [808 606];%[900 675]; %how big we want it.
         p.ptb.rect2draw            =CenterRectOnPointd([0 0 p.ptb.imagesize], p.ptb.res.width / 2,p.ptb.res.height / 2); %taken from some demo.
     
         
